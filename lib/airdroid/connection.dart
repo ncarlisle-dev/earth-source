@@ -4,16 +4,28 @@ import 'package:http/http.dart' as http;
 
 import 'dart:convert';
 
+/// Represents a network/LAN connection to the AirDroid server
 class AirdroidConnection {
+  /// The root address all queries go through
   String _baseAddress = "";
+
+  /// The auth token given by connecting to the server
   String _authToken = "";
+
+  /// The device key given by conncting to the server
   String _deviceKey = "";
+
+  /// The encryption key used by AirDroid for translating file paths into
+  /// hashes
   String _encryptionKey = "";
 
+  /// returns true if the connection is active, false otherwise
   bool isConnected() {
     return _authToken.isNotEmpty && _deviceKey.isNotEmpty;
   }
 
+  /// Given the IP address and port of the AirDroid server, initiates a
+  /// connection to it, enabling access to file downloads.
   Future<void> initiateConnection(String ipAddress, int port) async {
     _baseAddress = "http://$ipAddress:$port";
     final String requestAddress = "$_baseAddress/sdctl/comm/lite_auth/";
@@ -37,6 +49,9 @@ class AirdroidConnection {
     }
   }
 
+  /// Given a path to a directory, returns a list of directory's contents.
+  /// The function will return null if the connection isn't initiaed, the
+  /// file path doesn't exist, or the HTTP request fails.
   Future<List<String>?> queryDirectory(String filePath) async {
     if (!isConnected()) return null;
 
@@ -59,8 +74,7 @@ class AirdroidConnection {
         final List<String> found = [];
 
         for (var entry in filesList) {
-          if (entry['name'] is! String) continue;
-          found.add(entry['name']);
+          if (entry['name'] is String) found.add(entry['name']);
         }
 
         return found;
@@ -74,6 +88,9 @@ class AirdroidConnection {
     }
   }
 
+  /// Given a path to a file, returns the file's stringifed contents.
+  /// Returns null if the connection isn't initiated, the file doesn't exist, or
+  /// the HTTP request fails.
   Future<String?> fetchFile(String filePath) async {
     if (!isConnected()) return null;
 
