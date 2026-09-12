@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import './pages/home_page.dart' as home_page;
 
-void main() {
-  runApp(const MyApp());
+
+void main()
+{
+  flutter.runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+
+class MyApp extends flutter.StatelessWidget
+{
   const MyApp({super.key});
 
   // This widget is the root of your application.
@@ -29,7 +33,9 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: flutter.ColorScheme.fromSeed(
+          seedColor: flutter.Colors.deepPurple
+        ),
       ),
       initialRoute: '/',
 

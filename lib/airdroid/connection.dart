@@ -1,32 +1,31 @@
 import './encryption.dart' as airdroid_encryption;
-
 import 'package:http/http.dart' as http;
+import 'dart:convert' as convert;
 
-import 'dart:convert';
-
-/// Represents a network/LAN connection to the AirDroid server
-class AirdroidConnection {
-  /// The root address all queries go through
+/// Represents a network/LAN connection to a AirDroid server
+class AirdroidConnection
+{
+  /// The AirDroid server's root URL.
   String _baseAddress = "";
 
-  /// The auth token given by connecting to the server
+  /// The auth token given by connecting to the server.
   String _authToken = "";
 
-  /// The device key given by conncting to the server
+  /// The device key given by conncting to the server.
   String _deviceKey = "";
 
   /// The encryption key used by AirDroid for translating file paths into
-  /// hashes
+  /// hashes.
   String _encryptionKey = "";
 
-  /// returns true if the connection is active, false otherwise
-  bool isConnected() {
-    return _authToken.isNotEmpty && _deviceKey.isNotEmpty;
-  }
+  /// Returns true if the connection is active, false otherwise.
+  bool isConnected()
+    => _authToken.isNotEmpty && _deviceKey.isNotEmpty;
 
   /// Given the IP address and port of the AirDroid server, initiates a
   /// connection to it, enabling access to file downloads.
-  Future<void> initiateConnection(String ipAddress, int port) async {
+  Future<void> initiateConnection(String ipAddress, int port) async
+  {
     _baseAddress = "http://$ipAddress:$port";
     final String requestAddress = "$_baseAddress/sdctl/comm/lite_auth/";
 
@@ -34,9 +33,13 @@ class AirdroidConnection {
       final response = await http.get(Uri.parse(requestAddress));
 
       if (response.statusCode == 200) {
-        var data = jsonDecode(response.body);
-        _authToken = data['7bb'];
-        _deviceKey = data['dk'];
+        var data = convert.jsonDecode(response.body);
+
+        const String authTokenJsonKey = "7bb";
+        const String deviceKeyJsonKey = "dk";
+
+        _authToken = data[authTokenJsonKey];
+        _deviceKey = data[deviceKeyJsonKey];
         _encryptionKey = airdroid_encryption.getEncryptionKey(
           _deviceKey,
           _authToken,
@@ -50,9 +53,11 @@ class AirdroidConnection {
   }
 
   /// Given a path to a directory, returns a list of directory's contents.
-  /// The function will return null if the connection isn't initiaed, the
+  ///
+  /// Returns null if the connection isn't active, the
   /// file path doesn't exist, or the HTTP request fails.
-  Future<List<String>?> queryDirectory(String filePath) async {
+  Future<List<String>?> queryDirectory(String filePath) async
+  {
     if (!isConnected()) return null;
 
     filePath = filePath.replaceAll("/", "%2f");
@@ -66,7 +71,7 @@ class AirdroidConnection {
       final response = await http.get(Uri.parse(requestAddress));
 
       if (response.statusCode == 200) {
-        var data = jsonDecode(response.body);
+        var data = convert.jsonDecode(response.body);
         var filesList = data['list'];
 
         if (filesList is! List) return null;
@@ -89,9 +94,11 @@ class AirdroidConnection {
   }
 
   /// Given a path to a file, returns the file's stringifed contents.
+  ///
   /// Returns null if the connection isn't initiated, the file doesn't exist, or
   /// the HTTP request fails.
-  Future<String?> fetchFile(String filePath) async {
+  Future<String?> fetchFile(String filePath) async
+  {
     if (!isConnected()) return null;
 
     final String requestAddress =
