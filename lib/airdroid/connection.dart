@@ -1,9 +1,66 @@
 import './encryption.dart' as airdroid_encryption;
-import 'package:http/http.dart' as http;
-import 'dart:convert' as convert;
+import './schema.dart' as airdroid_schema;
 
-/// Represents a network/LAN connection to a AirDroid server
-class AirdroidConnection
+import 'package:http/http.dart' as http;
+
+/* ============================== Utility ============================== */
+
+/// Thrown whenever a network request fails or an unexpected response is 
+/// received.
+class NetworkException implements Exception
+{
+  /// The error message.
+  final String message;
+
+  /// The status code sent back by the server, if applicable.
+  final int? statusCode;
+
+  const NetworkException(this.message, this.statusCode);
+
+  @override
+  String toString()
+    => message;
+}
+
+Future<http.Response> _sendHttpGetRequest(
+  http.Client client,
+  String requestAddress
+) async
+{
+  final http.Response response;
+
+  try {
+    response = await client.get(Uri.parse(requestAddress));
+  } on http.ClientException {
+    throw const NetworkException("Failed to send network request.", null);
+  }
+
+  if (response.statusCode != 200) {
+    throw NetworkException(
+      "Server returned status code ${response.statusCode}.",
+      response.statusCode
+    );
+  }
+
+  return response;
+}
+
+/* ============================== Connection ============================== */
+
+/// A network/LAN connection to an AirDroid server.
+/// 
+/// ```dart
+///   final client = AirdroidClient();
+///   try {
+///     await client.connect("192.168.0.1", 8888);
+///     final fileContents = await client.fetchFile('/path/to/myfile.csv');
+///     // ...
+///     await client.disconnect();
+///   } on NetworkException catch (e) {
+///     // handle network errors...
+///   }
+/// ```
+class AirdroidClient
 {
   /// The AirDroid server's root URL.
   String _baseAddress = "";
@@ -18,106 +75,148 @@ class AirdroidConnection
   /// hashes.
   String _encryptionKey = "";
 
+  /// HTTP connection to the server
+  http.Client? _client;
+
   /// Returns true if the connection is active, false otherwise.
   bool isConnected()
-    => _authToken.isNotEmpty && _deviceKey.isNotEmpty;
+    => _client != null;
 
-  /// Given the IP address and port of the AirDroid server, initiates a
-  /// connection to it, enabling access to file downloads.
-  Future<void> initiateConnection(String ipAddress, int port) async
+  /// Opens a connection to the AirDroid server with the given [ipAddress]
+  /// and [port].
+  /// 
+  /// The client must not already be connected to a server. Make sure to call
+  /// [disconnect] one you are done making requests.
+  /// 
+  /// ```dart
+  ///   try {
+  ///     await client.connect("192.168.0.1", 8888);
+  ///     // ...
+  ///     await client.disconnect();
+  ///   } on NetworkException catch (e) {
+  ///     // handle network errors...
+  ///   }
+  /// ```
+  /// 
+  /// Throws a [NetworkException] if the request fails or the server gives an
+  /// unexpected response.
+  Future<void> connect(String ipAddress, int port) async
   {
+    assert(!isConnected(), "Client is already connected to a server.");
+
+    // setup address
     _baseAddress = "http://$ipAddress:$port";
-    final String requestAddress = "$_baseAddress/sdctl/comm/lite_auth/";
+    final requestAddress = "$_baseAddress/sdctl/comm/lite_auth/";
+
+    // create client
+    _client = http.Client();
+
+    // send request
+    final http.Response response = await _sendHttpGetRequest(
+      _client!,
+      requestAddress
+    );
+
+    // TODO: create a thread that listens for server disconnection.
+    // Alternatively, create a function that can ping the server and
+    // check if the connection is active.
+
+    // decode response
+    final ({String deviceKey, String authToken}) connectionData;
 
     try {
-      final response = await http.get(Uri.parse(requestAddress));
-
-      if (response.statusCode == 200) {
-        var data = convert.jsonDecode(response.body);
-
-        const String authTokenJsonKey = "7bb";
-        const String deviceKeyJsonKey = "dk";
-
-        _authToken = data[authTokenJsonKey];
-        _deviceKey = data[deviceKeyJsonKey];
-        _encryptionKey = airdroid_encryption.getEncryptionKey(
-          _deviceKey,
-          _authToken,
-        );
-      } else {
-        print('Request failed with status code ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error occurred: $e');
+      connectionData = airdroid_schema.extractConnectionData(response.body);
+    } on airdroid_schema.TypeMismatchException catch (e) {
+      throw NetworkException(
+        "Server returned unexpected response body:\n$e",
+        200
+      );
     }
+    
+    _deviceKey = connectionData.deviceKey;
+    _authToken = connectionData.authToken;
+
+    _encryptionKey = airdroid_encryption.getEncryptionKey(
+      _deviceKey,
+      _authToken,
+    );
   }
 
-  /// Given a path to a directory, returns a list of directory's contents.
-  ///
-  /// Returns null if the connection isn't active, the
-  /// file path doesn't exist, or the HTTP request fails.
-  Future<List<String>?> queryDirectory(String filePath) async
+  /// Disconnects the client from the currently-connected AirDroid server.
+  /// 
+  /// The client must be connected to a server.
+  Future<void> disconnect() async
   {
-    if (!isConnected()) return null;
+    assert(isConnected(), "Client is not yet connected to a server.");
 
+    try {
+      _client!.close();
+    } on http.ClientException {
+      // ignore the error
+    }
+
+    _client = null;
+    _baseAddress = "";
+    _authToken = "";
+    _deviceKey = "";
+    _encryptionKey = "";
+  }
+
+  /// Given the [filePath] to a directory, returns a list of directory's
+  /// contents.
+  /// 
+  /// The client must be connected to a server.
+  ///
+  /// [filePath] must start with a '/'.
+  /// 
+  /// Throws a [NetworkException] if the request fails or the server gives an
+  /// unexpected reponse.
+  Future<List<({String name})>> queryDirectory(String filePath) async
+  {
+    // make sure directory can be queried
+    assert(isConnected(), "Client is not yet connected to a server.");
+    assert(filePath[0] == "/", "filePath must start with a '/'");
+
+    // setup address
     filePath = filePath.replaceAll("/", "%2f");
-
     final String requestAddress =
         "$_baseAddress/sdctl/file_v21/query?cur_path=$filePath&7bb=$_authToken";
 
-    print("querying: $requestAddress");
+    // send request
+    final http.Response response = await _sendHttpGetRequest(
+      _client!,
+      requestAddress
+    );
 
-    try {
-      final response = await http.get(Uri.parse(requestAddress));
-
-      if (response.statusCode == 200) {
-        var data = convert.jsonDecode(response.body);
-        var filesList = data['list'];
-
-        if (filesList is! List) return null;
-
-        final List<String> found = [];
-
-        for (var entry in filesList) {
-          if (entry['name'] is String) found.add(entry['name']);
-        }
-
-        return found;
-      } else {
-        print('Request failed with status ${response.statusCode}');
-        return null;
-      }
-    } catch (e) {
-      print('Error occurred: $e');
-      return null;
-    }
+    // extract the data
+    return airdroid_schema.extractDirectoryContents(response.body);
   }
 
-  /// Given a path to a file, returns the file's stringifed contents.
+  /// Given a [filePath], returns the file's stringifed contents.
+  /// 
+  /// The client must be connected to a server.
+  /// 
+  /// [filePath] must start with a '/'.
   ///
-  /// Returns null if the connection isn't initiated, the file doesn't exist, or
-  /// the HTTP request fails.
-  Future<String?> fetchFile(String filePath) async
+  /// Throws a [NetworkException] if the network request fails.
+  Future<String> fetchFile(String filePath) async
   {
-    if (!isConnected()) return null;
+    // check params
+    assert(isConnected(), "Client is not yet connected to a server.");
 
+    // setup address
     final String requestAddress =
-        "$_baseAddress/sdctl/file_v21/export?pathfile=${airdroid_encryption.getEncryptedFilePath(filePath, _encryptionKey)}&7bb=$_authToken";
+        "$_baseAddress/sdctl/file_v21/export?pathfile="
+        "${airdroid_encryption.getEncryptedFilePath(filePath, _encryptionKey)}"
+        "&7bb=$_authToken";
 
-    print("querying: $requestAddress");
+    // send request
+    final http.Response response = await _sendHttpGetRequest(
+      _client!,
+      requestAddress
+    );
 
-    try {
-      final response = await http.get(Uri.parse(requestAddress));
-
-      if (response.statusCode == 200) {
-        return response.body;
-      } else {
-        print('Request failed with status ${response.statusCode}');
-        return null;
-      }
-    } catch (e) {
-      print('Error occurred: $e');
-      return null;
-    }
+    // return data
+    return response.body;
   }
 }

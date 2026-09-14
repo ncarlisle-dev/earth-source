@@ -20,12 +20,16 @@ String _convertByteArrayToHex(types.Uint8List bytes)
 
 /// Computes and returns an AirDroid encryption key based on the client's
 /// assigned [deviceKey] and [authToken].
+/// 
+/// Runs an XOR cipher over the [deviceKey] using [authToken] as a source of
+/// randomness.
 ///
 /// [deviceKey] and [authToken] must be hex strings.
+/// 
+/// The returned encryption key is a 16 character-long hex string, encoding 8 
+/// bytes' worth of data.
 String getEncryptionKey(String deviceKey, String authToken)
 {
-  // Run an XOR cipher over the device key, using the auth token as a source
-  // of randomness
   final types.Uint8List keyBytes = _convertHexToByteArray(deviceKey);
   final types.Uint8List authTokenBytes = _convertHexToByteArray(
     authToken.substring(3, 7),
@@ -38,20 +42,21 @@ String getEncryptionKey(String deviceKey, String authToken)
   return _convertByteArrayToHex(keyBytes);
 }
 
-/// Computes and returns an filepath's AirDroid hash.
+/// Computes and returns an [filePath]'s AirDroid hash.
 ///
-/// Run a DES + ECB + PKCS7 encryption algorithm on the filepath to get the
-/// final hash.
+/// Runs a DES + ECB + PKCS7 encryption algorithm on the [filePath] using an 
+/// encryption [key] to get the final hash.
 /// 
 /// [filePath] must start with '/'.
-/// [key] must be a be a hex string with 8 bytes' worth of data (16 characters).
+/// [key] must be a be a hex string with 8 bytes' worth of data (16 characters);
+/// see [getEncryptionKey] for details.
 String getEncryptedFilePath(String filePath, String key)
 {
   // check parameters
   assert(key.length == 16, "Encryption key must be 16 characters long.");
 
   // generate key
-  // (raw DES isn't supported, so need to append the key to itself two times)
+  // (raw DES isn't supported, so we need to append the key to itself two times)
   final keyBytes = _convertHexToByteArray(key);
 
   final tripleKey = types.Uint8List(24);
