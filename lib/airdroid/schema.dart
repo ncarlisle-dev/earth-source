@@ -66,8 +66,14 @@ final _connectionResponseSchema = json_schema.JsonSchema.create(
   {
     'type': 'object',
     'properties': {
-      _deviceKeyJsonKey: _deviceKeyFormatName,
-      _authTokenJsonKey: _authTokenFormatName,
+      _deviceKeyJsonKey: {
+        'type': 'string',
+        'format': _deviceKeyFormatName,
+      },
+      _authTokenJsonKey: {
+        'type': 'string',
+        'format': _authTokenFormatName,
+      },
     },
     'required': [_deviceKeyJsonKey, _authTokenJsonKey]
   },
@@ -83,7 +89,9 @@ final _listDirectorySchema = json_schema.JsonSchema.create(
         'items': {
           'type': 'object',
           'properties': {
-            _directoryItemNameJsonKey: 'string',
+            _directoryItemNameJsonKey: {
+              'type': 'string'
+            },
           },
           'required': [_directoryItemNameJsonKey]
         },

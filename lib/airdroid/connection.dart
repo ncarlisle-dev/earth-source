@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import './encryption.dart' as airdroid_encryption;
 import './schema.dart' as airdroid_schema;
 
@@ -112,21 +114,36 @@ class AirdroidClient
     _client = http.Client();
 
     // send request
-    final http.Response response = await _sendHttpGetRequest(
-      _client!,
-      requestAddress
-    );
+    final http.Response response;
 
-    // TODO: create a thread that listens for server disconnection.
+    try {
+      response = await _client!.get(Uri.parse(requestAddress));
+    } on http.ClientException {
+      _closeClient();
+      throw const NetworkException("Failed to send network request.", null);
+    }
+
+    if (response.statusCode != 200) {
+      _closeClient();
+      throw NetworkException(
+        "Server returned status code ${response.statusCode}.",
+        response.statusCode
+      );
+    }
+
+    // TODO: create a thread that listens for server-triggered disconnection.
     // Alternatively, create a function that can ping the server and
     // check if the connection is active.
 
     // decode response
     final ({String deviceKey, String authToken}) connectionData;
 
+    print(response.body);
+
     try {
       connectionData = airdroid_schema.extractConnectionData(response.body);
     } on airdroid_schema.TypeMismatchException catch (e) {
+      _closeClient();
       throw NetworkException(
         "Server returned unexpected response body:\n$e",
         200
@@ -142,13 +159,11 @@ class AirdroidClient
     );
   }
 
-  /// Disconnects the client from the currently-connected AirDroid server.
+  /// Helper function used to close the client and reset all class members.
   /// 
-  /// The client must be connected to a server.
-  Future<void> disconnect() async
+  /// See [disconnect] for the proper method of closing connections.
+  Future<void> _closeClient() async
   {
-    assert(isConnected(), "Client is not yet connected to a server.");
-
     try {
       _client!.close();
     } on http.ClientException {
@@ -156,10 +171,22 @@ class AirdroidClient
     }
 
     _client = null;
+
     _baseAddress = "";
     _authToken = "";
     _deviceKey = "";
     _encryptionKey = "";
+  }
+
+  /// Disconnects the client from the currently-connected AirDroid server.
+  /// 
+  /// The client must be connected to a server.
+  Future<void> disconnect() async
+  {
+    assert(isConnected(), "Client is not yet connected to a server.");
+    // TODO: send the following GET request instead of just closing the client
+    // http://localhost:8888/sdctl/comm/logout/?7bb=[authToken]
+    _closeClient();
   }
 
   /// Given the [filePath] to a directory, returns a list of directory's
