@@ -8,6 +8,7 @@ class ProjectsPage extends material.StatefulWidget {
   material.State<ProjectsPage> createState() => _ProjectsPageState();
 }
 
+/// The mutable state of the projects page.
 class _ProjectsPageState extends material.State<ProjectsPage> {
 
   @override

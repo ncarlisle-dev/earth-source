@@ -15,12 +15,13 @@ class HomePage extends material.StatefulWidget {
   material.State<HomePage> createState() => _HomePageState();
 }
 
+/// The mutable state of the home page.
 class _HomePageState extends material.State<HomePage> {
+  // index of the current page being displayed from the nav bar
   int currentPageIndex = 2;
 
   @override
   material.Widget build(material.BuildContext context) {
-    final material.ThemeData theme = material.Theme.of(context);
     return material.Scaffold(
       bottomNavigationBar: material.NavigationBar(
         onDestinationSelected: (int index) {
@@ -56,6 +57,8 @@ class _HomePageState extends material.State<HomePage> {
           
         ],
       ),
+      
+      // page destinations of each item in the nav bar
       body: <material.Widget>[
         settings_page.SettingsPage(),
         languages_page.LanguagesPage(),

@@ -8,6 +8,7 @@ class SettingsPage extends material.StatefulWidget {
   material.State<SettingsPage> createState() => _SettingsPageState();
 }
 
+/// The mutable state of the settings page.
 class _SettingsPageState extends material.State<SettingsPage> {
 
   @override

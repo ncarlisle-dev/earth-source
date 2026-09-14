@@ -9,6 +9,7 @@ class HelpPage extends material.StatefulWidget {
   material.State<HelpPage> createState() => _HelpPageState();
 }
 
+/// The mutable state of the help page.
 class _HelpPageState extends material.State<HelpPage> {
 
   @override

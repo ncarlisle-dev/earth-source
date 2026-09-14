@@ -8,6 +8,7 @@ class LanguagesPage extends material.StatefulWidget {
   material.State<LanguagesPage> createState() => _LanguagesPageState();
 }
 
+/// The mutable state of the languages page.
 class _LanguagesPageState extends material.State<LanguagesPage> {
 
   @override

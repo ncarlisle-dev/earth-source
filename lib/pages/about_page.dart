@@ -8,6 +8,7 @@ class AboutPage extends material.StatefulWidget {
   material.State<AboutPage> createState() => _AboutPageState();
 }
 
+/// The mutable state of the about page.
 class _AboutPageState extends material.State<AboutPage> {
 
   @override
