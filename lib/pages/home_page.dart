@@ -1,59 +1,62 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as material;
+
 import './about_page.dart' as about_page;
 import './help_page.dart' as help_page;
 import './languages_page.dart' as languages_page;
 import './projects_page.dart' as projects_page;
 import './settings_page.dart' as settings_page;
 
-class HomePage extends StatefulWidget {
+/// A page containing the navigation bar for the app from which all other pages
+/// can be accessed.
+class HomePage extends material.StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  material.State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends material.State<HomePage> {
   int currentPageIndex = 2;
 
   @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Scaffold(
-      bottomNavigationBar: NavigationBar(
+  material.Widget build(material.BuildContext context) {
+    final material.ThemeData theme = material.Theme.of(context);
+    return material.Scaffold(
+      bottomNavigationBar: material.NavigationBar(
         onDestinationSelected: (int index) {
           setState(() {
             currentPageIndex = index;
           });
         },
-        indicatorColor: Colors.amber,
+        indicatorColor: material.Colors.amber,
         selectedIndex: currentPageIndex,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
-        destinations: const <Widget>[
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
+        labelBehavior: material.NavigationDestinationLabelBehavior.alwaysHide,
+        destinations: const <material.Widget>[
+          material.NavigationDestination(
+            icon: material.Icon(material.Icons.settings_outlined),
             label: 'Settings',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.language_outlined),
+          material.NavigationDestination(
+            icon: material.Icon(material.Icons.language_outlined),
             label: 'Languages',
           ),
-          NavigationDestination(
-            selectedIcon: Icon(Icons.home),
-            icon: Icon(Icons.home_outlined),
+          material.NavigationDestination(
+            selectedIcon: material.Icon(material.Icons.home),
+            icon: material.Icon(material.Icons.home_outlined),
             label: 'Home',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.help_outline),
+          material.NavigationDestination(
+            icon: material.Icon(material.Icons.help_outline),
             label: 'Help',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.info_outline),
+          material.NavigationDestination(
+            icon: material.Icon(material.Icons.info_outline),
             label: 'About',
           ),
           
         ],
       ),
-      body: <Widget>[
+      body: <material.Widget>[
         settings_page.SettingsPage(),
         languages_page.LanguagesPage(),
         projects_page.ProjectsPage(),

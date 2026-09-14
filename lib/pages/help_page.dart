@@ -1,24 +1,26 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as material;
 
-class HelpPage extends StatefulWidget {
+/// A page providing a guide to using the app, documentation, troubleshooting
+/// tips, and contact information.
+class HelpPage extends material.StatefulWidget {
   const HelpPage({super.key});
 
   @override
-  State<HelpPage> createState() => _HelpPageState();
+  material.State<HelpPage> createState() => _HelpPageState();
 }
 
-class _HelpPageState extends State<HelpPage> {
+class _HelpPageState extends material.State<HelpPage> {
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  material.Widget build(material.BuildContext context) {
+    return material.Scaffold(
       body:
-        Card(
-          shadowColor: Colors.transparent,
-          margin: const EdgeInsets.all(8.0),
-          child: SizedBox.expand(
-            child: Center(
-              child: Text('Help'),
+        material.Card(
+          shadowColor: material.Colors.transparent,
+          margin: const material.EdgeInsets.all(8.0),
+          child: material.SizedBox.expand(
+            child: material.Center(
+              child: material.Text('Help'),
             ),
           ),
         ),

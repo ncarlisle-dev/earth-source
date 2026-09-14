@@ -1,24 +1,25 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as material;
 
-class AboutPage extends StatefulWidget {
+/// A page for describing the project, with links to the repository and website.
+class AboutPage extends material.StatefulWidget {
   const AboutPage({super.key});
 
   @override
-  State<AboutPage> createState() => _AboutPageState();
+  material.State<AboutPage> createState() => _AboutPageState();
 }
 
-class _AboutPageState extends State<AboutPage> {
+class _AboutPageState extends material.State<AboutPage> {
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  material.Widget build(material.BuildContext context) {
+    return material.Scaffold(
       body:
-        Card(
-          shadowColor: Colors.transparent,
-          margin: const EdgeInsets.all(8.0),
-          child: SizedBox.expand(
-            child: Center(
-              child: Text('About'),
+        material.Card(
+          shadowColor: material.Colors.transparent,
+          margin: const material.EdgeInsets.all(8.0),
+          child: material.SizedBox.expand(
+            child: material.Center(
+              child: material.Text('About'),
             ),
           ),
         ),

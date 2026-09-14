@@ -1,24 +1,25 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as material;
 
-class ProjectsPage extends StatefulWidget {
+/// A page where the user can create and access their projects.
+class ProjectsPage extends material.StatefulWidget {
   const ProjectsPage({super.key});
 
   @override
-  State<ProjectsPage> createState() => _ProjectsPageState();
+  material.State<ProjectsPage> createState() => _ProjectsPageState();
 }
 
-class _ProjectsPageState extends State<ProjectsPage> {
+class _ProjectsPageState extends material.State<ProjectsPage> {
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  material.Widget build(material.BuildContext context) {
+    return material.Scaffold(
       body:
-        Card(
-          shadowColor: Colors.transparent,
-          margin: const EdgeInsets.all(8.0),
-          child: SizedBox.expand(
-            child: Center(
-              child: Text('Projects'),
+        material.Card(
+          shadowColor: material.Colors.transparent,
+          margin: const material.EdgeInsets.all(8.0),
+          child: material.SizedBox.expand(
+            child: material.Center(
+              child: material.Text('Projects'),
             ),
           ),
         ),

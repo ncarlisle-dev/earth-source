@@ -1,24 +1,25 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as material;
 
-class LanguagesPage extends StatefulWidget {
+/// A page enabling the user to change between languages.
+class LanguagesPage extends material.StatefulWidget {
   const LanguagesPage({super.key});
 
   @override
-  State<LanguagesPage> createState() => _LanguagesPageState();
+  material.State<LanguagesPage> createState() => _LanguagesPageState();
 }
 
-class _LanguagesPageState extends State<LanguagesPage> {
+class _LanguagesPageState extends material.State<LanguagesPage> {
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  material.Widget build(material.BuildContext context) {
+    return material.Scaffold(
       body:
-        Card(
-          shadowColor: Colors.transparent,
-          margin: const EdgeInsets.all(8.0),
-          child: SizedBox.expand(
-            child: Center(
-              child: Text('Languages'),
+        material.Card(
+          shadowColor: material.Colors.transparent,
+          margin: const material.EdgeInsets.all(8.0),
+          child: material.SizedBox.expand(
+            child: material.Center(
+              child: material.Text('Languages'),
             ),
           ),
         ),
