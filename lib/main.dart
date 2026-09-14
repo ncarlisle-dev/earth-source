@@ -4,11 +4,11 @@ import './pages/home_page.dart' as home_page;
 
 void main()
 {
-  flutter.runApp(const MyApp());
+  runApp(const MyApp());
 }
 
 
-class MyApp extends flutter.StatelessWidget
+class MyApp extends StatelessWidget
 {
   const MyApp({super.key});
 
@@ -33,8 +33,8 @@ class MyApp extends flutter.StatelessWidget
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: flutter.ColorScheme.fromSeed(
-          seedColor: flutter.Colors.deepPurple
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple
         ),
       ),
       initialRoute: '/',
