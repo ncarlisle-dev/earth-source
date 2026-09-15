@@ -3,8 +3,6 @@ import 'package:coordinate_converter/coordinate_converter.dart'
 
 import 'dart:io' as io;
 
-// TODO: expand file documentation
-
 /// Class for a single site unit.
 class Unit
 {

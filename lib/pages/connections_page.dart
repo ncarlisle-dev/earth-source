@@ -2,6 +2,34 @@ import 'package:flutter/material.dart' as material;
 import '../airdroid/connection.dart' as airdroid_connection;
 import 'package:intl/intl.dart' as intl;
 
+const _connectionStatusSymbols = {
+  airdroid_connection.ConnectionStatus.disconnecting: material.Icon(
+    material.Icons.circle,
+    color: material.Colors.red,
+    size: 16.0
+  ),
+  airdroid_connection.ConnectionStatus.disconnected: material.Icon(
+    material.Icons.circle,
+    color: material.Colors.grey,
+    size: 16.0
+  ),
+  airdroid_connection.ConnectionStatus.connecting: material.Icon(
+    material.Icons.circle,
+    color: material.Colors.yellow,
+    size: 16.0
+  ),
+  airdroid_connection.ConnectionStatus.connected: material.Icon(
+    material.Icons.circle,
+    color: material.Colors.green,
+    size: 16.0
+  ),
+  airdroid_connection.ConnectionStatus.pinging: material.Icon(
+    material.Icons.more_horiz,
+    color: material.Colors.black,
+    size: 16.0
+  ),
+};
+
 class _ConnectionEntry
 {
   final String ipAddress;
@@ -23,12 +51,26 @@ class ConnectionsPage extends material.StatefulWidget
 
 // TODO: Save connection entries to a file and reload them on startup
 final List<_ConnectionEntry> _connectionEntries = [];
+void Function(void Function())? currSetState;
+
+void refreshConnections()
+{
+  for (final entry in _connectionEntries) {
+    if (entry.client == null || !entry.client!.isConnected()) {
+      continue;
+    }
+
+    entry.client!.updateConnectionStatus();
+  }
+}
 
 class _ConnectionsPageState extends material.State<ConnectionsPage>
 {
   @override
   material.Widget build(material.BuildContext context)
   {
+    currSetState = setState;
+
     return material.Padding(
       padding: material.EdgeInsetsGeometry.symmetric(
         vertical: 20.0,
@@ -48,11 +90,9 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
               child: material.Row(
                 spacing: 10.0,
                 children: [
-                  material.Icon(
-                    material.Icons.circle,
-                    color: material.Colors.green,
-                    size: 16.0
-                  ),
+                  _connectionStatusSymbols[entry.client?.status
+                    ?? airdroid_connection.ConnectionStatus.disconnected]!,
+
                   material.Column(
                     crossAxisAlignment: material.CrossAxisAlignment.start,
                     children: [
@@ -73,20 +113,38 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
             )
           ).toList().reversed.toList(),
         ),
-        floatingActionButton: material.FloatingActionButton(
-          onPressed: () async
-          {
-            final _ConnectionEntry? entry = await _showConnectionModal(context);
-            
-            if (entry != null)
-            {
-              setState(() {
-                _connectionEntries.add(entry);
-              });
-            }
-          },
-          tooltip: 'Add connection',
-          child: const material.Icon(material.Icons.add),
+        floatingActionButton: material.Row(
+          mainAxisAlignment: .end,
+          spacing: 10.0,
+          children: [
+            material.IconButton(
+              onPressed: refreshConnections,
+              icon: const material.Icon(material.Icons.refresh),
+            ),
+
+            material.FloatingActionButton(
+              onPressed: () async
+              {
+                final _ConnectionEntry? entry = await _showConnectionModal(
+                  context
+                );
+                refreshConnections();
+                
+                if (entry != null)
+                {
+                  entry.client!.setStatusListener((_)
+                    => currSetState!(() {})
+                  );
+
+                  setState(() {
+                    _connectionEntries.add(entry);
+                  });
+                }
+              },
+              tooltip: 'Add connection',
+              child: const material.Icon(material.Icons.add),
+            ),
+          ],
         ),
       ),
     );
@@ -111,15 +169,17 @@ Future<_ConnectionEntry?> _showConnectionModal(
     context: context,
     builder: (material.BuildContext context)
       => material.StatefulBuilder(
-        builder: (material.BuildContext context, material.StateSetter setModalState)
+        builder: (
+          material.BuildContext context,
+          material.StateSetter setModalState
+        )
           => material.AlertDialog(
             // padding: const material.EdgeInsets.all(24.0),
             content: material.Form(
               key: formKey,
               child: material.Column(
                 mainAxisSize: material.MainAxisSize.min,
-                // crossAxisAlignment: material.CrossAxisAlignment.stretch,
-                spacing: 10.0,
+                crossAxisAlignment: material.CrossAxisAlignment.stretch,
                 children: [
                   const material.Text(
                     "Add connection",
@@ -141,6 +201,7 @@ Future<_ConnectionEntry?> _showConnectionModal(
                     },
                   ),
 
+                  // TODO: make this field number-only
                   material.TextFormField(
                     decoration: const material.InputDecoration(
                       hintText: 'Port number'
@@ -157,53 +218,64 @@ Future<_ConnectionEntry?> _showConnectionModal(
                   ),
 
                   material.Padding(
-                    padding: const material.EdgeInsets.symmetric(vertical: 16),
-                    child: material.ElevatedButton(
-                      onPressed: isConnecting
-                        ? null
-                        : () async
-                        {
-                          // validate and save the form data
-                          if (!formKey.currentState!.validate()) {
-                            return;
-                          }
+                    padding: .only(top: 15.0),
+                    child: material.Row(
+                      mainAxisAlignment: .spaceBetween,
+                      children: [
+                        // TODO: cancel the connection request here
+                        material.ElevatedButton(
+                          onPressed: () => material.Navigator.pop(context),
+                          child: const material.Text('Cancel'),
+                        ),
 
-                          formKey.currentState!.save();
+                        material.ElevatedButton(
+                          onPressed: isConnecting
+                            ? null
+                            : () async
+                            {
+                              // validate and save the form data
+                              if (!formKey.currentState!.validate()) {
+                                return;
+                              }
 
-                          // update frontend to show connection progress
-                          setModalState(() {
-                            isConnecting = true;
-                          });
+                              formKey.currentState!.save();
 
-                          // create the client and connect
-                          client = airdroid_connection.AirdroidClient();
+                              // update frontend to show connection progress
+                              setModalState(() {
+                                isConnecting = true;
+                              });
 
-                          try {
-                            await client!.connect(ipAddress, int.parse(port));
+                              // create the client and connect
+                              client = airdroid_connection.AirdroidClient();
 
-                            if (context.mounted) {
-                              material.Navigator.pop(context); // close modal
-                            }
-                          } on airdroid_connection.NetworkException {
-                            print("connection couldn't be made");
-                            client = null;
+                              try {
+                                await client!.connect(
+                                  ipAddress,
+                                  int.parse(port)
+                                );
 
-                            setModalState(() {
-                              isConnecting = false;
-                            });
-                          }
-                        },
-                      child: material.Text(
-                        isConnecting
-                            ? 'Connecting... (Check your device)'
-                            : 'Connect',
-                      ),
+                                if (context.mounted) {
+                                  // close modal
+                                  material.Navigator.pop(context);
+                                }
+                              } on airdroid_connection.NetworkException {
+                                // TODO: properly handle connection failure
+                                print("connection couldn't be made");
+                                client = null;
+
+                                setModalState(() {
+                                  isConnecting = false;
+                                });
+                              }
+                            },
+                          child: material.Text(
+                            isConnecting
+                              ? 'Connecting... (Check your device)'
+                              : 'Connect',
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-
-                  material.ElevatedButton(
-                    onPressed: () => material.Navigator.pop(context),
-                    child: const material.Text('Close'),
                   ),
                 ],
               ),
@@ -212,12 +284,15 @@ Future<_ConnectionEntry?> _showConnectionModal(
       ),
   );
 
-  return client == null
-    ? null
-    : _ConnectionEntry(
-      ipAddress,
-      int.parse(port),
-      DateTime.now(),
-      client
-    );
+  if (client == null)
+  {
+    return null;
+  }
+
+  return _ConnectionEntry(
+    ipAddress,
+    int.parse(port),
+    DateTime.now(),
+    client
+  );
 }

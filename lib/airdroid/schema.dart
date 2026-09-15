@@ -143,3 +143,9 @@ List<({String name})> extractDirectoryContents(String jsonStr)
 
   return directoryItems;
 }
+
+bool isForbiddenResponse(String jsonStr)
+{
+  final Map<String, dynamic> jsonData = convert.jsonDecode(jsonStr);
+  return jsonData.containsKey('err') && jsonData['err'] == 'forbidden';
+}

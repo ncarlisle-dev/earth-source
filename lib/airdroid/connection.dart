@@ -24,6 +24,21 @@ class NetworkException implements Exception
     => message;
 }
 
+enum ConnectionStatus {
+  disconnecting,
+  disconnected,
+  connecting,
+  connected,
+  pinging,
+}
+
+/// Helper function that sends an HTTP GET request through a [client] to the
+/// provided [requestAddress].
+/// 
+/// Returns the HTTP response in the form of an [http.Response].
+/// 
+/// Throws a [NetworkException] if the request doesn't go through or the server
+/// responds with a non-200 status code.
 Future<http.Response> _sendHttpGetRequest(
   http.Client client,
   String requestAddress
@@ -64,6 +79,11 @@ Future<http.Response> _sendHttpGetRequest(
 /// ```
 class AirdroidClient
 {
+  /// The connection status between client and server
+  ConnectionStatus status = .disconnected;
+
+  void Function(ConnectionStatus)? _statusListener;
+
   /// The AirDroid server's root URL.
   String _baseAddress = "";
 
@@ -80,9 +100,20 @@ class AirdroidClient
   /// HTTP connection to the server
   http.Client? _client;
 
+  void setStatusListener(void Function(ConnectionStatus)? statusListener)
+  {
+    _statusListener = statusListener;
+  }
+
+  void _setStatus(ConnectionStatus status)
+  {
+    this.status = status;
+    if (_statusListener != null) _statusListener!(status);
+  }
+
   /// Returns true if the connection is active, false otherwise.
   bool isConnected()
-    => _client != null;
+    => status == .connected;
 
   /// Opens a connection to the AirDroid server with the given [ipAddress]
   /// and [port].
@@ -101,10 +132,12 @@ class AirdroidClient
   /// ```
   /// 
   /// Throws a [NetworkException] if the request fails or the server gives an
-  /// unexpected response.
+  /// unexpected response. When this happens, the client object should either
+  /// attempt to call this function again or be deleted entirely.
   Future<void> connect(String ipAddress, int port) async
   {
     assert(!isConnected(), "Client is already connected to a server.");
+    _setStatus(.connecting);
 
     // setup address
     _baseAddress = "http://$ipAddress:$port";
@@ -117,6 +150,7 @@ class AirdroidClient
     final http.Response response;
 
     try {
+      // TODO: make this request cancelable
       response = await _client!.get(Uri.parse(requestAddress));
     } on http.ClientException {
       _closeClient();
@@ -138,8 +172,6 @@ class AirdroidClient
     // decode response
     final ({String deviceKey, String authToken}) connectionData;
 
-    print(response.body);
-
     try {
       connectionData = airdroid_schema.extractConnectionData(response.body);
     } on airdroid_schema.TypeMismatchException catch (e) {
@@ -157,6 +189,8 @@ class AirdroidClient
       _deviceKey,
       _authToken,
     );
+
+    _setStatus(.connected);
   }
 
   /// Helper function used to close the client and reset all class members.
@@ -164,6 +198,7 @@ class AirdroidClient
   /// See [disconnect] for the proper method of closing connections.
   Future<void> _closeClient() async
   {
+    _setStatus(.disconnecting);
     try {
       _client!.close();
     } on http.ClientException {
@@ -176,6 +211,7 @@ class AirdroidClient
     _authToken = "";
     _deviceKey = "";
     _encryptionKey = "";
+    _setStatus(.disconnected);
   }
 
   /// Disconnects the client from the currently-connected AirDroid server.
@@ -245,5 +281,42 @@ class AirdroidClient
 
     // return data
     return response.body;
+  }
+
+  /// Checks the connection status to the server, [disconnect]ing if the server
+  /// indicates the client is disconnected.
+  /// 
+  /// The client must be connected to a server.
+  /// 
+  /// Returns true if the client is still connected, false otherwise.
+  Future<bool> updateConnectionStatus() async
+  {
+    // check client state
+    assert(isConnected(), "Client is not yet connected to a server.");
+    _setStatus(.pinging);
+
+    // send a dummy request to the server. If it responds with "err":
+    // "forbidden" in the response body, we've been disconnected.
+    // - For some reason, the server still responds with a 200 status code
+
+    final String requestAddress =
+        "$_baseAddress/sdctl/file_v21/query?cur_path=%2fsdcard&7bb=$_authToken";
+
+    // send request
+    final http.Response response = await _sendHttpGetRequest(
+      _client!,
+      requestAddress
+    );
+
+    // check response
+    bool shouldDisconnect = airdroid_schema.isForbiddenResponse(response.body);
+
+    if (shouldDisconnect) {
+      await _closeClient();
+      return false;
+    }
+
+    _setStatus(.connected);
+    return true;
   }
 }
