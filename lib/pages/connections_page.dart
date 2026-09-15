@@ -2,6 +2,10 @@ import 'package:flutter/material.dart' as material;
 import '../airdroid/connection.dart' as airdroid_connection;
 import 'package:intl/intl.dart' as intl;
 
+/* ============================== Utility ============================== */
+
+/// Maps [airdroid_connection.ConnectionStatus]es to symbols indicating their
+/// value.
 const _connectionStatusSymbols = {
   airdroid_connection.ConnectionStatus.disconnecting: material.Icon(
     material.Icons.circle,
@@ -30,6 +34,9 @@ const _connectionStatusSymbols = {
   ),
 };
 
+/// A connection entry to be displayed to the user.
+/// 
+/// If [client] is null, treat the entry as if it is disconnected.
 class _ConnectionEntry
 {
   final String ipAddress;
@@ -40,19 +47,21 @@ class _ConnectionEntry
   _ConnectionEntry(this.ipAddress, this.port, this.timeCreated, this.client);
 }
 
-class ConnectionsPage extends material.StatefulWidget
-{
-  const ConnectionsPage({ super.key });
 
-  @override
-  material.State<ConnectionsPage> createState()
-    => _ConnectionsPageState();
-}
-
-// TODO: Save connection entries to a file and reload them on startup
+/// File-scoped list of [_ConnectionEntry]s to display to the user.
+/// 
+/// TODO: Save these to a file and reload them on startup
 final List<_ConnectionEntry> _connectionEntries = [];
+
+/// The current setState function given by the builder.
+/// 
+/// Some processes occur asynchronously to the build process, so this acts as
+/// a pointer to the proper setState() function and makes sure an outdated
+/// function call isn't made.
 void Function(void Function())? currSetState;
 
+/// Helper function that updates the connection statuses of all connected
+/// clients.
 void refreshConnections()
 {
   for (final entry in _connectionEntries) {
@@ -64,13 +73,28 @@ void refreshConnections()
   }
 }
 
+/* ============================ Connections page ============================ */
+
+/// Page for managing AirDroid connections.
+class ConnectionsPage extends material.StatefulWidget
+{
+  const ConnectionsPage({ super.key });
+
+  @override
+  material.State<ConnectionsPage> createState()
+    => _ConnectionsPageState();
+}
+
+/// State of the [ConnectionsPage].
 class _ConnectionsPageState extends material.State<ConnectionsPage>
 {
   @override
   material.Widget build(material.BuildContext context)
   {
+    // get setState
     currSetState = setState;
 
+    // build
     return material.Padding(
       padding: material.EdgeInsetsGeometry.symmetric(
         vertical: 20.0,
@@ -151,6 +175,11 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
   }
 }
 
+/// Given the current build [context], shows the connection modal enabling the
+/// user to create a new connection.
+/// 
+/// Returns the [_ConnectionEntry] created by the user, or null if they
+/// cancelled its creation.
 Future<_ConnectionEntry?> _showConnectionModal(
   material.BuildContext context
 ) async
@@ -222,11 +251,13 @@ Future<_ConnectionEntry?> _showConnectionModal(
                     child: material.Row(
                       mainAxisAlignment: .spaceBetween,
                       children: [
-                        // TODO: cancel the connection request here
                         material.ElevatedButton(
                           onPressed: () => material.Navigator.pop(context),
                           child: const material.Text('Cancel'),
                         ),
+
+                        // TODO: add another button that cancels the connection
+                        // request instead of also closing the modal
 
                         material.ElevatedButton(
                           onPressed: isConnecting

@@ -3,21 +3,35 @@ import 'dart:convert' as convert;
 
 /* ============================== Constants ============================== */
 
+/// Regular expression for validating hex strings
 final _hexRegex = RegExp(r'^[0-9a-fA-F]+$');
 
+/// Key to access within AirDroid's connection response to get the auth token
 const _authTokenJsonKey = '7bb';
+/// Key to access within AirDroid's connection response to get the device key
 const _deviceKeyJsonKey = 'dk';
+/// Key to access within AirDroid's directory query response to get the list of
+/// directory contents
 const _directoryContentsJsonKey = 'list';
+/// Key to access within AirDroid's directory query response to get the name of
+/// each item within a directory
 const _directoryItemNameJsonKey = 'name';
 
+/// Name of the format used internally by [json_schema] for auth token type
+/// validation.
 const _authTokenFormatName = 'auth-token';
+/// Name of the format used internally by [json_schema] for device key type
+/// validation.
 const _deviceKeyFormatName = 'device-key';
 
 /* ============================== Classes ============================== */
 
+/// Thrown when data doesn't match the expected type/schema.
 class TypeMismatchException implements Exception
 {
+  /// The error message.
   final String message;
+
   const TypeMismatchException(this.message);
 
   @override
@@ -27,6 +41,8 @@ class TypeMismatchException implements Exception
 
 /* ============================== Validators ============================== */
 
+/// [json_schema] validator function that checks if the inputted string is a 
+/// 32-character long hex string
 json_schema.ValidationContext _authTokenValidator(
   json_schema.ValidationContext context,
   String instanceData
@@ -41,6 +57,8 @@ json_schema.ValidationContext _authTokenValidator(
   return context;
 }
 
+/// [json_schema] validator function that checks if the inputted string is a 
+/// 16-character long hex string
 json_schema.ValidationContext _deviceKeyValidator(
   json_schema.ValidationContext context,
   String instanceData
@@ -57,11 +75,14 @@ json_schema.ValidationContext _deviceKeyValidator(
 
 /* ============================== Schemas ============================== */
 
+/// Map of custom formats/validators to pass to [json_schema] for custom
+/// validation.
 const _customFormats = {
   _deviceKeyFormatName: _deviceKeyValidator,
   _authTokenFormatName: _authTokenValidator,
 };
 
+/// The expected AirDroid connection response schema
 final _connectionResponseSchema = json_schema.JsonSchema.create(
   {
     'type': 'object',
@@ -80,6 +101,7 @@ final _connectionResponseSchema = json_schema.JsonSchema.create(
   customFormats: _customFormats,
 );
 
+/// The expected AirDroid directory query response schema
 final _listDirectorySchema = json_schema.JsonSchema.create(
   {
     'type': 'object',
@@ -103,6 +125,12 @@ final _listDirectorySchema = json_schema.JsonSchema.create(
 
 /* ============================== Functions ============================== */
 
+/// Given a [jsonStr] (most often returned by an AirDroid server connection
+/// response), validates that the parsed JSON has the required fields and 
+/// returns them in the form of a record.
+/// 
+/// Throws a [TypeMismatchException] if [jsonStr] doesn't match the expected
+/// schema.
 ({String authToken, String deviceKey}) extractConnectionData(String jsonStr)
 {
   final dynamic jsonData = convert.jsonDecode(jsonStr);
@@ -120,6 +148,12 @@ final _listDirectorySchema = json_schema.JsonSchema.create(
   );
 }
 
+/// Given a [jsonStr] (most often returned by an AirDroid directory query
+/// response), validates that the parsed JSON has the expected structure
+/// returns a list of directory items, each in the form of a record.
+/// 
+/// Throws a [TypeMismatchException] if [jsonStr] doesn't match the expected
+/// schema.
 List<({String name})> extractDirectoryContents(String jsonStr)
 {
   // parse json
@@ -144,6 +178,10 @@ List<({String name})> extractDirectoryContents(String jsonStr)
   return directoryItems;
 }
 
+/// Given a [jsonStr] (most often given by an AirDroid response), checks if
+/// parsed JSON contains a "forbidden access" error.
+/// 
+/// Returns true if [jsonStr] has the error, false otherwise.
 bool isForbiddenResponse(String jsonStr)
 {
   final Map<String, dynamic> jsonData = convert.jsonDecode(jsonStr);
