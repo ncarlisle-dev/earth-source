@@ -1,73 +1,75 @@
+import 'package:flutter/material.dart' as material;
 import 'package:coordinate_converter/coordinate_converter.dart'
   as coord_converter;
-
 import 'dart:io' as io;
 
-/// Class for a single site unit.
-class Unit
-{
-  coord_converter.DDCoordinates? cornerPoint;
-  double? length;
-  double? width;
-}
-
-/// Class for an entire site map.
-class SiteMap
+class LayerMap
 {
   /// Coordinates for the corner points are stored in UTM and DD (since the 
   /// latter is needed to plot latitude and longitude)
-  final List<coord_converter.UTMCoordinates> _cornerCoordinatesUTM = [];
-  final List<coord_converter.DDCoordinates> _cornerCoordinatesDD = [];
-  final List<Unit> _units = [];
-
-  double? sampleInterval;
+  List<coord_converter.DDCoordinates> _cornerCoordinatesDD = [];
+  
   io.File? imageFile;
+  io.File? dataFile;
 
-  /// Initializes map data and converts UTM coordinates to DD.
-  void initializeMap(
-    int utmZone,
-    bool utmHemisphere, 
-    List<List> coordinates,
-    double interval,
-    String filePath
-  )
-  {
-    for (var i = 0; i < 4; i++) {
-      coord_converter.UTMCoordinates utmCoords = coord_converter.UTMCoordinates(
-        x: coordinates[i][0],
-        y: coordinates[i][1],
-        zoneNumber: utmZone,
-        isSouthernHemisphere: utmHemisphere
-      );
-      _cornerCoordinatesUTM.add(utmCoords);
-      _cornerCoordinatesDD.add(coord_converter.DDCoordinates.fromUTM(utmCoords));
-    }
+  LayerMap(this.dataFile, this.imageFile, this._cornerCoordinatesDD);
+}
 
-    imageFile = io.File(filePath);
-    sampleInterval = interval;
-  }
+class Visualizer extends material.StatefulWidget {
+  const Visualizer({super.key});
 
-  /// Adds a unit to the map.
-  void addUnit(List cornerPoint, double length, double width) 
-  {
-    Unit newUnit = Unit();
-    coord_converter.UTMCoordinates utmCoords = coord_converter.UTMCoordinates(
-      x: cornerPoint[0],
-      y: cornerPoint[1],
-      zoneNumber: _cornerCoordinatesUTM[0].zoneNumber,
-      isSouthernHemisphere: _cornerCoordinatesUTM[0].isSouthernHemisphere
-    );
+  @override
+  material.State<Visualizer> createState() => VisualizerState();
+}
 
-    newUnit.cornerPoint = coord_converter.DDCoordinates.fromUTM(utmCoords);
-    newUnit.length = length;
-    newUnit.width = width;
-    _units.add(newUnit);
-  }
 
-  /// Expands a unit.
-  void expandUnit(int unitNumber, double newLength, double newWidth)
-  {
-    _units[unitNumber - 1].length = newLength;
-    _units[unitNumber - 1].length = newWidth;
+class VisualizerState extends material.State<Visualizer>
+{
+
+  List<coord_converter.DDCoordinates> _cornerCoordinatesDD = [];
+  
+  io.File? imageFile;
+  io.File? dataFile;
+
+  @override
+  material.Widget build(material.BuildContext context) {
+    return material.MaterialApp(
+        
+      // Disable debug banner
+      debugShowCheckedModeBanner: false, 
+      home: material.Scaffold(
+        appBar: material.AppBar(
+          leading: const material.Icon(
+            material.Icons.menu,
+            
+            // Icon color
+            color: material.Colors.white, 
+          ), 
+          
+          // Menu icon on the left
+          
+          // Green background color for AppBar
+          backgroundColor: Colors.green, 
+          title: const Text(
+            
+            // Title text
+            "GeeksforGeeks", 
+            
+            // Text style
+            style: TextStyle(color: Colors.white), 
+          ),
+        ), // AppBar
+        body: const Center(
+          child: Text(
+              
+            // Center text
+            "Stateless Widget",
+            
+            // Text style
+            style: TextStyle(color: Colors.black, fontSize: 30), 
+          ),
+        ), // Center
+      ), // Scaffold
+    ); // MaterialApp
   }
 }
