@@ -94,24 +94,6 @@ class Visualizer extends material.StatelessWidget
                   initialZoom: 22.0,
                 ),
                 children: [
-                  map.TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.archaeosight_two'
-                  ),
-                  map.RichAttributionWidget(
-                    popupInitialDisplayDuration: const Duration(seconds: 5),
-                    animationConfig: const map.ScaleRAWA(),
-                    showFlutterMapAttribution: false,
-                    attributions: [
-                      map.TextSourceAttribution(
-                        'OpenStreetMap contributors',
-                        onTap: () async => url_launcher.launchUrl(
-                          Uri.parse('https://openstreetmap.org/copyright'),
-                        ),
-                      ),
-                    ],
-                  ),
                   map.OverlayImageLayer(
                     overlayImages: [
                       map.RotatedOverlayImage(

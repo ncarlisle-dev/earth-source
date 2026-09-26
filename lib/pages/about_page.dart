@@ -19,11 +19,11 @@ class _AboutPageState extends material.State<AboutPage> {
     coord_converter.UTMCoordinates topLeft = 
     coord_converter.UTMCoordinates(x: 667083.5000, y: 9238889.5000, zoneNumber: 17, isSouthernHemisphere: true);
     coord_converter.UTMCoordinates bottomLeft = 
-    coord_converter.UTMCoordinates(x: 667083.5000, y: 9238859.5000, zoneNumber: 17, isSouthernHemisphere: true);
+    coord_converter.UTMCoordinates(x: 667083.5000, y: 9238659.5000, zoneNumber: 17, isSouthernHemisphere: true);
     coord_converter.UTMCoordinates topRight = 
-    coord_converter.UTMCoordinates(x: 667108.5000, y: 9238889.5000, zoneNumber: 17, isSouthernHemisphere: true);
+    coord_converter.UTMCoordinates(x: 667308.5000, y: 9238889.5000, zoneNumber: 17, isSouthernHemisphere: true);
     coord_converter.UTMCoordinates bottomRight = 
-    coord_converter.UTMCoordinates(x: 667108.5000, y: 9238859.5000, zoneNumber: 17, isSouthernHemisphere: true);
+    coord_converter.UTMCoordinates(x: 667308.5000, y: 9238659.5000, zoneNumber: 17, isSouthernHemisphere: true);
     List<coord_converter.DDCoordinates> cornerCoordinates = [coord_converter.DDCoordinates.fromUTM(topLeft), coord_converter.DDCoordinates.fromUTM(bottomLeft), coord_converter.DDCoordinates.fromUTM(topRight), coord_converter.DDCoordinates.fromUTM(bottomRight)];
 
 
