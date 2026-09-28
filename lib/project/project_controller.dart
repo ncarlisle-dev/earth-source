@@ -1,6 +1,10 @@
+///import '../services/network_service.dart' as network_service;
+
 class ProjectController {
   static ProjectController? instance;
-  List<Project>? userProjects;
+  final List<Project> userProjects;
+
+  ProjectController(this.userProjects);
 
   static ProjectController getInstance() {
     if (instance != null) return instance!;
@@ -9,12 +13,12 @@ class ProjectController {
     return instance!;
   }
 
-  Future<LayerSpec> createProject(String name, String description)
+  Future<Project> createProject(String name, String description)
   {
     throw UnimplementedError();
   }
 
-  Future<LayerSpec> deleteProject(String id)
+  Future<void> deleteProject(String id)
   {
     throw UnimplementedError();
   }
@@ -95,6 +99,8 @@ class Project {
   }
 }
 
+/// A layer within an archaeological site, representing a stratum at which 
+/// different materials are found.
 class LayerSpec {
   final String name;
   final String description;
@@ -104,6 +110,8 @@ class LayerSpec {
   LayerSpec(this.name, this.description, this.lastUpdated, this.createdAt);
 }
 
+/// A unit within an archaeological site, defined by a top left coordinate and
+/// a given width and height.
 class UnitSpec {
   final String name;
   final String description;
