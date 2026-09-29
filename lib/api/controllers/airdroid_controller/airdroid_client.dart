@@ -8,21 +8,6 @@ import 'package:http/http.dart' as http;
 
 /* ============================== Utility ============================== */
 
-/// The current state of a connection.
-enum ConnectionStatus {
-  /// Indicates the connection is heading towards [disconnected].
-  disconnecting,
-  /// Indicates that there is no connection and no server calls may be made.
-  disconnected,
-  /// Indicates the connection is heading toward [connected].
-  connecting,
-  /// Indicates the connection is up and running; server calls may be made.
-  connected,
-  /// Indicates the client is in the process of checking their status with
-  /// the server.
-  pinging,
-}
-
 /// Helper function that sends an HTTP GET request through a [client] to the
 /// provided [requestAddress].
 /// 
@@ -71,9 +56,9 @@ Future<http.Response> _sendHttpGetRequest(
 class AirdroidClient
 {
   /// The connection status between client and server
-  ConnectionStatus status = .disconnected;
+  common.ConnectionStatus status = .disconnected;
 
-  void Function(ConnectionStatus)? _statusListener;
+  void Function(common.ConnectionStatus)? _statusListener;
 
   /// The AirDroid server's root URL.
   String _baseAddress = "";
@@ -91,12 +76,12 @@ class AirdroidClient
   /// HTTP connection to the server
   http.Client? _client;
 
-  void setStatusListener(void Function(ConnectionStatus)? statusListener)
+  void setStatusListener(void Function(common.ConnectionStatus)? statusListener)
   {
     _statusListener = statusListener;
   }
 
-  void _setStatus(ConnectionStatus status)
+  void _setStatus(common.ConnectionStatus status)
   {
     this.status = status;
     if (_statusListener != null) _statusListener!(status);

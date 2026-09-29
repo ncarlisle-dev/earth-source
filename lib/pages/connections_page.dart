@@ -4,7 +4,7 @@ import 'package:intl/intl.dart' as intl;
 
 /* ============================== Utility ============================== */
 
-/// Maps [airdroid_connection.ConnectionStatus]es to symbols indicating their
+/// Maps [api.ConnectionStatus]es to symbols indicating their
 /// value.
 const _connectionStatusSymbols = {
   api.ConnectionStatus.disconnecting: material.Icon(
