@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class HeatPalette {
   // Bin 1..5 (1 = low/green, 5 = high/red)
   static const Map<int, Color> binColor = {
+    0: Colors.transparent,
     1: Color(0xFF56A64B), // green
     2: Color(0xFF8BC34A), // light green
     3: Color(0xFFFFEB3B), // yellow
@@ -12,9 +13,10 @@ class HeatPalette {
 
   /// Quantize probability [0..1] into 5 bins
   static int binFor(double p) {
-    if (p < 0.00) return 1;
-    if (p < 0.50) return 2;
-    if (p < 0.75) return 3;
+    if (p < 0.50) return 0;
+    if (p < 0.60) return 1;
+    if (p < 0.75) return 2;
+    if (p < 0.80) return 3;
     if (p < 0.90) return 4;
     return 5;
   }
@@ -64,8 +66,6 @@ class HeatmapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    print(size.width);
-    print(size.height);
     final int rows = heat.length;
     if (rows == 0) return;
     final int cols = heat[0].length;

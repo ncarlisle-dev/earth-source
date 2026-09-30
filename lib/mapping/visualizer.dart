@@ -61,15 +61,38 @@ class Visualizer extends material.StatelessWidget
   const Visualizer({super.key, required this.cornerCoordinates, 
    required this.imageFilePath, required this.dataFilePath});
 
+  List<double> _calculateDimensions(double screenWidth, double screenHeight, double imageWidth, double imageHeight)
+  {
+    double containerWidth;
+    double containerHeight;
+    if (screenWidth >= imageWidth && screenHeight >= imageHeight) {
+      containerWidth = imageWidth;
+      containerHeight = imageHeight;
+    }
+    else if (screenWidth >= imageWidth && screenHeight < imageHeight) {
+      containerWidth = (screenHeight / imageHeight) * imageWidth;
+      containerHeight = screenHeight;
+    }
+    else if (screenWidth < imageWidth && screenHeight >= imageHeight) {
+      containerWidth = screenWidth;
+      containerHeight = (screenWidth / imageWidth) * imageHeight;
+    }
+    else {
+      if (screenWidth / imageWidth < screenHeight / imageHeight) {
+        containerWidth = screenWidth;
+        containerHeight = (screenWidth / imageWidth) * imageHeight;
+      }
+      else {
+        containerWidth = (screenHeight / imageHeight) * imageWidth;
+        containerHeight = screenHeight;
+      }
+    }
+    return [containerWidth, containerHeight];
+  }
+
   @override
   material.Widget build(material.BuildContext context)
   {
-    ///Map<double, material.MaterialColor> gradient = 
-    ///{0.65: material.Colors.blue, 0.70: material.Colors.purple, 
-    ///0.75: material.Colors.pink};
-
-    ///final map.MapController mapController = map.MapController();
-    ///
     io.File image = io.File(imageFilePath);
     final jpgResult = image_size_getter.ImageSizeGetter.getSizeResult(file_input.FileInput(image));
 
@@ -91,14 +114,18 @@ class Visualizer extends material.StatelessWidget
                           children: [
                             material.Image.file(io.File(imageFilePath), width: imageSize.width, height: imageSize.height,
                             fit: material.BoxFit.scaleDown),
-                            material.IgnorePointer(child: material.CustomPaint(
-                                painter: heatmap_painter.HeatmapPainter(
-                                heat: snapshot.data! as List<List<double>>,
-                                maxVal: 1,
-                                debugGridLines: false,
-                                ),
-                              //size: imageSize,
-                              ),)
+                            material.Container(
+                              width: _calculateDimensions(material.MediaQuery.of(context).size.width, material.MediaQuery.of(context).size.height, imageSize.width, imageSize.height)[0],
+                              height: _calculateDimensions(material.MediaQuery.of(context).size.width, material.MediaQuery.of(context).size.height, imageSize.width, imageSize.height)[1],
+                              child: material.IgnorePointer(child: material.CustomPaint(
+                                  painter: heatmap_painter.HeatmapPainter(
+                                  heat: snapshot.data! as List<List<double>>,
+                                  maxVal: 1,
+                                  debugGridLines: false,
+                                  ),
+                                //size: imageSize,
+                                ),)
+                            ),
                           ],
                         )
                       )
