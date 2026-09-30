@@ -26,7 +26,7 @@ class HeatPalette {
 }
 /// Utility: map a value in [0,maxVal] to a Color.
 /// Right now: 0 = transparent, mid = yellow-ish, high = red.
-/// You can swap this with whatever ramp you had in HeatmapFieldColorRamp.
+
 Color heatValueToColor(double v, double maxVal) {
   if (v <= 0) {
     return Colors.transparent;
