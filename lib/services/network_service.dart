@@ -1,6 +1,9 @@
+import "../controllers/project_controller/project_controller.dart" as 
+  project_controller;
+
+
 // TODO: move these to a commmon module and implement them
 class ConnectionEntry {}
-class Project {}
 
 class NetworkService {
   static NetworkService? instance;
@@ -30,13 +33,13 @@ class NetworkService {
   Future<ConnectionEntry> deleteConnectionEntry(String id)
     => throw UnimplementedError();
 
-  Future<List<Project>> getProjects()
+  Future<List<project_controller.Project>> getProjects()
     => throw UnimplementedError();
 
-  Future<Project> getProject(String id)
+  Future<project_controller.Project> getProject(String id)
     => throw UnimplementedError();
 
-  Future<void> uploadProject(Project project)
+  Future<void> uploadProject(project_controller.Project project)
     => throw UnimplementedError();
 
   Future<void> deleteProject(String id)
