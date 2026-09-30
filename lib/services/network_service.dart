@@ -1,7 +1,6 @@
 import "../controllers/project_controller/project_controller.dart" as 
   project_controller;
 
-
 // TODO: move these to a commmon module and implement them
 class ConnectionEntry {}
 
