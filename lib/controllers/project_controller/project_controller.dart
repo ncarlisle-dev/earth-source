@@ -85,9 +85,10 @@ class Project
   /// List of units the project contains.
   final List<UnitSpec> units = [];
 
+  /// List of pXRF data files corresponding to the project.
   final List<DataSpec> pxrfData = [];
 
-  Map<String, Map <String, String>>? dataAssignments;
+  Map<String, Map <String, String>>? dataAssignments = {};
 
   Project(this.name, this.description, this.createdAt, this.lastUpdated);
 
@@ -148,17 +149,17 @@ class Project
     throw UnimplementedError();
   }
 
-  Future<void> setUnitDescription(String name, String description)
+  Future<void> setUnitDescription(String name, String description) async
   {
     int unitIndex = units.indexWhere((unit) => unit.name == name);
     units[unitIndex].description = description;
     units[unitIndex].lastUpdated = DateTime.now();
     lastUpdated = DateTime.now();
-    throw UnimplementedError();
+    
   }
 
   Future<void> repositionUnit(String name, ({double latitude, double longitude})
-   topLeft, double width, double height, double pointInterval)
+   topLeft, double width, double height, double pointInterval) async
   {
     int unitIndex = units.indexWhere((unit) => unit.name == name);
     units[unitIndex].topLeftCoords = topLeft;
@@ -168,7 +169,6 @@ class Project
     units[unitIndex].lastUpdated = DateTime.now();
     lastUpdated = DateTime.now();
 
-    throw UnimplementedError();
   }
 
   Future<void> deleteUnit(String name) async
@@ -179,7 +179,7 @@ class Project
 
   }
 
-  Future<void> uploadLayerImage(String layerName, String imageContents)
+  Future<void> uploadLayerImage(String layerName, String imageContents) async
   {
     int layerIndex = layers.indexWhere((layer) => layer.name == layerName);
     layers[layerIndex].layerImage = imageContents;
@@ -256,12 +256,22 @@ class UnitSpec
   this.topLeftCoords, this.width, this.height, this.pointInterval);
 }
 
+/// Pxrf data from a given file corresponding to a specific project.
 class DataSpec
 {
+  /// Name of the data file.
   String fileName;
+
+  /// Id of the corresponding project.
   String projectId;
+
+  /// Time the data file was uploaded to the project.
   DateTime createdAt;
+
+  /// Number of points sampled within the data file.
   int numPoints;
+
+  /// Size of the file.
   int size;
 
   DataSpec(this.fileName, this.projectId, this.createdAt, this.numPoints, 
