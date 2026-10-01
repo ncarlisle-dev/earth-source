@@ -123,3 +123,37 @@ bool isOverlapping(UnitSpec unit1, UnitSpec unit2)
   /// If all checks fail, they are not overlapping; return false.
   return false;
 }
+
+/// Checks if a single lat/long point falls within a given unit.
+bool isWithinUnit(UnitSpec unit, double latitude, double longitude)
+{
+  double top = unit.topLeftCoords!.latitude;
+  double left = unit.topLeftCoords!.longitude;
+  double bottom = map_math.FlutterMapMath.destinationPoint(
+    unit.topLeftCoords!.latitude, 
+    unit.topLeftCoords!.longitude, 
+    unit.height!, 
+    180).latitude;
+  double right = map_math.FlutterMapMath.destinationPoint(
+    unit.topLeftCoords!.latitude, 
+    unit.topLeftCoords!.longitude, 
+    unit.width!, 
+    90).longitude;
+
+  if (top >= latitude && latitude >= bottom  
+    && right >= longitude && longitude >= left) {
+      return true;
+  }
+  return false;
+}
+
+/// Checks if all the data within a pXRF file falls within the bounds of the
+/// appropriate unit (using isWithinUnit above). Unimplemented at the moment
+/// as the CSV data functions have not yet been implemented.
+/// 
+/// Returns true if all assigned data still falls within appropriate boundaries,
+/// false if not.
+bool checkAssignment(String filename, UnitSpec unit) 
+{
+  throw UnimplementedError();
+}

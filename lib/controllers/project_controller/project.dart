@@ -2,6 +2,9 @@ import '../../services/network_service.dart' as network_service;
 import '../../airdroid/connection.dart' as connection;
 import 'project_components.dart' as components;
 
+/// TODO: Change filepath in functions involving the layer image to accurately
+/// reflect where it will be stored in the database.
+
 /// Thrown whenever an attempt to modify a project would result in conflicts
 /// with the project's current state.
 class ProjectException implements Exception
@@ -39,7 +42,7 @@ class Project
   final List<components.UnitSpec> units = [];
   /// List of pXRF data files corresponding to the project.
   final List<components.DataSpec> pxrfData = [];
-
+  /// Map of layer and unit names to file names.
   Map<String, Map <String, String>>? dataAssignments = {};
 
   Project(this.name, this.description, this.createdAt);
@@ -50,7 +53,8 @@ class Project
   /// Throws a [connection.NetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if given layer name matches
   /// a pre-existing layer.
-  Future<components.LayerSpec> createLayer(String name, String description) async
+  Future<components.LayerSpec> createLayer(String name, String description) 
+    async
   {
     /// Check if a pre-existing layer has the same name and only make a new 
     /// layer if not
@@ -175,8 +179,9 @@ class Project
   ({double latitude, double longitude}) topLeft, double width, double height, 
   double pointInterval) async
   {
-    /// Check to make sure no pre-existing unit has the same name
-    Iterable<components.UnitSpec> duplicateName = units.where((unit) => unit.name == name);
+    /// Check to make sure no pre-existing unit has the same name.
+    Iterable<components.UnitSpec> duplicateName = units.where(
+      (unit) => unit.name == name);
     if (duplicateName.isEmpty) {
       components.UnitSpec createdUnit = components.UnitSpec();
       createdUnit.name = name;
@@ -189,15 +194,15 @@ class Project
       createdUnit.lastUpdated = DateTime.now();
 
       /// Check to make sure there is no overlap between the new unit and any
-      /// pre-existing unit
+      /// pre-existing unit.
       for (var i = 0; i < units.length; i++) {
         if (components.isOverlapping(createdUnit, units[i])) {
           throw ProjectException(
-            "Unit cannot overlap with any pre-existing units.");
+            "Unit position cannot overlap with any pre-existing units.");
         }
       }
 
-      /// If all checks pass, attempt to add unit
+      /// If all checks pass, attempt to add unit.
       units.add(createdUnit);
       lastUpdated = DateTime.now();
       try {
@@ -221,7 +226,7 @@ class Project
   Future<void> setUnitName(String srcName, String newName) async
   {
     /// Check if a pre-existing unit has the same name and only change the
-    /// name if not
+    /// name if not.
     Iterable<components.UnitSpec> duplicateName = units.where((unit) 
       => unit.name == newName);
 
@@ -265,17 +270,61 @@ class Project
     }
   }
 
+  /// Attempts to reposition a unit after checking that its new position doesn't
+  /// overlap with any pre-existing units, and discards any data assignments
+  /// that no longer fits the unit's new positioning.
+  /// 
+  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// after modification and a [ProjectException] if repositioning would incur
+  /// overlap with another unit.
   Future<void> repositionUnit(String name, ({double latitude, double longitude})
    topLeft, double width, double height, double pointInterval) async
   {
+    /// Initialize temporary unit with position fields in order to check for
+    /// overlap.
+    components.UnitSpec tempUnit = components.UnitSpec();
+    tempUnit.topLeftCoords = topLeft;
+    tempUnit.width = width;
+    tempUnit.height = height;
+
+    /// Check to make sure there is no overlap between the repositioned unit and 
+    /// any pre-existing unit.
+    for (var i = 0; i < units.length; i++) {
+      if (components.isOverlapping(tempUnit, units[i])) {
+        throw ProjectException(
+          "Unit position cannot overlap with any pre-existing units.");
+      }
+    }
+
+    /// If no overlap is present, change position of unit.
     int unitIndex = units.indexWhere((unit) => unit.name == name);
     units[unitIndex].topLeftCoords = topLeft;
     units[unitIndex].width = width;
     units[unitIndex].height = height;
     units[unitIndex].pointInterval = pointInterval;
     units[unitIndex].lastUpdated = DateTime.now();
+
+    /// Check that data assigned to the unit still falls within its bounds and
+    /// remove assignments that do not.
+    dataAssignments?.forEach((filename, assignment) {
+       assignment.forEach((layer, unit) {
+        if (unit == name) {
+          if (!components.checkAssignment(filename, units[unitIndex])) {
+            dataAssignments!.remove(filename);
+          }
+        }
+      });
+    });
+
     lastUpdated = DateTime.now();
 
+    try {
+      await networkService.uploadProject(this);
+    }
+    catch (error) {
+      throw connection.NetworkException(
+      "Project failed to update with the following error:\n$error", null);
+    }
   }
 
   /// Deletes a unit from the project.

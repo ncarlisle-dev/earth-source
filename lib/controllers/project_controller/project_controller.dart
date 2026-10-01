@@ -2,9 +2,6 @@ import '../../services/network_service.dart' as network_service;
 import '../../airdroid/connection.dart' as connection;
 import 'project.dart' as project;
 
-/// TODO: Change filepath in functions involving the layer image to accurately
-/// reflect where it will be stored in the database.
-
 network_service.NetworkService networkService = 
   network_service.NetworkService.getInstance();
 
