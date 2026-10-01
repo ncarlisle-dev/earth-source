@@ -4,21 +4,33 @@ import '../../airdroid/connection.dart' as connection;
 network_service.NetworkService networkService = 
   network_service.NetworkService.getInstance();
 
+/// A controller that bridges the frontend and backend, allowing user projects 
+/// to be accessed and manipulated by means of the network service
 class ProjectController 
 {
   /// Static instance of the project controller
   static ProjectController? instance;
 
   /// List of user projects stored in the project controller
-  final List<Project> userProjects;
+  List<Project> userProjects = [];
 
-  ProjectController(this.userProjects);
-
-  static ProjectController getInstance() 
+  /// Retrieves the ProjectController instance if already initialized; if not, 
+  /// creates an instance and fetches the user's projects from the database
+  /// 
+  /// Throws a [Network Exception] if the request to upload user projects fails.
+  static Future<ProjectController> getInstance() async
   {
     if (instance != null) return instance!;
 
     instance = ProjectController();
+    try {
+      instance!.userProjects = await networkService.getProjects();
+    }
+    catch (error) {
+      throw connection.NetworkException(
+        "Failed to upload user projects due to the following error:\n$error", 
+        null);
+    }
     return instance!;
   }
 
