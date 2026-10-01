@@ -1,182 +1,162 @@
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as material;
 
+/// Utility function - modifies the alpha channel of a color value depending
+/// on the value of the prediction at that point.
+material.Color heatValueToColor(double value) 
+{
+  final baseColor = HeatPalette.colorFor(value, "soil");
 
+  final double minAlpha = 0.05;
+  final double maxAlpha = 0.80;
+  final double alpha = minAlpha + (maxAlpha - minAlpha) * value;
 
-@override
-  Widget build(BuildContext context) {
-    final viewer = _buildViewer(context);
+  return baseColor.withValues(alpha: alpha);
+}
 
-    if (widget.height != null) {
-      return SizedBox(height: widget.height, child: viewer);
+/// A palette containing colors that signify each different kind of material.
+class HeatPalette 
+{
+  /// Map of colors to represent soil.
+  static const Map<int, material.Color> soilColors = {
+    0: material.Colors.transparent,
+    1: material.Color.fromARGB(255, 206, 253, 200), // green
+    2: material.Color.fromARGB(255, 185, 247, 114), // light green
+    3: material.Color.fromARGB(255, 117, 200, 54), // yellow
+    4: material.Color.fromARGB(255, 69, 153, 32), // orange
+    5: material.Color.fromARGB(255, 8, 61, 1), // red
+  };
+
+  /// Map of colors to represent pottery.
+  static const Map<int, material.Color> potteryColors = {
+    0: material.Colors.transparent,
+    1: material.Color.fromARGB(255, 148, 178, 244), // green
+    2: material.Color.fromARGB(255, 116, 160, 241), // light green
+    3: material.Color.fromARGB(255, 80, 128, 252), // yellow
+    4: material.Color.fromARGB(255, 50, 108, 255), // orange
+    5: material.Color.fromARGB(255, 1, 69, 241), // red
+  };
+
+  /// Map of colors to represent metal.
+  static const Map<int, material.Color> metalColors = {
+    0: material.Colors.transparent,
+    1: material.Color.fromARGB(255, 229, 199, 247), // green
+    2: material.Color.fromARGB(255, 225, 149, 242), // light green
+    3: material.Color.fromARGB(255, 173, 91, 196), // yellow
+    4: material.Color.fromARGB(255, 110, 55, 125), // orange
+    5: material.Color.fromARGB(255, 50, 0, 53), // red
+  };
+
+  /// Map of colors to represent slag.
+  static const Map<int, material.Color> slagColors = {
+    0: material.Colors.transparent,
+    1: material.Color.fromARGB(255, 241, 237, 154), // green
+    2: material.Color.fromARGB(255, 241, 213, 111), // light green
+    3: material.Color.fromARGB(255, 211, 160, 66), // yellow
+    4: material.Color.fromARGB(255, 207, 121, 40), // orange
+    5: material.Color.fromARGB(255, 99, 45, 0), // red
+  };
+
+  /// Determines into which bin a data point falls depending on how high the 
+  /// prediction is at that point.
+  static int determineBin(double point) 
+  {
+    if (point < 0.50) return 0;
+    if (point < 0.60) return 1;
+    if (point < 0.75) return 2;
+    if (point < 0.80) return 3;
+    if (point < 0.90) return 4;
+    return 5;
+  }
+
+  /// Uses appropriate color palette for each material to select a color.
+  static material.Color colorFor(double point, String material) 
+  {
+    switch (material) {
+      case "soil":
+        return soilColors[determineBin(point)]!;
+      case "pottery":
+        return potteryColors[determineBin(point)]!;
+      case "metal":
+        return metalColors[determineBin(point)]!;
+      case "slag":
+        return slagColors[determineBin(point)]!;
+      default:
+        return soilColors[determineBin(point)]!;
     }
-    return viewer;
   }
+}
 
-  void _fitToScreen() => _resetView();
+/// An extension of the CustomPainter class that paints a gridded heatmap onto
+/// an image.
+class HeatmapPainter extends material.CustomPainter 
+{
+  /// 2D list of predicted values, with rows and columns in the list 
+  /// corresponding to rows and columns on the map.
+  final List<List<double>> heat;
+  /// Boolean that determines whether grid lines should be painted on the map
+  /// for debugging purposes.
+  final bool debugGridLines;
 
-  void _rotateQuarter() {
-    setState(() {
-      _rotationTurns = (_rotationTurns + 0.25) % 1.0;
-    });
-  }
+  const HeatmapPainter({
+    required this.heat,
+    this.debugGridLines = false,
+  });
 
-  Widget _buildViewer(BuildContext context) {
-    if (_selected == null) {
-      if (_projects.isEmpty) {
-        return const _EmptyPane(
-          title: 'No site maps found',
-          details: '',
-        );
+  @override
+  void paint(material.Canvas canvas, material.Size size) 
+  {
+    /// Divide the canvas into rows and columns based on dimensions of the 
+    /// data list and paint each cell accordingly.
+    final int rows = heat.length;
+    if (rows == 0) return;
+    final int cols = heat[0].length;
+    if (cols == 0) return;
+
+    final double cellW = size.width / cols;
+    final double cellH = size.height / rows;
+
+    final rectPaint = material.Paint()..style = material.PaintingStyle.fill;
+
+    for (int y = 0; y < rows; y++) {
+      for (int x = 0; x < cols; x++) {
+        final double v = heat[y][x];
+        if (v == 0.0) continue; 
+
+        rectPaint.color = heatValueToColor(v);
+
+        final double left = x * cellW;
+        final double top = y * cellH;
+        final rect = material.Rect.fromLTWH(left, top, cellW, cellH);
+
+        canvas.drawRect(rect, rectPaint);
       }
-      return const Center(child: CircularProgressIndicator());
     }
 
-    final topBar = widget.showControls
-        ? _TopControls(
-            projects: _projects,
-            selected: _selected!,
-            onChanged: _onProjectChanged,
-            onReset: _resetView,
-            onFit: _fitToScreen,
-            onRotate: _rotateQuarter,
-          )
-        : const SizedBox.shrink();
+    /// If applicable, draw grid lines demarcating each individual cell on the
+    /// canvas.
+    if (debugGridLines) {
+      final gridPaint = material.Paint()
+        ..style = material.PaintingStyle.stroke
+        ..strokeWidth = 0.5
+        ..color = material.Colors.black.withValues();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (widget.showControls) topBar,
-        Expanded(
-          child: FutureBuilder<_ResolvedImage>(
-            future: _imageFuture,
-            builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snap.hasError) {
-                return _ErrorPane(
-                  title: 'Failed to load site map',
-                  details: snap.error.toString(),
-                );
-              }
-              final resolved = snap.data!;
-              if (resolved.kind == _ImageKind.missing) {
-                return _MissingPane(
-                  project: _selected!,
-                  triedFiles: resolved.triedFiles,
-                  triedAssets: resolved.triedAssets,
-                );
-              }
-
-              // Figure out base image provider
-              final ImageProvider provider =
-                  (resolved.kind == _ImageKind.file)
-                      ? FileImage(resolved.file!)
-                      : AssetImage(resolved.assetPath!) as ImageProvider;
-
-              // We need actual pixel size to size our overlay correctly
-              return FutureBuilder<Size>(
-                future: _imageSizeFromProvider(provider),
-                builder: (context, sizeSnap) {
-                  if (sizeSnap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final imgSize = sizeSnap.data ?? const Size(0, 0);
-                  if (imgSize.width == 0 || imgSize.height == 0) {
-                    return const Center(
-                      child: Text('Could not read image size.'),
-                    );
-                  }
-
-                  // 1. Load sample points for this project
-                  final samplePoints =
-                      _loadSamplePointsForProject(_selected!);
-
-                  // 2. Generate the heat grid from those points
-                  final cfg = HeatmapConfig(
-                    gridSize: 100,
-                    maxValue: 100.0,
-                    stampRadius: 3.5,
-                    neighborFalloff: 0.8,
-                    minPropagationCutoff: 0.10,
-                    includeDiagonals: true,
-                  );
-                  final heatResult = generateHeatmap(
-                    samples: samplePoints,
-                    config: cfg,
-                  );
-
-                  // 3. Base image widget sized to its intrinsic dimensions
-                  final imgWidget = (resolved.kind == _ImageKind.file)
-                      ? Image.file(
-                          resolved.file!,
-                          filterQuality: FilterQuality.medium,
-                          width: imgSize.width,
-                          height: imgSize.height,
-                          fit: BoxFit.fill,
-                        )
-                      : Image.asset(
-                          resolved.assetPath!,
-                          filterQuality: FilterQuality.medium,
-                          width: imgSize.width,
-                          height: imgSize.height,
-                          fit: BoxFit.fill,
-                        );
-
-                  // 4. Heat overlay painted at same size
-                  final heatOverlay = CustomPaint(
-                    painter: HeatmapPainter(
-                      heat: heatResult.heat,
-                      maxVal: cfg.maxValue,
-                      debugGridLines: false,
-                    ),
-                    size: imgSize,
-                  );
-
-                  // 5. Combine and allow zoom/rotate
-                  final content = RotatedBox(
-                    quarterTurns: (_rotationTurns * 4).round() % 4,
-                    child: Center(
-                      child: SizedBox(
-                        width: imgSize.width,
-                        height: imgSize.height,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            imgWidget,
-                            IgnorePointer(child: heatOverlay),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-
-                  return Container(
-                    color: Theme.of(context).colorScheme.surface,
-                    child: Stack(
-                      children: [
-                        const _GridBackground(),
-                        InteractiveViewer(
-                          minScale: 0.25,
-                          maxScale: 8.0,
-                          boundaryMargin: const EdgeInsets.all(256),
-                          transformationController: _tc,
-                          child: content,
-                        ),
-                        Positioned(
-                          right: 12,
-                          bottom: 12,
-                          child: _ScaleChip(controller: _tc),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
+      for (int x = 0; x <= cols; x++) {
+        final dx = x * cellW;
+        canvas.drawLine(material.Offset(dx, 0), 
+          material.Offset(dx, size.height), gridPaint);
+      }
+      for (int y = 0; y <= rows; y++) {
+        final dy = y * cellH;
+        canvas.drawLine(material.Offset(0, dy), 
+          material.Offset(size.width, dy), gridPaint);
+      }
+    }
   }
-}*/
+
+  @override
+  bool shouldRepaint(covariant HeatmapPainter oldDelegate) 
+  {
+    return !identical(oldDelegate.heat, heat) ||
+        oldDelegate.debugGridLines != debugGridLines;
+  }
+}

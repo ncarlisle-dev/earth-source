@@ -1,15 +1,14 @@
-import 'package:flutter/material.dart' as material;
-import 'package:coordinate_converter/coordinate_converter.dart'
-  as coord_converter;
 import 'dart:io' as io;
-import 'package:csv/csv.dart' as csv_dart;
+import 'dart:ui' as ui;
 import 'dart:convert' as convert;
+import 'package:flutter/material.dart' as material;
+import 'package:csv/csv.dart' as csv_dart;
 import 'package:image_size_getter/image_size_getter.dart' as image_size_getter;
 import 'package:image_size_getter/file_input.dart' as file_input;
-import 'heatmap_painter.dart' as heatmap_painter;
-import 'dart:ui' as ui;
+import 'heatmap.dart' as heatmap;
 
-/// Opens the given data file and reads and validates its contents.
+/// Utility function - opens the given data file and reads and validates its 
+/// contents.
 /// 
 /// Returns a 2D list of parsed CSV data if the file contains valid content; an
 /// empty list if invalid or if no data file is provided.
@@ -20,7 +19,6 @@ Future<List<List<double>>> _validateData(String dataFilePath) async
   /// Boolean to ensure data is only returned if it's within a valid range.
   bool isDataValid = true;
 
-  // Check if a data file has been provided and open it if so.
   if (dataFilePath != "")
   {
     io.File dataFile = io.File(dataFilePath);
@@ -30,25 +28,18 @@ Future<List<List<double>>> _validateData(String dataFilePath) async
       .transform(csv_dart.csv.decoder)
       .toList();
     
-
-    for (var i = 0; i < rows.length; i++)
-    {
-      for (var j = 0; j < rows[i].length; j++)
-      {
-        if (double.parse(rows[i][j]) <= 0 || double.parse(rows[i][j]) >= 1)
-        {
+    for (var i = 0; i < rows.length; i++) {
+      for (var j = 0; j < rows[i].length; j++) {
+        if (double.parse(rows[i][j]) <= 0 || double.parse(rows[i][j]) >= 1) {
           isDataValid = false;
         }
       }
     }
 
-    if (isDataValid)
-    {
-      for (var i = 0; i < rows.length; i++)
-      {
+    if (isDataValid) {
+      for (var i = 0; i < rows.length; i++) {
         List<double> rowList = [];
-        for (var j = 0; j < rows[i].length; j++)
-        {
+        for (var j = 0; j < rows[i].length; j++) {
           rowList.add(double.parse(rows[i][j]));
           heatMapData.add(rowList);
         }
@@ -58,24 +49,46 @@ Future<List<List<double>>> _validateData(String dataFilePath) async
   return heatMapData;
 }
 
+/// A visualizer widget that displays either an image with no modifications if
+/// no data file is provided, or an image with a heatmap overlaid onto it.
 class Visualizer extends material.StatelessWidget
 {
-  final List<coord_converter.DDCoordinates> cornerCoordinates;
+  /// Filepath to a CSV file storing prediction results (given an empty string
+  /// if non-applicable);
   final String dataFilePath;
+  /// Filepath to the image to be displayed.
   final String imageFilePath;
+  /// List of decimal coordinates for the four corners of the image - currently
+  /// not in use.
+  final List<List<double>> cornerCoordinates;
 
-  const Visualizer({super.key, required this.cornerCoordinates, 
-   required this.imageFilePath, required this.dataFilePath});
+  const Visualizer({
+    super.key, 
+    required this.imageFilePath, 
+    required this.dataFilePath, 
+    required this.cornerCoordinates
+  });
 
-  List<double> _calculateDimensions(double screenWidth, double screenHeight, double imageWidth, double imageHeight)
+  /// Calculates the appropriately-scaled dimensions of the image and heatmap as
+  /// they should be displayed on the screen.
+  List<double> _calculateDimensions(
+    double screenWidth, 
+    double screenHeight, 
+    double imageWidth, 
+    double imageHeight
+  )
   {
     double containerWidth;
     double containerHeight;
 
+    /// If current screen width and height are greater than or equal to image
+    /// dimensions, the image can be displayed with no modifications.
     if (screenWidth >= imageWidth && screenHeight >= imageHeight) {
       containerWidth = imageWidth;
       containerHeight = imageHeight;
     }
+    /// Otherwise, scale down the image depending on whether screen height or 
+    /// width is the more limiting factor.
     else if (screenWidth >= imageWidth && screenHeight < imageHeight) {
       containerWidth = (screenHeight / imageHeight) * imageWidth;
       containerHeight = screenHeight;
@@ -101,43 +114,67 @@ class Visualizer extends material.StatelessWidget
   material.Widget build(material.BuildContext context)
   {
     io.File image = io.File(imageFilePath);
-    final jpgResult = image_size_getter.ImageSizeGetter.getSizeResult(file_input.FileInput(image));
-
-    ui.Size imageSize = ui.Size(jpgResult.size.width.toDouble(), jpgResult.size.height.toDouble());
+    final jpgResult = 
+      image_size_getter.ImageSizeGetter.getSizeResult
+      (file_input.FileInput(image));
+    ui.Size imageSize = ui.Size
+      (jpgResult.size.width.toDouble(), jpgResult.size.height.toDouble());
     
     return material.ListView(
-        children: [   
-                  material.FutureBuilder(
-                    future: _validateData(dataFilePath),
-                    builder: (material.BuildContext ctx, material.AsyncSnapshot<List> snapshot) =>
-                    snapshot.hasData
-                    ? 
-                    material.Center(
-                      child: material.SizedBox(
-                        width: _calculateDimensions(material.MediaQuery.of(context).size.width, material.MediaQuery.of(context).size.height, imageSize.width, imageSize.height)[0],
-                        height: _calculateDimensions(material.MediaQuery.of(context).size.width, material.MediaQuery.of(context).size.height, imageSize.width, imageSize.height)[1],
-                        child: material.Stack(
-                          fit: material.StackFit.expand,
-                          children: [
-                            material.Image.file(io.File(imageFilePath), width: imageSize.width, height: imageSize.height,
-                            fit: material.BoxFit.fill),
-                              material.IgnorePointer(child: material.CustomPaint(
-                                  painter: heatmap_painter.HeatmapPainter(
-                                  heat: snapshot.data! as List<List<double>>,
-                                  maxVal: 1,
-                                  debugGridLines: false,
-                                  ),
-                                //size: imageSize,
-                                ),
-                            ),
-                          ],
-                        )
-                      )
-                    )
-                    :
-                    material.Image.file(io.File(imageFilePath), width: imageSize.width, height: imageSize.height, fit: material.BoxFit.scaleDown),
-                  )
-                ],
-              );
+      children: [
+        material.InteractiveViewer(
+        child:   
+          material.FutureBuilder(
+            future: _validateData(dataFilePath),
+            builder: (material.BuildContext ctx, 
+            material.AsyncSnapshot<List> snapshot) 
+            => snapshot.hasData
+            ? 
+            material.Center(
+              child: material.SizedBox(
+                width: _calculateDimensions(
+                  material.MediaQuery.of(context).size.width, 
+                  material.MediaQuery.of(context).size.height, 
+                  imageSize.width, 
+                  imageSize.height
+                  )[0],
+                height: _calculateDimensions(
+                  material.MediaQuery.of(context).size.width, 
+                  material.MediaQuery.of(context).size.height, 
+                  imageSize.width, 
+                  imageSize.height
+                  )[1],
+                child: material.Stack(
+                  fit: material.StackFit.expand,
+                  children: [
+                    material.Image.file(
+                      io.File(imageFilePath), 
+                      width: imageSize.width, 
+                      height: imageSize.height,
+                      fit: material.BoxFit.fill
+                    ),
+                    material.IgnorePointer(
+                      child: material.CustomPaint(
+                        painter: heatmap.HeatmapPainter(
+                        heat: snapshot.data! as List<List<double>>,
+                        debugGridLines: false,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              )
+            )
+            :
+            material.Image.file(
+              io.File(imageFilePath), 
+              width: imageSize.width, 
+              height: imageSize.height, 
+              fit: material.BoxFit.scaleDown
+            ),
+          ),
+        ),
+      ],
+    );
   }  
 }
