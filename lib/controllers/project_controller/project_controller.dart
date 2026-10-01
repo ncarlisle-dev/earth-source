@@ -1,19 +1,9 @@
 import '../../services/network_service.dart' as network_service;
 import '../../airdroid/connection.dart' as connection;
+import 'project.dart' as project;
 
-/// Thrown whenever an attempt to modify a project would result in conflicts
-/// with the project's current state.
-class ProjectException implements Exception
-{
-  /// The error message.
-  final String message;
-
-  const ProjectException(this.message);
-
-  @override
-  String toString()
-    => message;
-}
+/// TODO: Change filepath in functions involving the layer image to accurately
+/// reflect where it will be stored in the database.
 
 network_service.NetworkService networkService = 
   network_service.NetworkService.getInstance();
@@ -26,7 +16,7 @@ class ProjectController
   static ProjectController? instance;
 
   /// List of user projects stored in the project controller
-  List<Project> userProjects = [];
+  List<project.Project> userProjects = [];
 
   /// Retrieves the ProjectController instance if already initialized; if not, 
   /// creates an instance and fetches the user's projects from the database
@@ -54,9 +44,10 @@ class ProjectController
   /// 
   /// Throws a [connection.NetworkException] if the server request to upload a 
   /// new project fails.
-  Future<Project> createProject(String name, String description) async
+  Future<project.Project> createProject(String name, String description) async
   {
-    Project createdProject = Project(name, description, DateTime.now());
+    project.Project createdProject = 
+      project.Project(name, description, DateTime.now());
     createdProject.lastUpdated = DateTime.now();
     try {
       await networkService.uploadProject(createdProject);
@@ -64,7 +55,7 @@ class ProjectController
     }
     catch (error) {
       throw connection.NetworkException(
-        "Project creation failed with the following error:\n$error", null);
+        "Project upload failed with the following error:\n$error", null);
     }
     return createdProject;
   }
@@ -85,287 +76,4 @@ class ProjectController
         "Project deletion failed with the following error:\n$error", null);
     }
   }
-}
-
-/// A single archaeological project, encompassing layers, units, and pXRF data
-/// from a given site.
-class Project 
-{
-  /// Id of the project.
-  String? id;
-
-  /// User-given name of the project.
-  final String name;
-
-  /// User-given description of the project.
-  final String description;
-
-  /// Time the project was created.
-  final DateTime createdAt;
-
-  /// Most recent time the project was updated.
-  DateTime? lastUpdated;
-
-  /// List of layers the project contains.
-  final List<LayerSpec> layers = [];
-
-  /// List of units the project contains.
-  final List<UnitSpec> units = [];
-
-  /// List of pXRF data files corresponding to the project.
-  final List<DataSpec> pxrfData = [];
-
-  Map<String, Map <String, String>>? dataAssignments = {};
-
-  Project(this.name, this.description, this.createdAt);
-
-  /// Creates a new layer at the current time using the given name and 
-  /// description and adds it to the project.
-  /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
-  /// after modification and a [ProjectException] if given layer name matches
-  /// a pre-existing layer.
-  Future<LayerSpec> createLayer(String name, String description) async
-  {
-    Iterable<LayerSpec> duplicateName = layers.where((layer) => 
-      layer.name == name);
-    if (duplicateName.isEmpty) {
-      LayerSpec createdLayer = LayerSpec(name, description, DateTime.now(), 
-      DateTime.now());
-      layers.add(createdLayer);
-      lastUpdated = DateTime.now();
-
-      try {
-        await networkService.uploadProject(this);
-      }
-      catch (error) {
-        throw connection.NetworkException(
-        "Project failed to update with the following error:\n$error", null);
-      }
-      
-      return createdLayer;
-    }
-    else {
-      throw ProjectException(
-        "Layer cannot have the same name as a pre-existing layer.");
-    }
-  }
-
-  /// Changes the name of a pre-existing layer.
-  /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
-  /// after modification and a [ProjectException] if new layer name matches
-  /// a pre-existing layer.
-  Future<void> setLayerName(String srcName, String newName) async
-  {
-    Iterable<LayerSpec> duplicateName = layers.where((layer) => layer.name == newName);
-    if (duplicateName.isEmpty)
-    {
-      int layerIndex = layers.indexWhere((layer) => layer.name == srcName);
-      layers[layerIndex].name = newName;
-      layers[layerIndex].lastUpdated = DateTime.now();
-      lastUpdated = DateTime.now();
-      try {
-        await networkService.uploadProject(this);
-      }
-      catch (error) {
-        throw connection.NetworkException(
-        "Project failed to update with the following error:\n$error", null);
-      }
-    }
-    else {
-      throw ProjectException(
-      "Layer cannot have the same name as a pre-existing layer.");
-    }
-  }
-
-  /// Changes the description of a pre-existing layer.
-  /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
-  /// after modification.
-  Future<void> setLayerDescription(String name, String description) async
-  {
-    int layerIndex = layers.indexWhere((layer) => layer.name == name);
-    layers[layerIndex].description = description;
-    layers[layerIndex].lastUpdated = DateTime.now();
-    lastUpdated = DateTime.now();
-    try {
-        await networkService.uploadProject(this);
-    }
-    catch (error) {
-      throw connection.NetworkException(
-      "Project failed to update with the following error:\n$error", null);
-    }
-  }
-
-  /// Deletes a layer from the project.
-  /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
-  /// after modification.
-  Future<void> deleteLayer(String name) async
-  {
-    int layerIndex = layers.indexWhere((layer) => layer.name == name);
-    layers.removeAt(layerIndex);
-    lastUpdated = DateTime.now();
-    try {
-        await networkService.uploadProject(this);
-    }
-    catch (error) {
-      throw connection.NetworkException(
-      "Project failed to update with the following error:\n$error", null);
-    }
-  }
-
-  Future<UnitSpec> createUnit(String name, String description, 
-  ({double latitude, double longitude}) topLeft, double width, double height, 
-  double pointInterval) async
-  {
-    Iterable<LayerSpec> duplicateName = layers.where((layer) => layer.name == name);
-    if (duplicateName.isEmpty)
-    {
-      UnitSpec createdUnit = UnitSpec(name, description, DateTime.now(), 
-        DateTime.now(), topLeft, width, height, pointInterval);
-      units.add(createdUnit);
-      lastUpdated = DateTime.now();
-      return createdUnit;
-    }
-    throw UnimplementedError();
-  }
-
-  Future<void> setUnitName(String srcName, String newName)
-  {
-    int unitIndex = units.indexWhere((unit) => unit.name == srcName);
-    units[unitIndex].name = newName;
-    units[unitIndex].lastUpdated = DateTime.now();
-    lastUpdated = DateTime.now();
-    throw UnimplementedError();
-  }
-
-  Future<void> setUnitDescription(String name, String description) async
-  {
-    int unitIndex = units.indexWhere((unit) => unit.name == name);
-    units[unitIndex].description = description;
-    units[unitIndex].lastUpdated = DateTime.now();
-    lastUpdated = DateTime.now();
-    
-  }
-
-  Future<void> repositionUnit(String name, ({double latitude, double longitude})
-   topLeft, double width, double height, double pointInterval) async
-  {
-    int unitIndex = units.indexWhere((unit) => unit.name == name);
-    units[unitIndex].topLeftCoords = topLeft;
-    units[unitIndex].width = width;
-    units[unitIndex].height = height;
-    units[unitIndex].pointInterval = pointInterval;
-    units[unitIndex].lastUpdated = DateTime.now();
-    lastUpdated = DateTime.now();
-
-  }
-
-  Future<void> deleteUnit(String name) async
-  {
-    int unitIndex = units.indexWhere((unit) => unit.name == name);
-    units.removeAt(unitIndex);
-    lastUpdated = DateTime.now();
-
-  }
-
-  Future<void> uploadLayerImage(String layerName, String imageContents) async
-  {
-    int layerIndex = layers.indexWhere((layer) => layer.name == layerName);
-    layers[layerIndex].layerImage = imageContents;
-    layers[layerIndex].lastUpdated = DateTime.now();
-    lastUpdated = DateTime.now();
-
-  }
-
-  Future<String?> getLayerImage(String layerName) async
-  {
-    int layerIndex = layers.indexWhere((layer) => layer.name == layerName);
-    return layers[layerIndex].layerImage;
-  }
-
-  Future<void> removeLayerImage(String layerName) async
-  {
-    int layerIndex = layers.indexWhere((layer) => layer.name == layerName);
-    layers[layerIndex].layerImage = "";
-    lastUpdated = DateTime.now();
-  }
-}
-
-/// A layer within an archaeological site, representing a stratum at which 
-/// different materials are found.
-class LayerSpec 
-{
-  /// User-provided name of the layer.
-  String name;
-
-  /// User-provided description of the layer.
-  String description;
-
-  /// Most recent time any change was made to the layer.
-  DateTime lastUpdated;
-
-  /// Time the layer was created.
-  final DateTime createdAt;
-
-  /// String representing the contents of the layer image - empty by default.
-  String layerImage = "";
-
-  LayerSpec(this.name, this.description, this.lastUpdated, this.createdAt);
-}
-
-/// A unit within an archaeological site, defined by a top left coordinate and
-/// a given width and height.
-class UnitSpec 
-{
-  /// User-provided name of the unit.
-  String name;
-
-  /// User-provided description of the unit.
-  String description;
-
-  /// Most recent time any change was made to the unit.
-  DateTime lastUpdated;
-
-  /// Time the unit was created.
-  final DateTime createdAt;
-
-  /// Decimal degrees coordinates of the top left corner of the unit.
-  ({double latitude, double longitude}) topLeftCoords;
-
-  /// Width of the unit.
-  double width;
-
-  /// Height of the unit.
-  double height;
-
-  /// Interval between points sampled within the unit.
-  double pointInterval;
-
-  UnitSpec(this.name, this.description, this.lastUpdated, this.createdAt, 
-  this.topLeftCoords, this.width, this.height, this.pointInterval);
-}
-
-/// Pxrf data from a given file corresponding to a specific project.
-class DataSpec
-{
-  /// Name of the data file.
-  String fileName;
-
-  /// Id of the corresponding project.
-  String projectId;
-
-  /// Time the data file was uploaded to the project.
-  DateTime createdAt;
-
-  /// Number of points sampled within the data file.
-  int numPoints;
-
-  /// Size of the file.
-  int size;
-
-  DataSpec(this.fileName, this.projectId, this.createdAt, this.numPoints, 
-    this.size);
 }
