@@ -1,6 +1,20 @@
 import '../../services/network_service.dart' as network_service;
 import '../../airdroid/connection.dart' as connection;
 
+/// Thrown whenever an attempt to modify a project would result in conflicts
+/// with the project's current state.
+class ProjectException implements Exception
+{
+  /// The error message.
+  final String message;
+
+  const ProjectException(this.message);
+
+  @override
+  String toString()
+    => message;
+}
+
 network_service.NetworkService networkService = 
   network_service.NetworkService.getInstance();
 
@@ -17,7 +31,8 @@ class ProjectController
   /// Retrieves the ProjectController instance if already initialized; if not, 
   /// creates an instance and fetches the user's projects from the database
   /// 
-  /// Throws a [Network Exception] if the request to upload user projects fails.
+  /// Throws a [connection.NetworkException] if the request to fetch user 
+  /// projects fails.
   static Future<ProjectController> getInstance() async
   {
     if (instance != null) return instance!;
@@ -37,15 +52,15 @@ class ProjectController
   /// Creates a project using a given name and description, uploads it to the 
   /// server, and returns it.
   /// 
-  /// Throws a [Network Exception] if the server request to upload a new 
-  /// project fails.
+  /// Throws a [connection.NetworkException] if the server request to upload a 
+  /// new project fails.
   Future<Project> createProject(String name, String description) async
   {
-    Project createdProject = Project(name, description, DateTime.now(), 
-      DateTime.now());
-    userProjects.add(createdProject);
+    Project createdProject = Project(name, description, DateTime.now());
+    createdProject.lastUpdated = DateTime.now();
     try {
       await networkService.uploadProject(createdProject);
+      userProjects.add(createdProject);
     }
     catch (error) {
       throw connection.NetworkException(
@@ -56,14 +71,14 @@ class ProjectController
 
   /// Finds and deletes a project with the given id.
   /// 
-  /// Throws a [NetworkException] if the server request to delete the project
-  /// fails.
+  /// Throws a [connection.NetworkException] if the server request to delete the 
+  /// project fails.
   Future<void> deleteProject(String id) async
   {
     int deleteIndex = userProjects.indexWhere((project) => project.id == id);
-    userProjects.removeAt(deleteIndex);
     try {
       await networkService.deleteProject(id);
+      userProjects.removeAt(deleteIndex);
     }
     catch (error) {
       throw connection.NetworkException(
@@ -89,7 +104,7 @@ class Project
   final DateTime createdAt;
 
   /// Most recent time the project was updated.
-  DateTime lastUpdated;
+  DateTime? lastUpdated;
 
   /// List of layers the project contains.
   final List<LayerSpec> layers = [];
@@ -102,53 +117,118 @@ class Project
 
   Map<String, Map <String, String>>? dataAssignments = {};
 
-  Project(this.name, this.description, this.createdAt, this.lastUpdated);
+  Project(this.name, this.description, this.createdAt);
 
   /// Creates a new layer at the current time using the given name and 
   /// description and adds it to the project.
+  /// 
+  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// after modification and a [ProjectException] if given layer name matches
+  /// a pre-existing layer.
   Future<LayerSpec> createLayer(String name, String description) async
   {
-    LayerSpec createdLayer = LayerSpec(name, description, DateTime.now(), 
-    DateTime.now());
-    layers.add(createdLayer);
-    lastUpdated = DateTime.now();
-    return createdLayer;
+    Iterable<LayerSpec> duplicateName = layers.where((layer) => 
+      layer.name == name);
+    if (duplicateName.isEmpty) {
+      LayerSpec createdLayer = LayerSpec(name, description, DateTime.now(), 
+      DateTime.now());
+      layers.add(createdLayer);
+      lastUpdated = DateTime.now();
+
+      try {
+        await networkService.uploadProject(this);
+      }
+      catch (error) {
+        throw connection.NetworkException(
+        "Project failed to update with the following error:\n$error", null);
+      }
+      
+      return createdLayer;
+    }
+    else {
+      throw ProjectException(
+        "Layer cannot have the same name as a pre-existing layer.");
+    }
   }
 
+  /// Changes the name of a pre-existing layer.
+  /// 
+  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// after modification and a [ProjectException] if new layer name matches
+  /// a pre-existing layer.
   Future<void> setLayerName(String srcName, String newName) async
   {
-    int layerIndex = layers.indexWhere((layer) => layer.name == srcName);
-    layers[layerIndex].name = newName;
-    layers[layerIndex].lastUpdated = DateTime.now();
-    lastUpdated = DateTime.now();
-    
+    Iterable<LayerSpec> duplicateName = layers.where((layer) => layer.name == newName);
+    if (duplicateName.isEmpty)
+    {
+      int layerIndex = layers.indexWhere((layer) => layer.name == srcName);
+      layers[layerIndex].name = newName;
+      layers[layerIndex].lastUpdated = DateTime.now();
+      lastUpdated = DateTime.now();
+      try {
+        await networkService.uploadProject(this);
+      }
+      catch (error) {
+        throw connection.NetworkException(
+        "Project failed to update with the following error:\n$error", null);
+      }
+    }
+    else {
+      throw ProjectException(
+      "Layer cannot have the same name as a pre-existing layer.");
+    }
   }
 
+  /// Changes the description of a pre-existing layer.
+  /// 
+  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// after modification.
   Future<void> setLayerDescription(String name, String description) async
   {
     int layerIndex = layers.indexWhere((layer) => layer.name == name);
     layers[layerIndex].description = description;
     layers[layerIndex].lastUpdated = DateTime.now();
     lastUpdated = DateTime.now();
-    
+    try {
+        await networkService.uploadProject(this);
+    }
+    catch (error) {
+      throw connection.NetworkException(
+      "Project failed to update with the following error:\n$error", null);
+    }
   }
 
+  /// Deletes a layer from the project.
+  /// 
+  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// after modification.
   Future<void> deleteLayer(String name) async
   {
     int layerIndex = layers.indexWhere((layer) => layer.name == name);
     layers.removeAt(layerIndex);
     lastUpdated = DateTime.now();
-    
+    try {
+        await networkService.uploadProject(this);
+    }
+    catch (error) {
+      throw connection.NetworkException(
+      "Project failed to update with the following error:\n$error", null);
+    }
   }
 
   Future<UnitSpec> createUnit(String name, String description, 
   ({double latitude, double longitude}) topLeft, double width, double height, 
   double pointInterval) async
   {
-    UnitSpec createdUnit = UnitSpec(name, description, DateTime.now(), 
-      DateTime.now(), topLeft, width, height, pointInterval);
-    units.add(createdUnit);
-    lastUpdated = DateTime.now();
+    Iterable<LayerSpec> duplicateName = layers.where((layer) => layer.name == name);
+    if (duplicateName.isEmpty)
+    {
+      UnitSpec createdUnit = UnitSpec(name, description, DateTime.now(), 
+        DateTime.now(), topLeft, width, height, pointInterval);
+      units.add(createdUnit);
+      lastUpdated = DateTime.now();
+      return createdUnit;
+    }
     throw UnimplementedError();
   }
 
