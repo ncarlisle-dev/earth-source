@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart' as material;
-import '../airdroid/connection.dart' as airdroid_connection;
+import '../api/api.dart' as api;
 import 'package:intl/intl.dart' as intl;
 
 /* ============================== Utility ============================== */
@@ -7,27 +7,27 @@ import 'package:intl/intl.dart' as intl;
 /// Maps [airdroid_connection.ConnectionStatus]es to symbols indicating their
 /// value.
 const _connectionStatusSymbols = {
-  airdroid_connection.ConnectionStatus.disconnecting: material.Icon(
+  api.ConnectionStatus.disconnecting: material.Icon(
     material.Icons.circle,
     color: material.Colors.red,
     size: 16.0
   ),
-  airdroid_connection.ConnectionStatus.disconnected: material.Icon(
+  api.ConnectionStatus.disconnected: material.Icon(
     material.Icons.circle,
     color: material.Colors.grey,
     size: 16.0
   ),
-  airdroid_connection.ConnectionStatus.connecting: material.Icon(
+  api.ConnectionStatus.connecting: material.Icon(
     material.Icons.circle,
     color: material.Colors.yellow,
     size: 16.0
   ),
-  airdroid_connection.ConnectionStatus.connected: material.Icon(
+  api.ConnectionStatus.connected: material.Icon(
     material.Icons.circle,
     color: material.Colors.green,
     size: 16.0
   ),
-  airdroid_connection.ConnectionStatus.pinging: material.Icon(
+  api.ConnectionStatus.pinging: material.Icon(
     material.Icons.more_horiz,
     color: material.Colors.black,
     size: 16.0
@@ -42,7 +42,7 @@ class _ConnectionEntry
   final String ipAddress;
   final int port;
   final DateTime timeCreated;
-  airdroid_connection.AirdroidClient? client;
+  api.AirdroidClient? client;
 
   _ConnectionEntry(this.ipAddress, this.port, this.timeCreated, this.client);
 }
@@ -115,7 +115,7 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
                 spacing: 10.0,
                 children: [
                   _connectionStatusSymbols[entry.client?.status
-                    ?? airdroid_connection.ConnectionStatus.disconnected]!,
+                    ?? api.ConnectionStatus.disconnected]!,
 
                   material.Column(
                     crossAxisAlignment: material.CrossAxisAlignment.start,
@@ -188,7 +188,7 @@ Future<_ConnectionEntry?> _showConnectionModal(
   String port = "";
   bool isConnecting = false;
 
-  airdroid_connection.AirdroidClient? client;
+  api.AirdroidClient? client;
 
   final material.GlobalKey<material.FormState> formKey = 
     material.GlobalKey<material.FormState>();
@@ -277,7 +277,7 @@ Future<_ConnectionEntry?> _showConnectionModal(
                               });
 
                               // create the client and connect
-                              client = airdroid_connection.AirdroidClient();
+                              client = api.AirdroidClient();
 
                               try {
                                 await client!.connect(
@@ -289,7 +289,7 @@ Future<_ConnectionEntry?> _showConnectionModal(
                                   // close modal
                                   material.Navigator.pop(context);
                                 }
-                              } on airdroid_connection.NetworkException {
+                              } on api.NetworkException {
                                 // TODO: properly handle connection failure
                                 print("connection couldn't be made");
                                 client = null;
