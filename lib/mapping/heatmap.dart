@@ -19,41 +19,41 @@ class HeatPalette
   /// Map of colors to represent soil.
   static const Map<int, material.Color> soilColors = {
     0: material.Colors.transparent,
-    1: material.Color.fromARGB(255, 206, 253, 200), // green
-    2: material.Color.fromARGB(255, 185, 247, 114), // light green
-    3: material.Color.fromARGB(255, 117, 200, 54), // yellow
-    4: material.Color.fromARGB(255, 69, 153, 32), // orange
-    5: material.Color.fromARGB(255, 8, 61, 1), // red
+    1: material.Color.fromARGB(255, 206, 253, 200), 
+    2: material.Color.fromARGB(255, 185, 247, 114), 
+    3: material.Color.fromARGB(255, 117, 200, 54), 
+    4: material.Color.fromARGB(255, 69, 153, 32), 
+    5: material.Color.fromARGB(255, 8, 61, 1), 
   };
 
   /// Map of colors to represent pottery.
   static const Map<int, material.Color> potteryColors = {
     0: material.Colors.transparent,
-    1: material.Color.fromARGB(255, 148, 178, 244), // green
-    2: material.Color.fromARGB(255, 116, 160, 241), // light green
-    3: material.Color.fromARGB(255, 80, 128, 252), // yellow
-    4: material.Color.fromARGB(255, 50, 108, 255), // orange
-    5: material.Color.fromARGB(255, 1, 69, 241), // red
+    1: material.Color.fromARGB(255, 148, 178, 244), 
+    2: material.Color.fromARGB(255, 116, 160, 241), 
+    3: material.Color.fromARGB(255, 80, 128, 252), 
+    4: material.Color.fromARGB(255, 50, 108, 255), 
+    5: material.Color.fromARGB(255, 1, 69, 241), 
   };
 
   /// Map of colors to represent metal.
   static const Map<int, material.Color> metalColors = {
     0: material.Colors.transparent,
-    1: material.Color.fromARGB(255, 229, 199, 247), // green
-    2: material.Color.fromARGB(255, 225, 149, 242), // light green
-    3: material.Color.fromARGB(255, 173, 91, 196), // yellow
-    4: material.Color.fromARGB(255, 110, 55, 125), // orange
-    5: material.Color.fromARGB(255, 50, 0, 53), // red
+    1: material.Color.fromARGB(255, 229, 199, 247), 
+    2: material.Color.fromARGB(255, 225, 149, 242), 
+    3: material.Color.fromARGB(255, 173, 91, 196), 
+    4: material.Color.fromARGB(255, 110, 55, 125), 
+    5: material.Color.fromARGB(255, 50, 0, 53), 
   };
 
   /// Map of colors to represent slag.
   static const Map<int, material.Color> slagColors = {
     0: material.Colors.transparent,
-    1: material.Color.fromARGB(255, 241, 237, 154), // green
-    2: material.Color.fromARGB(255, 241, 213, 111), // light green
-    3: material.Color.fromARGB(255, 211, 160, 66), // yellow
-    4: material.Color.fromARGB(255, 207, 121, 40), // orange
-    5: material.Color.fromARGB(255, 99, 45, 0), // red
+    1: material.Color.fromARGB(255, 241, 237, 154), 
+    2: material.Color.fromARGB(255, 241, 213, 111), 
+    3: material.Color.fromARGB(255, 211, 160, 66), 
+    4: material.Color.fromARGB(255, 207, 121, 40), 
+    5: material.Color.fromARGB(255, 99, 45, 0), 
   };
 
   /// Determines into which bin a data point falls depending on how high the 
