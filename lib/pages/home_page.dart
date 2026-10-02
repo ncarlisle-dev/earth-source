@@ -6,6 +6,7 @@ import './languages_page.dart' as languages_page;
 import './projects_page.dart' as projects_page;
 import './settings_page.dart' as settings_page;
 import './connections_page.dart' as connections_page;
+import './predictions/prediction_view.dart';
 
 /// A page containing the navigation bar for the app from which all other pages
 /// can be accessed.
@@ -68,7 +69,7 @@ class _HomePageState extends material.State<HomePage> {
         languages_page.LanguagesPage(),
         projects_page.ProjectsPage(),
         help_page.HelpPage(),
-        about_page.AboutPage(),
+        PredictionView(),
         connections_page.ConnectionsPage(),
       ][currentPageIndex],
     );
