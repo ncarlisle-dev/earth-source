@@ -1,28 +1,12 @@
 import 'dart:async';
 
-import './encryption.dart' as airdroid_encryption;
-import './schema.dart' as airdroid_schema;
+import 'encryption.dart' as ad_encryption;
+import 'schema.dart' as ad_schema;
+import '../../common/common.dart' as common;
 
 import 'package:http/http.dart' as http;
 
 /* ============================== Utility ============================== */
-
-/// Thrown whenever a network request fails or an unexpected response is 
-/// received.
-class NetworkException implements Exception
-{
-  /// The error message.
-  final String message;
-
-  /// The status code sent back by the server, if applicable.
-  final int? statusCode;
-
-  const NetworkException(this.message, this.statusCode);
-
-  @override
-  String toString()
-    => message;
-}
 
 /// The current state of a connection.
 enum ConnectionStatus {
@@ -44,8 +28,8 @@ enum ConnectionStatus {
 /// 
 /// Returns the HTTP response in the form of an [http.Response].
 /// 
-/// Throws a [NetworkException] if the request doesn't go through or the server
-/// responds with a non-200 status code.
+/// Throws a [common.NetworkException] if the request doesn't go through or the
+/// server responds with a non-200 status code.
 Future<http.Response> _sendHttpGetRequest(
   http.Client client,
   String requestAddress
@@ -56,11 +40,11 @@ Future<http.Response> _sendHttpGetRequest(
   try {
     response = await client.get(Uri.parse(requestAddress));
   } on http.ClientException {
-    throw const NetworkException("Failed to send network request.", null);
+    throw const common.NetworkException("Failed to send network request.", null);
   }
 
   if (response.statusCode != 200) {
-    throw NetworkException(
+    throw common.NetworkException(
       "Server returned status code ${response.statusCode}.",
       response.statusCode
     );
@@ -138,9 +122,9 @@ class AirdroidClient
   ///   }
   /// ```
   /// 
-  /// Throws a [NetworkException] if the request fails or the server gives an
-  /// unexpected response. When this happens, the client object should either
-  /// attempt to call this function again or be deleted entirely.
+  /// Throws a [common.NetworkException] if the request fails or the server 
+  /// gives an unexpected response. When this happens, the client object should 
+  /// either attempt to call this function again or be deleted entirely.
   Future<void> connect(String ipAddress, int port) async
   {
     assert(!isConnected(), "Client is already connected to a server.");
@@ -161,12 +145,12 @@ class AirdroidClient
       response = await _client!.get(Uri.parse(requestAddress));
     } on http.ClientException {
       _closeClient();
-      throw const NetworkException("Failed to send network request.", null);
+      throw const common.NetworkException("Failed to send network request.", null);
     }
 
     if (response.statusCode != 200) {
       _closeClient();
-      throw NetworkException(
+      throw common.NetworkException(
         "Server returned status code ${response.statusCode}.",
         response.statusCode
       );
@@ -180,10 +164,10 @@ class AirdroidClient
     final ({String deviceKey, String authToken}) connectionData;
 
     try {
-      connectionData = airdroid_schema.extractConnectionData(response.body);
-    } on airdroid_schema.TypeMismatchException catch (e) {
+      connectionData = ad_schema.extractConnectionData(response.body);
+    } on ad_schema.TypeMismatchException catch (e) {
       _closeClient();
-      throw NetworkException(
+      throw common.NetworkException(
         "Server returned unexpected response body:\n$e",
         200
       );
@@ -192,7 +176,7 @@ class AirdroidClient
     _deviceKey = connectionData.deviceKey;
     _authToken = connectionData.authToken;
 
-    _encryptionKey = airdroid_encryption.getEncryptionKey(
+    _encryptionKey = ad_encryption.getEncryptionKey(
       _deviceKey,
       _authToken,
     );
@@ -239,8 +223,8 @@ class AirdroidClient
   ///
   /// [filePath] must start with a '/'.
   /// 
-  /// Throws a [NetworkException] if the request fails or the server gives an
-  /// unexpected reponse.
+  /// Throws a [common.NetworkException] if the request fails or the server 
+  /// gives an unexpected reponse.
   Future<List<({String name})>> queryDirectory(String filePath) async
   {
     // make sure directory can be queried
@@ -259,7 +243,7 @@ class AirdroidClient
     );
 
     // extract the data
-    return airdroid_schema.extractDirectoryContents(response.body);
+    return ad_schema.extractDirectoryContents(response.body);
   }
 
   /// Given a [filePath], returns the file's stringifed contents.
@@ -268,7 +252,7 @@ class AirdroidClient
   /// 
   /// [filePath] must start with a '/'.
   ///
-  /// Throws a [NetworkException] if the network request fails.
+  /// Throws a [common.NetworkException] if the network request fails.
   Future<String> fetchFile(String filePath) async
   {
     // check params
@@ -277,7 +261,7 @@ class AirdroidClient
     // setup address
     final String requestAddress =
         "$_baseAddress/sdctl/file_v21/export?pathfile="
-        "${airdroid_encryption.getEncryptedFilePath(filePath, _encryptionKey)}"
+        "${ad_encryption.getEncryptedFilePath(filePath, _encryptionKey)}"
         "&7bb=$_authToken";
 
     // send request
@@ -316,7 +300,7 @@ class AirdroidClient
     );
 
     // check response
-    bool shouldDisconnect = airdroid_schema.isForbiddenResponse(response.body);
+    bool shouldDisconnect = ad_schema.isForbiddenResponse(response.body);
 
     if (shouldDisconnect) {
       await _closeClient();
