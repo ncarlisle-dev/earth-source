@@ -29,7 +29,7 @@ class ProjectController
     on NetworkException catch (error) {
       throw NetworkException(
         "Failed to upload user projects due to the following error:\n$error", 
-        null
+        error.statusCode
       );
     }
     return instance!;
@@ -53,7 +53,7 @@ class ProjectController
     on NetworkException catch (error) {
       throw NetworkException(
         "Project upload failed with the following error:\n$error", 
-        null
+        error.statusCode
       );
     }
     return createdProject;
@@ -67,6 +67,7 @@ class ProjectController
   {
     NetworkService networkService = NetworkService.getInstance();
     int deleteIndex = userProjects.indexWhere((project) => project.id == id);
+    assert(deleteIndex != -1);
     try {
       await networkService.deleteProject(id);
       userProjects.removeAt(deleteIndex);
@@ -74,7 +75,7 @@ class ProjectController
     on NetworkException catch (error) {
       throw NetworkException(
         "Project deletion failed with the following error:\n$error", 
-        null
+        error.statusCode
       );
     }
   }

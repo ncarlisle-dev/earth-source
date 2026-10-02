@@ -40,7 +40,7 @@ class Project
   /// List of pXRF data files corresponding to the project.
   final List<components.DataSpec> pxrfData = [];
   /// Map of layer and unit names to file names.
-  Map<String, Map <String, String>> dataAssignments = {};
+  final Map<String, Map <String, String>> dataAssignments = {};
 
   Project(this.name, this.description, this.createdAt);
 
@@ -56,15 +56,15 @@ class Project
     NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing layer has the same name and only make a new 
     // layer if not
-    Iterable<components.LayerSpec> duplicateName = layers.where((layer) 
-      => layer.name == name);
+    Iterable<components.LayerSpec> duplicateName = layers.where(
+      (layer) => layer.name == name);
 
     if (duplicateName.isEmpty) {
-      components.LayerSpec createdLayer = (
-        name: name, 
-        description: description, 
-        createdAt: DateTime.now(), 
-        lastUpdated: DateTime.now()
+      components.LayerSpec createdLayer = components.LayerSpec(
+        name, 
+        description, 
+        DateTime.now(), 
+        DateTime.now()
       );
       layers.add(createdLayer);
       lastUpdated = DateTime.now();
@@ -82,7 +82,7 @@ class Project
       on NetworkException catch (error) {
         throw NetworkException(
           "Layer creation failed with the following error:\n$error", 
-          null
+          error.statusCode
         );
       }
       
@@ -104,20 +104,13 @@ class Project
     NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing layer has the same name and only change the
     // name if not
-    Iterable<components.LayerSpec> duplicateName = layers.where((layer) 
-      => layer.name == newName);
+    Iterable<components.LayerSpec> duplicateName = layers.where(
+      (layer) => layer.name == newName);
 
     if (duplicateName.isEmpty) {
       int layerIndex = layers.indexWhere((layer) => layer.name == srcName);
-      // Note: Records are immutable, so to update, it's necessary to create a
-      // new layer and assign it to the layer that needs to be updated.
-      components.LayerSpec updatedLayer = (
-        name: newName, 
-        description: layers[layerIndex].description, 
-        createdAt: layers[layerIndex].createdAt, 
-        lastUpdated: DateTime.now()
-      );
-      layers[layerIndex] = updatedLayer;
+      layers[layerIndex].name = newName;
+      layers[layerIndex].lastUpdated = DateTime.now();
       lastUpdated = DateTime.now();
 
       try {
@@ -126,7 +119,7 @@ class Project
       on NetworkException catch (error) {
         throw NetworkException(
           "Project failed to update with the following error:\n$error", 
-          null
+          error.statusCode
         );
       }
     }
@@ -145,13 +138,8 @@ class Project
   {
     NetworkService networkService = NetworkService.getInstance();
     int layerIndex = layers.indexWhere((layer) => layer.name == name);
-    components.LayerSpec updatedLayer = (
-      name: name, 
-      description: description, 
-      createdAt: layers[layerIndex].createdAt, 
-      lastUpdated: DateTime.now()
-    );
-    layers[layerIndex] = updatedLayer;
+    layers[layerIndex].description = description;
+    layers[layerIndex].lastUpdated = DateTime.now();
     lastUpdated = DateTime.now();
 
     try {
@@ -160,7 +148,7 @@ class Project
     on NetworkException catch (error) {
       throw NetworkException(
         "Project failed to update with the following error:\n$error", 
-        null
+        error.statusCode
       );
     }
   }
@@ -187,7 +175,7 @@ class Project
     on NetworkException catch (error) {
       throw NetworkException(
         "Layer failed to delete with the following error:\n$error", 
-        null
+        error.statusCode
       );
     }
   }
@@ -213,15 +201,15 @@ class Project
     Iterable<components.UnitSpec> duplicateName = units.where(
       (unit) => unit.name == name);
     if (duplicateName.isEmpty) {
-      components.UnitSpec createdUnit = (
-        name: name, 
-        description: description, 
-        topLeftCoords: topLeft, 
-        width: width, 
-        height: height, 
-        pointInterval: pointInterval, 
-        createdAt: DateTime.now(), 
-        lastUpdated: DateTime.now()
+      components.UnitSpec createdUnit = components.UnitSpec(
+        name, 
+        description,
+        DateTime.now(),
+        DateTime.now(), 
+        topLeft, 
+        width, 
+        height, 
+        pointInterval, 
       );
 
       // Check to make sure there is no overlap between the new unit and any
@@ -243,7 +231,7 @@ class Project
       on NetworkException catch (error) {
         throw NetworkException(
           "Project failed to update with the following error:\n$error", 
-          null
+          error.statusCode
         );
       }
       return createdUnit;
@@ -263,22 +251,13 @@ class Project
     NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing unit has the same name and only change the
     // name if not.
-    Iterable<components.UnitSpec> duplicateName = units.where((unit) 
-      => unit.name == newName);
+    Iterable<components.UnitSpec> duplicateName = units.where(
+      (unit) => unit.name == newName);
 
     if (duplicateName.isEmpty) {
       int unitIndex = units.indexWhere((unit) => unit.name == srcName);
-      components.UnitSpec updatedUnit = (
-        name: newName, 
-        description: units[unitIndex].description, 
-        lastUpdated: DateTime.now(),
-        createdAt: units[unitIndex].createdAt, 
-        topLeftCoords: units[unitIndex].topLeftCoords,
-        width: units[unitIndex].width,
-        height: units[unitIndex].height,
-        pointInterval: units[unitIndex].pointInterval,
-      );
-      units[unitIndex] = updatedUnit;
+      units[unitIndex].name = newName;
+      units[unitIndex].lastUpdated = DateTime.now();
       lastUpdated = DateTime.now();
 
       try {
@@ -289,7 +268,7 @@ class Project
       on NetworkException catch (error) {
         throw NetworkException(
           "Project failed to update with the following error:\n$error", 
-          null
+          error.statusCode
         );
       }
     }
@@ -308,17 +287,8 @@ class Project
   {
     NetworkService networkService = NetworkService.getInstance();
     int unitIndex = units.indexWhere((unit) => unit.name == name);
-    components.UnitSpec updatedUnit = (
-      name: name, 
-      description: description, 
-      lastUpdated: DateTime.now(),
-      createdAt: units[unitIndex].createdAt, 
-      topLeftCoords: units[unitIndex].topLeftCoords,
-      width: units[unitIndex].width,
-      height: units[unitIndex].height,
-      pointInterval: units[unitIndex].pointInterval,
-    );
-    units[unitIndex] = updatedUnit;
+    units[unitIndex].description = description;
+    units[unitIndex].lastUpdated = DateTime.now();
     lastUpdated = DateTime.now();
 
     try {
@@ -327,7 +297,7 @@ class Project
     on NetworkException catch (error) {
       throw NetworkException(
         "Project failed to update with the following error:\n$error", 
-        null
+        error.statusCode
       );
     }
   }
@@ -346,15 +316,15 @@ class Project
     // Initialize updated unit with position fields in order to check for
     // overlap.
     int unitIndex = units.indexWhere((unit) => unit.name == name);
-    components.UnitSpec updatedUnit = (
-      name: name, 
-      description: units[unitIndex].description, 
-      lastUpdated: DateTime.now(),
-      createdAt: units[unitIndex].createdAt, 
-      topLeftCoords: topLeft,
-      width: width,
-      height: height,
-      pointInterval: pointInterval,
+    components.UnitSpec updatedUnit = components.UnitSpec(
+      "", 
+      "", 
+      DateTime.now(), 
+      DateTime.now(),
+      topLeft,
+      width,
+      height,
+      pointInterval
     );
 
     // Check to make sure there is no overlap between the repositioned unit and 
@@ -368,7 +338,11 @@ class Project
     }
 
     // If no overlap is present, change position of unit.
-    units[unitIndex] = updatedUnit;
+    units[unitIndex].topLeftCoords = topLeft;
+    units[unitIndex].width = width;
+    units[unitIndex].height = height;
+    units[unitIndex].pointInterval = pointInterval;
+    units[unitIndex].lastUpdated = DateTime.now();
 
     // Check that data assigned to the unit still falls within its bounds and
     // remove assignments that do not.
@@ -390,7 +364,7 @@ class Project
     on NetworkException catch (error) {
       throw NetworkException(
         "Project failed to update with the following error:\n$error", 
-        null
+        error.statusCode
       );
     }
   }
@@ -412,7 +386,7 @@ class Project
     on NetworkException catch (error) {
       throw NetworkException(
         "Project failed to update with the following error:\n$error", 
-        null
+        error.statusCode
       );
     }
   }
@@ -431,7 +405,7 @@ class Project
     on NetworkException catch (error) {
       throw NetworkException(
         "Layer image failed to upload with the following error:\n$error", 
-        null
+        error.statusCode
       );
     }
   }
@@ -452,7 +426,7 @@ class Project
     on NetworkException catch (error) {
       throw NetworkException(
         "Layer image could not be fetched due to the following error:\n$error", 
-        null
+        error.statusCode
       );
     }
   }
@@ -471,7 +445,8 @@ class Project
     on NetworkException catch (error) {
       throw NetworkException(
         "Layer image could not be deleted due to the following error:\n$error", 
-        null);
+        error.statusCode
+      );
     }
   }
 }
