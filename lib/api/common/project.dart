@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../services/network_service.dart';
 import 'network.dart' as network;
 import 'specs.dart' as specs;
@@ -45,6 +47,35 @@ class Project
 
   Project(this.name, this.description, this.createdAt);
 
+  Future<void> addPxrfData(String fileName, String fileContents) async 
+  {
+
+  }
+
+  Future<String> getPxrfData(String fileName) async 
+  {
+    return "";
+  }
+
+  Future<String> removePxrfData(String fileName) async 
+  {
+    return "";
+  }
+
+  Future<void> addTrainingData(String fileName, String fileContents) async 
+  {
+
+  }
+
+  Future<String> getTrainingData(String fileName) async 
+  {
+    return "";
+  }
+
+  Future<String> removeTrainingData(String fileName) async 
+  {
+    return "";
+  }
   /// Creates a new layer at the current time using the given name and 
   /// description and adds it to the project.
   /// 
@@ -390,6 +421,11 @@ class Project
         error.statusCode
       );
     }
+  }
+
+  Future<void> assignData(String layerName, String unitName, String fileName) async
+  {
+
   }
 
   /// Uploads an image corresponding to a layer to the appropriate location in
