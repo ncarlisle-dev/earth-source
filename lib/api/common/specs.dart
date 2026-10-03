@@ -1,13 +1,13 @@
 import 'network.dart' as network;
 
-class AirdroidConnectionSpec {
+class ConnectionSpec {
   String ipAddress;
   int port;
   DateTime createdAt;
   DateTime? lastUsed;
   network.ConnectionStatus status;
 
-  AirdroidConnectionSpec(
+  ConnectionSpec(
     this.ipAddress,
     this.port,
     this.createdAt,
@@ -85,5 +85,19 @@ class DataSpec
     this.createdAt, 
     this.numPoints, 
     this.size
+  );
+}
+
+class DirectoryItemSpec {
+  String name;
+  bool isFile;
+  int size;
+  DateTime lastModified;
+
+  DirectoryItemSpec(
+    this.name,
+    this.isFile,
+    this.size,
+    this.lastModified,
   );
 }

@@ -20,16 +20,16 @@ class NetworkService {
   Future<void> logout()
     => throw UnimplementedError();
 
-  Future<List<common.AirdroidConnectionSpec>> getConnectionEntries()
+  Future<List<common.ConnectionSpec>> getConnectionEntries()
     => throw UnimplementedError();
 
-  Future<common.AirdroidConnectionSpec> getConnectionEntry()
+  Future<common.ConnectionSpec> getConnectionSpec()
     => throw UnimplementedError();
 
-  Future<void> uploadConnectionEntry(common.AirdroidConnectionSpec entry)
+  Future<void> uploadConnectionSpec(common.ConnectionSpec entry)
     => throw UnimplementedError();
 
-  Future<common.AirdroidConnectionSpec> deleteConnectionEntry(String id)
+  Future<common.ConnectionSpec> deleteConnectionSpec(String id)
     => throw UnimplementedError();
 
   Future<List<common.Project>> getProjects()

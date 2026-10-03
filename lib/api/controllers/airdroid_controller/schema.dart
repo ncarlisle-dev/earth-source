@@ -1,4 +1,5 @@
 import 'package:json_schema/json_schema.dart' as json_schema;
+import '../../common/common.dart' as common;
 import 'dart:convert' as convert;
 
 /* ============================== Constants ============================== */
@@ -10,12 +11,22 @@ final _hexRegex = RegExp(r'^[0-9a-fA-F]+$');
 const _authTokenJsonKey = '7bb';
 /// Key to access within AirDroid's connection response to get the device key
 const _deviceKeyJsonKey = 'dk';
-/// Key to access within AirDroid's directory query response to get the list of
-/// directory contents
+
+/// Key within AirDroid's directory query response to get the list of directory 
+/// items.
 const _directoryContentsJsonKey = 'list';
-/// Key to access within AirDroid's directory query response to get the name of
-/// each item within a directory
+/// Key within AirDroid's directory query response to get the name of a
+/// directory item.
 const _directoryItemNameJsonKey = 'name';
+/// Key within AirDroid's directory query response to get the type of a
+/// directory item.
+const _directoryItemTypeJsonKey = 'type';
+/// Key within AirDroid's directory query response to get the size of a
+/// directory item.
+const _directoryItemSizeJsonKey = 'size';
+/// Key within AirDroid's directory query response to get the type of a
+/// directory item.
+const _directoryItemLastModifiedJsonKey = 'last_modified';
 
 /// Name of the format used internally by [json_schema] for auth token type
 /// validation.
@@ -24,7 +35,11 @@ const _authTokenFormatName = 'auth-token';
 /// validation.
 const _deviceKeyFormatName = 'device-key';
 
-/* ============================== Classes ============================== */
+/// Name of the format used internally by [json_schema] for >= 0 integer
+/// validation.
+const _zeroOrGreaterFormatName = 'zero-or-greater';
+
+/* ============================== Utility ============================== */
 
 /// Thrown when data doesn't match the expected type/schema.
 class TypeMismatchException implements Exception
@@ -42,7 +57,7 @@ class TypeMismatchException implements Exception
 /* ============================== Validators ============================== */
 
 /// [json_schema] validator function that checks if the inputted string is a 
-/// 32-character long hex string
+/// 32-character long hex string.
 json_schema.ValidationContext _authTokenValidator(
   json_schema.ValidationContext context,
   String instanceData
@@ -58,7 +73,7 @@ json_schema.ValidationContext _authTokenValidator(
 }
 
 /// [json_schema] validator function that checks if the inputted string is a 
-/// 16-character long hex string
+/// 16-character long hex string.
 json_schema.ValidationContext _deviceKeyValidator(
   json_schema.ValidationContext context,
   String instanceData
@@ -73,16 +88,34 @@ json_schema.ValidationContext _deviceKeyValidator(
   return context;
 }
 
+/// [json_schema] validator function that checks if the inputted string is an
+/// integer that's greater than or equal to zero.
+json_schema.ValidationContext _zeroOrGreaterValidator(
+  json_schema.ValidationContext context,
+  String instanceData
+)
+{
+  final convertedData = int.tryParse(instanceData);
+
+  if (convertedData == null || convertedData < 0) {
+    context.addError(
+      "'$_deviceKeyFormatName' format not accepted on '$instanceData'."
+    );
+  }
+
+  return context;
+}
+
 /* ============================== Schemas ============================== */
 
 /// Map of custom formats/validators to pass to [json_schema] for custom
-/// validation.
-const _customFormats = {
+/// validation with the connection response.
+const _connectionCustomFormats = {
   _deviceKeyFormatName: _deviceKeyValidator,
   _authTokenFormatName: _authTokenValidator,
 };
 
-/// The expected AirDroid connection response schema
+/// The expected AirDroid connection response schema.
 final _connectionResponseSchema = json_schema.JsonSchema.create(
   {
     'type': 'object',
@@ -98,10 +131,16 @@ final _connectionResponseSchema = json_schema.JsonSchema.create(
     },
     'required': [_deviceKeyJsonKey, _authTokenJsonKey]
   },
-  customFormats: _customFormats,
+  customFormats: _connectionCustomFormats,
 );
 
-/// The expected AirDroid directory query response schema
+/// Map of custom formats/validators to pass to [json_schema] for custom
+/// validation with the directory query response.
+const _directoryCustomFormats = {
+  _zeroOrGreaterFormatName: _zeroOrGreaterValidator,
+};
+
+/// The expected AirDroid directory query response schema.
 final _listDirectorySchema = json_schema.JsonSchema.create(
   {
     'type': 'object',
@@ -114,13 +153,31 @@ final _listDirectorySchema = json_schema.JsonSchema.create(
             _directoryItemNameJsonKey: {
               'type': 'string'
             },
+            _directoryItemTypeJsonKey: {
+              'type': 'int', // 0 => files, 1 => directory
+              'format': _zeroOrGreaterFormatName,
+            },
+            _directoryItemSizeJsonKey: {
+              'type': 'int', // number of bytes
+              'format': _zeroOrGreaterFormatName,
+            },
+            _directoryItemLastModifiedJsonKey: {
+              'type': 'int', // milliseconds since epoch
+              'format': _zeroOrGreaterFormatName,
+            },
           },
-          'required': [_directoryItemNameJsonKey]
+          'required': [
+            _directoryItemNameJsonKey,
+            _directoryItemTypeJsonKey,
+            _directoryItemSizeJsonKey,
+            _directoryItemLastModifiedJsonKey
+          ]
         },
       },
     },
     'required': [_directoryContentsJsonKey],
   },
+  customFormats: _directoryCustomFormats,
 );
 
 /* ============================== Functions ============================== */
@@ -154,7 +211,7 @@ final _listDirectorySchema = json_schema.JsonSchema.create(
 /// 
 /// Throws a [TypeMismatchException] if [jsonStr] doesn't match the expected
 /// schema.
-List<({String name})> extractDirectoryContents(String jsonStr)
+List<common.DirectoryItemSpec> extractDirectoryContents(String jsonStr)
 {
   // parse json
   final dynamic jsonData = convert.jsonDecode(jsonStr);
@@ -167,11 +224,16 @@ List<({String name})> extractDirectoryContents(String jsonStr)
   }
 
   // populate list and return
-  final List<({String name})> directoryItems = [];
+  final List<common.DirectoryItemSpec> directoryItems = [];
 
   for (final dynamic item in jsonData[_directoryContentsJsonKey]) {
-    directoryItems.add((
-      name: item[_directoryItemNameJsonKey],
+    directoryItems.add(common.DirectoryItemSpec(
+      item[_directoryItemNameJsonKey],
+      int.parse(item[_directoryItemTypeJsonKey]) == 0,
+      int.parse(item[_directoryItemTypeJsonKey]),
+      DateTime.fromMillisecondsSinceEpoch(
+        item[_directoryItemLastModifiedJsonKey]
+      ),
     ));
   }
 
