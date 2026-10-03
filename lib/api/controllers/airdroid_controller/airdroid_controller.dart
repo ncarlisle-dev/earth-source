@@ -1,4 +1,4 @@
-import '../../common.dart' as common;
+import '../../common/common.dart' as common;
 import 'airdroid_client.dart';
 import '../../services/network_service.dart';
 
@@ -112,7 +112,7 @@ class AirdroidController
     assert(_isValidPort(port), "Port is invalid.");
   }
 
-  Future<List<common.DirectoryItem>> getDirectoryContents(
+  Future<List<common.DirectoryItemSpec>> getDirectoryContents(
     String ipAddress,
     int port,
     String filePath

@@ -236,7 +236,7 @@ class AirdroidClient
   /// 
   /// Throws a [common.NetworkException] if the request fails or the server 
   /// gives an unexpected reponse.
-  Future<List<({String name})>> queryDirectory(String filePath) async
+  Future<List<common.DirectoryItemSpec>> queryDirectory(String filePath) async
   {
     // make sure directory can be queried
     assert(_status == .connected, "Client is not connected.");
@@ -257,7 +257,7 @@ class AirdroidClient
     );
 
     // extract the data and return
-    final List<common.DirectoryItem> directoryItems;
+    final List<common.DirectoryItemSpec> directoryItems;
 
     try {
       directoryItems = ad_schema.extractDirectoryContents(response.body);

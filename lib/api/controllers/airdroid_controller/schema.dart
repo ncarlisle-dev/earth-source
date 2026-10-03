@@ -1,5 +1,5 @@
 import 'package:json_schema/json_schema.dart' as json_schema;
-import '../../common.dart' as api_common;
+import '../../common/common.dart' as common;
 import 'dart:convert' as convert;
 
 /* ============================== Constants ============================== */
@@ -211,7 +211,7 @@ final _listDirectorySchema = json_schema.JsonSchema.create(
 /// 
 /// Throws a [TypeMismatchException] if [jsonStr] doesn't match the expected
 /// schema.
-List<api_common.DirectoryItem> extractDirectoryContents(String jsonStr)
+List<common.DirectoryItemSpec> extractDirectoryContents(String jsonStr)
 {
   // parse json
   final dynamic jsonData = convert.jsonDecode(jsonStr);
@@ -224,10 +224,10 @@ List<api_common.DirectoryItem> extractDirectoryContents(String jsonStr)
   }
 
   // populate list and return
-  final List<api_common.DirectoryItem> directoryItems = [];
+  final List<common.DirectoryItemSpec> directoryItems = [];
 
   for (final dynamic item in jsonData[_directoryContentsJsonKey]) {
-    directoryItems.add(api_common.DirectoryItem(
+    directoryItems.add(common.DirectoryItemSpec(
       item[_directoryItemNameJsonKey],
       int.parse(item[_directoryItemTypeJsonKey]) == 0,
       int.parse(item[_directoryItemTypeJsonKey]),
