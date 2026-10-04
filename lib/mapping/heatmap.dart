@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart' as material;
+import 'package:flutter/material.dart';
 
 /// Utility function - modifies the alpha channel of a color value depending
 /// on the value of the prediction at that point.
-material.Color heatValueToColor(double value) 
+Color heatValueToColor(double value) 
 {
   final baseColor = HeatPalette.colorFor(value, "soil");
 
@@ -17,43 +17,43 @@ material.Color heatValueToColor(double value)
 class HeatPalette 
 {
   /// Map of colors to represent soil.
-  static const Map<int, material.Color> soilColors = {
-    0: material.Colors.transparent,
-    1: material.Color.fromARGB(255, 206, 253, 200), 
-    2: material.Color.fromARGB(255, 185, 247, 114), 
-    3: material.Color.fromARGB(255, 117, 200, 54), 
-    4: material.Color.fromARGB(255, 69, 153, 32), 
-    5: material.Color.fromARGB(255, 8, 61, 1), 
+  static const Map<int, Color> soilColors = {
+    0: Colors.transparent,
+    1: Color.fromARGB(255, 206, 253, 200), 
+    2: Color.fromARGB(255, 185, 247, 114), 
+    3: Color.fromARGB(255, 117, 200, 54), 
+    4: Color.fromARGB(255, 69, 153, 32), 
+    5: Color.fromARGB(255, 8, 61, 1), 
   };
 
   /// Map of colors to represent pottery.
-  static const Map<int, material.Color> potteryColors = {
-    0: material.Colors.transparent,
-    1: material.Color.fromARGB(255, 148, 178, 244), 
-    2: material.Color.fromARGB(255, 116, 160, 241), 
-    3: material.Color.fromARGB(255, 80, 128, 252), 
-    4: material.Color.fromARGB(255, 50, 108, 255), 
-    5: material.Color.fromARGB(255, 1, 69, 241), 
+  static const Map<int, Color> potteryColors = {
+    0: Colors.transparent,
+    1: Color.fromARGB(255, 148, 178, 244), 
+    2: Color.fromARGB(255, 116, 160, 241), 
+    3: Color.fromARGB(255, 80, 128, 252), 
+    4: Color.fromARGB(255, 50, 108, 255), 
+    5: Color.fromARGB(255, 1, 69, 241), 
   };
 
   /// Map of colors to represent metal.
-  static const Map<int, material.Color> metalColors = {
-    0: material.Colors.transparent,
-    1: material.Color.fromARGB(255, 229, 199, 247), 
-    2: material.Color.fromARGB(255, 225, 149, 242), 
-    3: material.Color.fromARGB(255, 173, 91, 196), 
-    4: material.Color.fromARGB(255, 110, 55, 125), 
-    5: material.Color.fromARGB(255, 50, 0, 53), 
+  static const Map<int, Color> metalColors = {
+    0: Colors.transparent,
+    1: Color.fromARGB(255, 229, 199, 247), 
+    2: Color.fromARGB(255, 225, 149, 242), 
+    3: Color.fromARGB(255, 173, 91, 196), 
+    4: Color.fromARGB(255, 110, 55, 125), 
+    5: Color.fromARGB(255, 50, 0, 53), 
   };
 
   /// Map of colors to represent slag.
-  static const Map<int, material.Color> slagColors = {
-    0: material.Colors.transparent,
-    1: material.Color.fromARGB(255, 241, 237, 154), 
-    2: material.Color.fromARGB(255, 241, 213, 111), 
-    3: material.Color.fromARGB(255, 211, 160, 66), 
-    4: material.Color.fromARGB(255, 207, 121, 40), 
-    5: material.Color.fromARGB(255, 99, 45, 0), 
+  static const Map<int, Color> slagColors = {
+    0: Colors.transparent,
+    1: Color.fromARGB(255, 241, 237, 154), 
+    2: Color.fromARGB(255, 241, 213, 111), 
+    3: Color.fromARGB(255, 211, 160, 66), 
+    4: Color.fromARGB(255, 207, 121, 40), 
+    5: Color.fromARGB(255, 99, 45, 0), 
   };
 
   /// Determines into which bin a data point falls depending on how high the 
@@ -69,7 +69,7 @@ class HeatPalette
   }
 
   /// Uses appropriate color palette for each material to select a color.
-  static material.Color colorFor(double point, String material) 
+  static Color colorFor(double point, String material) 
   {
     switch (material) {
       case "soil":
@@ -88,7 +88,7 @@ class HeatPalette
 
 /// An extension of the CustomPainter class that paints a gridded heatmap onto
 /// an image.
-class HeatmapPainter extends material.CustomPainter 
+class HeatmapPainter extends CustomPainter 
 {
   /// 2D list of predicted values, with rows and columns in the list 
   /// corresponding to rows and columns on the map.
@@ -103,7 +103,7 @@ class HeatmapPainter extends material.CustomPainter
   });
 
   @override
-  void paint(material.Canvas canvas, material.Size size) 
+  void paint(Canvas canvas, Size size) 
   {
     /// Divide the canvas into rows and columns based on dimensions of the 
     /// data list and paint each cell accordingly.
@@ -115,7 +115,7 @@ class HeatmapPainter extends material.CustomPainter
     final double cellW = size.width / cols;
     final double cellH = size.height / rows;
 
-    final rectPaint = material.Paint()..style = material.PaintingStyle.fill;
+    final rectPaint = Paint()..style = PaintingStyle.fill;
 
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
@@ -126,7 +126,7 @@ class HeatmapPainter extends material.CustomPainter
 
         final double left = x * cellW;
         final double top = y * cellH;
-        final rect = material.Rect.fromLTWH(left, top, cellW, cellH);
+        final rect = Rect.fromLTWH(left, top, cellW, cellH);
 
         canvas.drawRect(rect, rectPaint);
       }
@@ -135,20 +135,20 @@ class HeatmapPainter extends material.CustomPainter
     /// If applicable, draw grid lines demarcating each individual cell on the
     /// canvas.
     if (debugGridLines) {
-      final gridPaint = material.Paint()
-        ..style = material.PaintingStyle.stroke
+      final gridPaint = Paint()
+        ..style = PaintingStyle.stroke
         ..strokeWidth = 0.5
-        ..color = material.Colors.black.withValues();
+        ..color = Colors.black.withValues();
 
       for (int x = 0; x <= cols; x++) {
         final dx = x * cellW;
-        canvas.drawLine(material.Offset(dx, 0), 
-          material.Offset(dx, size.height), gridPaint);
+        canvas.drawLine(Offset(dx, 0), 
+          Offset(dx, size.height), gridPaint);
       }
       for (int y = 0; y <= rows; y++) {
         final dy = y * cellH;
-        canvas.drawLine(material.Offset(0, dy), 
-          material.Offset(size.width, dy), gridPaint);
+        canvas.drawLine(Offset(0, dy), 
+          Offset(size.width, dy), gridPaint);
       }
     }
   }
