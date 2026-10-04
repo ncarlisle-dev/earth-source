@@ -41,6 +41,8 @@ dependencies:
   intl: ^0.20.3
   csv: ^8.0.0
   image_size_getter: ^2.3.0
+  flutter_map_math: ^0.2.4
+  latlong2: ^0.9.0
 
 dev_dependencies:
   flutter_test:
