@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' as material;
+import '../mapping/visualizer.dart' as visualizer;
 
 /// A page for describing the project, with links to the repository and website.
 class AboutPage extends material.StatefulWidget {
@@ -13,17 +14,14 @@ class _AboutPageState extends material.State<AboutPage> {
 
   @override
   material.Widget build(material.BuildContext context) {
+    
     return material.Scaffold(
       body:
-        material.Card(
-          shadowColor: material.Colors.transparent,
-          margin: const material.EdgeInsets.all(8.0),
-          child: material.SizedBox.expand(
-            child: material.Center(
-              child: material.Text('About'),
-            ),
-          ),
-        ),
+        visualizer.Visualizer(
+          dataFilePath: "assets/ebk_mean_prediction.csv", 
+          imageFilePath: "assets/2D_Site_Map_Test.png",
+          cornerCoordinates: [],
+        )
     );
     }
 }
