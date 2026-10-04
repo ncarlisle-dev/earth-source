@@ -1,11 +1,11 @@
 import 'dart:io' as io;
 import 'dart:ui' as ui;
 import 'dart:convert' as convert;
-import 'package:flutter/material.dart' as material;
+import 'package:flutter/material.dart';
 import 'package:csv/csv.dart' as csv_dart;
 import 'package:image_size_getter/image_size_getter.dart' as image_size_getter;
 import 'package:image_size_getter/file_input.dart' as file_input;
-import 'heatmap.dart' as heatmap;
+import 'heatmap.dart';
 
 /// Utility function - opens the given data file and reads and validates its 
 /// contents.
@@ -51,7 +51,7 @@ Future<List<List<double>>> _validateData(String dataFilePath) async
 
 /// A visualizer widget that displays either an image with no modifications if
 /// no data file is provided, or an image with a heatmap overlaid onto it.
-class Visualizer extends material.StatelessWidget
+class Visualizer extends StatelessWidget
 {
   /// Filepath to a CSV file storing prediction results (given an empty string
   /// if non-applicable);
@@ -111,53 +111,57 @@ class Visualizer extends material.StatelessWidget
   }
 
   @override
-  material.Widget build(material.BuildContext context)
+  Widget build(BuildContext context)
   {
     io.File image = io.File(imageFilePath);
     final jpgResult = 
       image_size_getter.ImageSizeGetter.getSizeResult
       (file_input.FileInput(image));
-    ui.Size imageSize = ui.Size
-      (jpgResult.size.width.toDouble(), jpgResult.size.height.toDouble());
+    ui.Size imageSize = ui.Size(
+      jpgResult.size.width.toDouble(), 
+      jpgResult.size.height.toDouble()
+    );
     
-    return material.ListView(
+    return ListView(
       children: [
-        material.InteractiveViewer(
+        InteractiveViewer(
         child:   
-          material.FutureBuilder(
+          FutureBuilder(
             future: _validateData(dataFilePath),
-            builder: (material.BuildContext ctx, 
-            material.AsyncSnapshot<List> snapshot) 
+            builder: (
+              BuildContext ctx, 
+              AsyncSnapshot<List> snapshot
+            ) 
             => snapshot.hasData
             ? 
-            material.Center(
-              child: material.SizedBox(
+            Center(
+              child: SizedBox(
                 width: _calculateDimensions(
-                  material.MediaQuery.of(context).size.width, 
-                  material.MediaQuery.of(context).size.height, 
+                  MediaQuery.of(context).size.width, 
+                  MediaQuery.of(context).size.height, 
                   imageSize.width, 
                   imageSize.height
-                  )[0],
+                )[0],
                 height: _calculateDimensions(
-                  material.MediaQuery.of(context).size.width, 
-                  material.MediaQuery.of(context).size.height, 
+                  MediaQuery.of(context).size.width, 
+                  MediaQuery.of(context).size.height, 
                   imageSize.width, 
                   imageSize.height
-                  )[1],
-                child: material.Stack(
-                  fit: material.StackFit.expand,
+                )[1],
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    material.Image.file(
+                    Image.file(
                       io.File(imageFilePath), 
                       width: imageSize.width, 
                       height: imageSize.height,
-                      fit: material.BoxFit.fill
+                      fit: BoxFit.fill
                     ),
-                    material.IgnorePointer(
-                      child: material.CustomPaint(
-                        painter: heatmap.HeatmapPainter(
-                        heat: snapshot.data! as List<List<double>>,
-                        debugGridLines: false,
+                    IgnorePointer(
+                      child: CustomPaint(
+                        painter: HeatmapPainter(
+                          heat: snapshot.data! as List<List<double>>,
+                          debugGridLines: false,
                         ),
                       ),
                     ),
@@ -166,11 +170,11 @@ class Visualizer extends material.StatelessWidget
               )
             )
             :
-            material.Image.file(
+            Image.file(
               io.File(imageFilePath), 
               width: imageSize.width, 
               height: imageSize.height, 
-              fit: material.BoxFit.scaleDown
+              fit: BoxFit.scaleDown
             ),
           ),
         ),
