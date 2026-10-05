@@ -2,6 +2,8 @@ import 'package:flutter/material.dart' as material;
 import '../api/api.dart' as api;
 import 'package:intl/intl.dart' as intl;
 
+// TODO: port this page over to use new AirdroidController
+
 /* ============================== Utility ============================== */
 
 /// Maps [api.ConnectionStatus]es to symbols indicating their value.
@@ -28,44 +30,12 @@ const _connectionStatusSymbols = {
   ),
 };
 
-/// A connection entry to be displayed to the user.
-/// 
-/// If [client] is null, treat the entry as if it is disconnected.
-class _ConnectionSpec
-{
-  final String ipAddress;
-  final int port;
-  final DateTime timeCreated;
-  api.AirdroidClient? client;
-
-  _ConnectionSpec(this.ipAddress, this.port, this.timeCreated, this.client);
-}
-
-
-/// File-scoped list of [_ConnectionSpec]s to display to the user.
-/// 
-/// TODO: Save these to a file and reload them on startup
-final List<_ConnectionSpec> _connectionEntries = [];
-
 /// The current setState function given by the builder.
 /// 
 /// Some processes occur asynchronously to the build process, so this acts as
 /// a pointer to the proper setState() function and makes sure an outdated
 /// function call isn't made.
 void Function(void Function())? currSetState;
-
-/// Helper function that updates the connection statuses of all connected
-/// clients.
-void refreshConnections()
-{
-  for (final entry in _connectionEntries) {
-    if (entry.client == null || !entry.client!.isConnected()) {
-      continue;
-    }
-
-    entry.client!.updateConnectionStatus();
-  }
-}
 
 /* ============================ Connections page ============================ */
 
