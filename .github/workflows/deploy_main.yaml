@@ -1,0 +1,33 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy_main:
+    name: Deploy backend to main
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Check out a copy of the repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm" # Caches dependencies for faster runs
+
+      - name: Update npm packages
+        run: npm ci --ignore-scripts --include=dev
+
+      - name: Deploy to main
+      - if: github.event_name == 'push'
+        run: npx convex deploy
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+
+
