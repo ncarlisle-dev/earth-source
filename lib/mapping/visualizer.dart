@@ -5,6 +5,7 @@ import 'package:csv/csv.dart' as csv_dart;
 import 'package:flutter_map/flutter_map.dart' as map;
 import 'package:latlong2/latlong.dart' as latlong;
 import 'package:flutter_map_math/flutter_geo_math.dart' as flutter_geo_math;
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'heat_palette.dart';
 
 /// Utility function - opens the given data file and reads and validates its 
@@ -67,11 +68,21 @@ Future<List<map.Polygon>> _validateData(
       for (var i = 0; i < rows.length; i++) {
         for (var j = 0; j < rows[0].length; j++) {
           double predictionPoint = double.parse(rows[i][j]);
+
+          // Check that current prediction point is above the user-set threshold
+          // - if not, to cut down on rendering costs, that point won't be
+          // displayed.
           if (predictionPoint > threshold) {
+            // Calculate distance from the left side of the map image to the
+            // left and right sides of the current point's polygon, as well as
+            // distance from the top side of the map image to the top and 
+            // bottom sides of the polygon.
             double height1 = i * heightInterval;
             double height2 = (i + 1) * heightInterval;
             double width1 = j * widthInterval;
             double width2 = (j + 1) * widthInterval;
+            // Use these distances to calculate latitude and longitude for each
+            // of the four corner points of the polygon.
             double left = flutter_geo_math.FlutterMapMath.destinationPoint(
               cornerCoordinates[0].latitude, 
               cornerCoordinates[0].longitude, 
@@ -96,6 +107,8 @@ Future<List<map.Polygon>> _validateData(
               height2, 
               180
             ).latitude;
+
+            // Construct and color the polygon.
             map.Polygon polygon = map.Polygon(
               points: [
                 latlong.LatLng(top, left), 
@@ -147,85 +160,101 @@ class Visualizer extends StatelessWidget
     return Column(
       children: [  
         Expanded(
-            child: map.FlutterMap(
-                mapController: mapController,
-                options: map.MapOptions(
-                  initialCenter: latlong.LatLng((cornerCoordinates[0].latitude + 
-                  cornerCoordinates[1].latitude) / 2, 
-                  (cornerCoordinates[0].longitude + 
-                  cornerCoordinates[2].longitude) / 2),
-                  initialZoom: 22.0,
-                ),
-                children: [
-                  map.OverlayImageLayer(
-                    overlayImages: [
-                      map.RotatedOverlayImage(
-                        topLeftCorner: latlong.LatLng(
-                          cornerCoordinates[0].latitude, 
-                          cornerCoordinates[0].longitude),
-                        bottomLeftCorner: latlong.LatLng(
-                          cornerCoordinates[1].latitude, 
-                          cornerCoordinates[1].longitude),
-                        bottomRightCorner: latlong.LatLng(
-                          cornerCoordinates[3].latitude, 
-                          cornerCoordinates[3].longitude),
-                        imageProvider: FileImage(image),
-                      )
-                    ]
+          child: map.FlutterMap(
+            mapController: mapController,
+            options: map.MapOptions(
+              initialCenter: latlong.LatLng(
+                (cornerCoordinates[0].latitude + 
+                cornerCoordinates[1].latitude) / 2, 
+                (cornerCoordinates[0].longitude + 
+                cornerCoordinates[2].longitude) / 2
+              ),
+              initialZoom: 22.0,
+            ),
+            children: [
+              map.TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.archaeosight_two'
+              ),
+              map.RichAttributionWidget(
+                popupInitialDisplayDuration: const Duration(seconds: 5),
+                animationConfig: const map.ScaleRAWA(),
+                showFlutterMapAttribution: false,
+                attributions: [
+                  map.TextSourceAttribution(
+                    'OpenStreetMap contributors',
+                    onTap: () async => url_launcher.launchUrl(
+                      Uri.parse('https://openstreetmap.org/copyright'),
+                    ),
                   ),
-                  FutureBuilder(
-                    future: _validateData(dataFilePath, cornerCoordinates, threshold),
-                    builder: (BuildContext ctx, 
-                    AsyncSnapshot<List> snapshot) 
-                    => snapshot.hasData
-                  ?
-                    map.PolygonLayer(polygons: snapshot.data! as List<map.Polygon>)
-                  :
-                    Center(),
-                  ),
-                  map.OverlayImageLayer(
-                    overlayImages: [
-                      map.RotatedOverlayImage(
-                        topLeftCorner: latlong.LatLng(
-                          cornerCoordinates[0].latitude, 
-                          cornerCoordinates[0].longitude),
-                        bottomLeftCorner: latlong.LatLng(
-                          cornerCoordinates[1].latitude, 
-                          cornerCoordinates[1].longitude),
-                        bottomRightCorner: latlong.LatLng(
-                          cornerCoordinates[3].latitude, 
-                          cornerCoordinates[3].longitude),
-                        imageProvider: FileImage(image),
-                        opacity: 0.2,
-                      )
-                    ]
-                  ),
-                  map.OverlayImageLayer(
-                    overlayImages: [
-                      map.RotatedOverlayImage(
-                        topLeftCorner: latlong.LatLng(
-                          cornerCoordinates[0].latitude, 
-                          cornerCoordinates[0].longitude),
-                        bottomLeftCorner: latlong.LatLng(
-                          cornerCoordinates[1].latitude, 
-                          cornerCoordinates[1].longitude),
-                        bottomRightCorner: latlong.LatLng(
-                          cornerCoordinates[3].latitude, 
-                          cornerCoordinates[3].longitude),
-                        imageProvider: FileImage(image),
-                        opacity: 0.5,
-                      )
-                    ]
-                  ),
-                  const map.Scalebar(
-                    textStyle: TextStyle(color: Colors.black, fontSize: 14),
-                    padding: EdgeInsets.only(right: 10, left: 10, bottom: 40),
-                    alignment: Alignment.bottomCenter,
-                    length: map.ScalebarLength.xxl,
-                  ),
+                ],
+              ),
+              map.OverlayImageLayer(
+                overlayImages: [
+                  map.RotatedOverlayImage(
+                    topLeftCorner: latlong.LatLng(
+                      cornerCoordinates[0].latitude, 
+                      cornerCoordinates[0].longitude
+                    ),
+                    bottomLeftCorner: latlong.LatLng(
+                      cornerCoordinates[1].latitude, 
+                      cornerCoordinates[1].longitude
+                    ),
+                    bottomRightCorner: latlong.LatLng(
+                      cornerCoordinates[3].latitude, 
+                      cornerCoordinates[3].longitude
+                    ),
+                    imageProvider: FileImage(image),
+                  )
                 ]
-              )
-            )
+              ),
+              FutureBuilder(
+                future: _validateData(
+                  dataFilePath, 
+                  cornerCoordinates, 
+                  threshold
+                ),
+                builder: (
+                  BuildContext ctx, 
+                  AsyncSnapshot<List> snapshot
+                ) 
+                => snapshot.hasData
+              ?
+                map.PolygonLayer(
+                  polygons: snapshot.data! as List<map.Polygon>
+                )
+              :
+                Center(),
+              ),
+              map.OverlayImageLayer(
+                overlayImages: [
+                  map.RotatedOverlayImage(
+                    topLeftCorner: latlong.LatLng(
+                      cornerCoordinates[0].latitude, 
+                      cornerCoordinates[0].longitude
+                    ),
+                    bottomLeftCorner: latlong.LatLng(
+                      cornerCoordinates[1].latitude, 
+                      cornerCoordinates[1].longitude
+                    ),
+                    bottomRightCorner: latlong.LatLng(
+                      cornerCoordinates[3].latitude, 
+                      cornerCoordinates[3].longitude
+                    ),
+                    imageProvider: FileImage(image),
+                    opacity: 0.5,
+                  )
+                ]
+              ),
+              const map.Scalebar(
+                textStyle: TextStyle(color: Colors.black, fontSize: 14),
+                padding: EdgeInsets.only(right: 10, left: 10, bottom: 40),
+                alignment: Alignment.bottomCenter,
+                length: map.ScalebarLength.xxl,
+              ),
+            ]
+          )
+        )
       ]
     );
   }  
