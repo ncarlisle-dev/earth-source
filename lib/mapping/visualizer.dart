@@ -1,21 +1,19 @@
 import 'dart:io' as io;
-import 'dart:ui' as ui;
 import 'dart:convert' as convert;
 import 'package:flutter/material.dart';
 import 'package:csv/csv.dart' as csv_dart;
-import 'package:image_size_getter/image_size_getter.dart' as image_size_getter;
-import 'package:image_size_getter/file_input.dart' as file_input;
-import 'heatmap.dart';
+import 'package:flutter_map/flutter_map.dart' as map;
+import 'package:latlong2/latlong.dart' as latlong;
+import 'package:flutter_map_math/flutter_geo_math.dart' as flutter_geo_math;
 
 /// Utility function - opens the given data file and reads and validates its 
 /// contents.
 /// 
 /// Returns a 2D list of parsed CSV data if the file contains valid content; an
 /// empty list if invalid or if no data file is provided.
-Future<List<List<double>>> _validateData(String dataFilePath) async
+Future<List<map.Polygon>> _validateData(String dataFilePath, List<latlong.LatLng> cornerCoordinates) async
 {
-  /// 2D list of data values.
-  List<List<double>> heatMapData = [];
+  List<map.Polygon> polygons = [];
   /// Boolean to ensure data is only returned if it's within a valid range.
   bool isDataValid = true;
 
@@ -37,16 +35,51 @@ Future<List<List<double>>> _validateData(String dataFilePath) async
     }
 
     if (isDataValid) {
+      double heightInterval = flutter_geo_math.FlutterMapMath.distanceBetween(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, cornerCoordinates[1].latitude, cornerCoordinates[1].longitude, "");
+      double widthInterval = flutter_geo_math.FlutterMapMath.distanceBetween(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, cornerCoordinates[2].latitude, cornerCoordinates[2].longitude, "");
+
+      heightInterval = heightInterval / rows.length;
+      widthInterval = widthInterval / rows[0].length;
+
       for (var i = 0; i < rows.length; i++) {
-        List<double> rowList = [];
-        for (var j = 0; j < rows[i].length; j++) {
-          rowList.add(double.parse(rows[i][j]));
-          heatMapData.add(rowList);
+        for (var j = 0; j < rows[0].length; j++) {
+          double height1 = i * heightInterval;
+          double height2 = (i + 1) * heightInterval;
+          double width1 = j * widthInterval;
+          double width2 = (j + 1) * widthInterval;
+          double left = flutter_geo_math.FlutterMapMath.destinationPoint(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, width1, 90).longitude;
+          double right = flutter_geo_math.FlutterMapMath.destinationPoint(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, width2, 90).longitude;
+          double top = flutter_geo_math.FlutterMapMath.destinationPoint(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, height1, 180).latitude;
+          double bottom = flutter_geo_math.FlutterMapMath.destinationPoint(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, height2, 180).latitude;
+          Color color;
+          switch (double.parse(rows[i][j]))
+          {
+            case > 0.9:
+              color = Color.fromARGB(255, 8, 61, 1);
+              break;
+            case > 0.8:
+              color = Color.fromARGB(255, 69, 153, 32);
+              break;
+            case > 0.75:
+              color = Color.fromARGB(255, 117, 200, 54);
+              break;
+            case > 0.6:
+              color = Color.fromARGB(255, 185, 247, 114);
+              break;
+            case > 0.5:
+              color = Color.fromARGB(255, 206, 253, 200);
+              break;
+            default:
+              color = Colors.transparent;
+              break;
+          }
+          map.Polygon polygon = map.Polygon(points: [latlong.LatLng(top, left), latlong.LatLng(top, right), latlong.LatLng(bottom, right), latlong.LatLng(bottom, left)], color: color);
+          polygons.add(polygon);
         }
       } 
     }
   }
-  return heatMapData;
+  return polygons;
 }
 
 /// A visualizer widget that displays either an image with no modifications if
@@ -60,7 +93,7 @@ class Visualizer extends StatelessWidget
   final String imageFilePath;
   /// List of decimal coordinates for the four corners of the image - currently
   /// not in use.
-  final List<List<double>> cornerCoordinates;
+  final List<latlong.LatLng> cornerCoordinates;
 
   const Visualizer({
     super.key, 
@@ -69,116 +102,95 @@ class Visualizer extends StatelessWidget
     required this.cornerCoordinates
   });
 
-  /// Calculates the appropriately-scaled dimensions of the image and heatmap as
-  /// they should be displayed on the screen.
-  List<double> _calculateDimensions(
-    double screenWidth, 
-    double screenHeight, 
-    double imageWidth, 
-    double imageHeight
-  )
-  {
-    double containerWidth;
-    double containerHeight;
-
-    /// If current screen width and height are greater than or equal to image
-    /// dimensions, the image can be displayed with no modifications.
-    if (screenWidth >= imageWidth && screenHeight >= imageHeight) {
-      containerWidth = imageWidth;
-      containerHeight = imageHeight;
-    }
-    /// Otherwise, scale down the image depending on whether screen height or 
-    /// width is the more limiting factor.
-    else if (screenWidth >= imageWidth && screenHeight < imageHeight) {
-      containerWidth = (screenHeight / imageHeight) * imageWidth;
-      containerHeight = screenHeight;
-    }
-    else if (screenWidth < imageWidth && screenHeight >= imageHeight) {
-      containerWidth = screenWidth;
-      containerHeight = (screenWidth / imageWidth) * imageHeight;
-    }
-    else {
-      if (screenWidth / imageWidth < screenHeight / imageHeight) {
-        containerWidth = screenWidth;
-        containerHeight = (screenWidth / imageWidth) * imageHeight;
-      }
-      else {
-        containerWidth = (screenHeight / imageHeight) * imageWidth;
-        containerHeight = screenHeight;
-      }
-    }
-    return [containerWidth, containerHeight];
-  }
-
   @override
   Widget build(BuildContext context)
   {
+    final map.MapController mapController = map.MapController();
     io.File image = io.File(imageFilePath);
-    final jpgResult = 
-      image_size_getter.ImageSizeGetter.getSizeResult
-      (file_input.FileInput(image));
-    ui.Size imageSize = ui.Size(
-      jpgResult.size.width.toDouble(), 
-      jpgResult.size.height.toDouble()
-    );
     
-    return ListView(
-      children: [
-        InteractiveViewer(
-        child:   
-          FutureBuilder(
-            future: _validateData(dataFilePath),
-            builder: (
-              BuildContext ctx, 
-              AsyncSnapshot<List> snapshot
-            ) 
-            => snapshot.hasData
-            ? 
-            Center(
-              child: SizedBox(
-                width: _calculateDimensions(
-                  MediaQuery.of(context).size.width, 
-                  MediaQuery.of(context).size.height, 
-                  imageSize.width, 
-                  imageSize.height
-                )[0],
-                height: _calculateDimensions(
-                  MediaQuery.of(context).size.width, 
-                  MediaQuery.of(context).size.height, 
-                  imageSize.width, 
-                  imageSize.height
-                )[1],
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.file(
-                      io.File(imageFilePath), 
-                      width: imageSize.width, 
-                      height: imageSize.height,
-                      fit: BoxFit.fill
-                    ),
-                    IgnorePointer(
-                      child: CustomPaint(
-                        painter: HeatmapPainter(
-                          heat: snapshot.data! as List<List<double>>,
-                          debugGridLines: false,
-                        ),
-                      ),
-                    ),
-                  ],
-                )
+    return Column(
+      children: [  
+        Expanded(
+            child: map.FlutterMap(
+                mapController: mapController,
+                options: map.MapOptions(
+                  initialCenter: latlong.LatLng((cornerCoordinates[0].latitude + 
+                  cornerCoordinates[1].latitude) / 2, 
+                  (cornerCoordinates[0].longitude + 
+                  cornerCoordinates[2].longitude) / 2),
+                  initialZoom: 22.0,
+                ),
+                children: [
+                  map.OverlayImageLayer(
+                    overlayImages: [
+                      map.RotatedOverlayImage(
+                        topLeftCorner: latlong.LatLng(
+                          cornerCoordinates[0].latitude, 
+                          cornerCoordinates[0].longitude),
+                        bottomLeftCorner: latlong.LatLng(
+                          cornerCoordinates[1].latitude, 
+                          cornerCoordinates[1].longitude),
+                        bottomRightCorner: latlong.LatLng(
+                          cornerCoordinates[3].latitude, 
+                          cornerCoordinates[3].longitude),
+                        imageProvider: FileImage(image),
+                      )
+                    ]
+                  ),
+                  FutureBuilder(
+                    future: _validateData(dataFilePath, cornerCoordinates),
+                    builder: (BuildContext ctx, 
+                    AsyncSnapshot<List> snapshot) 
+                    => snapshot.hasData
+                  ?
+                    map.PolygonLayer(polygons: snapshot.data! as List<map.Polygon>)
+                  :
+                    Center(),
+                  ),
+                  map.OverlayImageLayer(
+                    overlayImages: [
+                      map.RotatedOverlayImage(
+                        topLeftCorner: latlong.LatLng(
+                          cornerCoordinates[0].latitude, 
+                          cornerCoordinates[0].longitude),
+                        bottomLeftCorner: latlong.LatLng(
+                          cornerCoordinates[1].latitude, 
+                          cornerCoordinates[1].longitude),
+                        bottomRightCorner: latlong.LatLng(
+                          cornerCoordinates[3].latitude, 
+                          cornerCoordinates[3].longitude),
+                        imageProvider: FileImage(image),
+                        opacity: 0.2,
+                      )
+                    ]
+                  ),
+                  map.OverlayImageLayer(
+                    overlayImages: [
+                      map.RotatedOverlayImage(
+                        topLeftCorner: latlong.LatLng(
+                          cornerCoordinates[0].latitude, 
+                          cornerCoordinates[0].longitude),
+                        bottomLeftCorner: latlong.LatLng(
+                          cornerCoordinates[1].latitude, 
+                          cornerCoordinates[1].longitude),
+                        bottomRightCorner: latlong.LatLng(
+                          cornerCoordinates[3].latitude, 
+                          cornerCoordinates[3].longitude),
+                        imageProvider: FileImage(image),
+                        opacity: 0.5,
+                      )
+                    ]
+                  ),
+                  const map.Scalebar(
+                    textStyle: TextStyle(color: Colors.black, fontSize: 14),
+                    padding: EdgeInsets.only(right: 10, left: 10, bottom: 40),
+                    alignment: Alignment.bottomCenter,
+                    length: map.ScalebarLength.xxl,
+                  ),
+                ]
               )
             )
-            :
-            Image.file(
-              io.File(imageFilePath), 
-              width: imageSize.width, 
-              height: imageSize.height, 
-              fit: BoxFit.scaleDown
-            ),
-          ),
-        ),
-      ],
+      ]
     );
   }  
 }
