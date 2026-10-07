@@ -5,16 +5,24 @@ import 'package:csv/csv.dart' as csv_dart;
 import 'package:flutter_map/flutter_map.dart' as map;
 import 'package:latlong2/latlong.dart' as latlong;
 import 'package:flutter_map_math/flutter_geo_math.dart' as flutter_geo_math;
+import 'heat_palette.dart';
 
 /// Utility function - opens the given data file and reads and validates its 
 /// contents.
 /// 
-/// Returns a 2D list of parsed CSV data if the file contains valid content; an
-/// empty list if invalid or if no data file is provided.
-Future<List<map.Polygon>> _validateData(String dataFilePath, List<latlong.LatLng> cornerCoordinates) async
+/// Returns a list of type Polygon representing appropriately-colored polygons
+/// to be drawn onto the map if the file contains valid content; an empty list 
+/// if invalid or if no data file is provided.
+Future<List<map.Polygon>> _validateData(
+  String dataFilePath, 
+  List<latlong.LatLng> cornerCoordinates,
+  double threshold
+) async
 {
+  /// List storing the polygons to be drawn onto the map.
   List<map.Polygon> polygons = [];
-  /// Boolean to ensure data is only returned if it's within a valid range.
+  /// Boolean to ensure polygons are only created if prediction data is within
+  /// a valid range.
   bool isDataValid = true;
 
   if (dataFilePath != "")
@@ -35,46 +43,70 @@ Future<List<map.Polygon>> _validateData(String dataFilePath, List<latlong.LatLng
     }
 
     if (isDataValid) {
-      double heightInterval = flutter_geo_math.FlutterMapMath.distanceBetween(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, cornerCoordinates[1].latitude, cornerCoordinates[1].longitude, "");
-      double widthInterval = flutter_geo_math.FlutterMapMath.distanceBetween(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, cornerCoordinates[2].latitude, cornerCoordinates[2].longitude, "");
+      // Calculate the intervals in height (i.e. latitude) and width 
+      // (i.e. longitude) between points in the grid by evenly spacing them over
+      // the distance between corner coordinates.
+      double heightInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
+        cornerCoordinates[0].latitude, 
+        cornerCoordinates[0].longitude, 
+        cornerCoordinates[1].latitude, 
+        cornerCoordinates[1].longitude, 
+        ""
+      );
+      double widthInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
+        cornerCoordinates[0].latitude, 
+        cornerCoordinates[0].longitude, 
+        cornerCoordinates[2].latitude, 
+        cornerCoordinates[2].longitude, 
+        ""
+      );
 
       heightInterval = heightInterval / rows.length;
       widthInterval = widthInterval / rows[0].length;
 
       for (var i = 0; i < rows.length; i++) {
         for (var j = 0; j < rows[0].length; j++) {
-          double height1 = i * heightInterval;
-          double height2 = (i + 1) * heightInterval;
-          double width1 = j * widthInterval;
-          double width2 = (j + 1) * widthInterval;
-          double left = flutter_geo_math.FlutterMapMath.destinationPoint(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, width1, 90).longitude;
-          double right = flutter_geo_math.FlutterMapMath.destinationPoint(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, width2, 90).longitude;
-          double top = flutter_geo_math.FlutterMapMath.destinationPoint(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, height1, 180).latitude;
-          double bottom = flutter_geo_math.FlutterMapMath.destinationPoint(cornerCoordinates[0].latitude, cornerCoordinates[0].longitude, height2, 180).latitude;
-          Color color;
-          switch (double.parse(rows[i][j]))
-          {
-            case > 0.9:
-              color = Color.fromARGB(255, 8, 61, 1);
-              break;
-            case > 0.8:
-              color = Color.fromARGB(255, 69, 153, 32);
-              break;
-            case > 0.75:
-              color = Color.fromARGB(255, 117, 200, 54);
-              break;
-            case > 0.6:
-              color = Color.fromARGB(255, 185, 247, 114);
-              break;
-            case > 0.5:
-              color = Color.fromARGB(255, 206, 253, 200);
-              break;
-            default:
-              color = Colors.transparent;
-              break;
+          double predictionPoint = double.parse(rows[i][j]);
+          if (predictionPoint > threshold) {
+            double height1 = i * heightInterval;
+            double height2 = (i + 1) * heightInterval;
+            double width1 = j * widthInterval;
+            double width2 = (j + 1) * widthInterval;
+            double left = flutter_geo_math.FlutterMapMath.destinationPoint(
+              cornerCoordinates[0].latitude, 
+              cornerCoordinates[0].longitude, 
+              width1, 
+              90
+            ).longitude;
+            double right = flutter_geo_math.FlutterMapMath.destinationPoint(
+              cornerCoordinates[0].latitude, 
+              cornerCoordinates[0].longitude, 
+              width2, 
+              90
+            ).longitude;
+            double top = flutter_geo_math.FlutterMapMath.destinationPoint(
+              cornerCoordinates[0].latitude, 
+              cornerCoordinates[0].longitude, 
+              height1, 
+              180
+            ).latitude;
+            double bottom = flutter_geo_math.FlutterMapMath.destinationPoint(
+              cornerCoordinates[0].latitude, 
+              cornerCoordinates[0].longitude, 
+              height2, 
+              180
+            ).latitude;
+            map.Polygon polygon = map.Polygon(
+              points: [
+                latlong.LatLng(top, left), 
+                latlong.LatLng(top, right), 
+                latlong.LatLng(bottom, right), 
+                latlong.LatLng(bottom, left)
+              ], 
+              color: HeatPalette.colorFor(predictionPoint, threshold, "soil")
+            );
+            polygons.add(polygon);
           }
-          map.Polygon polygon = map.Polygon(points: [latlong.LatLng(top, left), latlong.LatLng(top, right), latlong.LatLng(bottom, right), latlong.LatLng(bottom, left)], color: color);
-          polygons.add(polygon);
         }
       } 
     }
@@ -94,12 +126,16 @@ class Visualizer extends StatelessWidget
   /// List of decimal coordinates for the four corners of the image - currently
   /// not in use.
   final List<latlong.LatLng> cornerCoordinates;
+  /// Threshold for the minimum value at which prediction points are displayed
+  /// on the map, set by the user in the prediction page UI.
+  final double threshold;
 
   const Visualizer({
     super.key, 
     required this.imageFilePath, 
     required this.dataFilePath, 
-    required this.cornerCoordinates
+    required this.cornerCoordinates,
+    required this.threshold
   });
 
   @override
@@ -138,7 +174,7 @@ class Visualizer extends StatelessWidget
                     ]
                   ),
                   FutureBuilder(
-                    future: _validateData(dataFilePath, cornerCoordinates),
+                    future: _validateData(dataFilePath, cornerCoordinates, threshold),
                     builder: (BuildContext ctx, 
                     AsyncSnapshot<List> snapshot) 
                     => snapshot.hasData

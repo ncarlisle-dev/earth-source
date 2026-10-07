@@ -69,7 +69,7 @@ class _HomePageState extends material.State<HomePage> {
         projects_page.ProjectsPage(),
         help_page.HelpPage(),
         about_page.AboutPage(),
-        connections_page.ConnectionsPage(),
+        //connections_page.ConnectionsPage(),
       ][currentPageIndex],
     );
   }
