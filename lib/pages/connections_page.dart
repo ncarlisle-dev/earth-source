@@ -1,57 +1,34 @@
 import 'package:flutter/material.dart' as material;
-import '../airdroid/connection.dart' as airdroid_connection;
+import '../api/api.dart' as api;
 import 'package:intl/intl.dart' as intl;
+
+// TODO: port this page over to use new AirdroidController
 
 /* ============================== Utility ============================== */
 
-/// Maps [airdroid_connection.ConnectionStatus]es to symbols indicating their
-/// value.
+/// Maps [api.ConnectionStatus]es to symbols indicating their value.
 const _connectionStatusSymbols = {
-  airdroid_connection.ConnectionStatus.disconnecting: material.Icon(
+  api.ConnectionStatus.disconnecting: material.Icon(
     material.Icons.circle,
     color: material.Colors.red,
     size: 16.0
   ),
-  airdroid_connection.ConnectionStatus.disconnected: material.Icon(
+  api.ConnectionStatus.disconnected: material.Icon(
     material.Icons.circle,
     color: material.Colors.grey,
     size: 16.0
   ),
-  airdroid_connection.ConnectionStatus.connecting: material.Icon(
+  api.ConnectionStatus.connecting: material.Icon(
     material.Icons.circle,
     color: material.Colors.yellow,
     size: 16.0
   ),
-  airdroid_connection.ConnectionStatus.connected: material.Icon(
+  api.ConnectionStatus.connected: material.Icon(
     material.Icons.circle,
     color: material.Colors.green,
     size: 16.0
   ),
-  airdroid_connection.ConnectionStatus.pinging: material.Icon(
-    material.Icons.more_horiz,
-    color: material.Colors.black,
-    size: 16.0
-  ),
 };
-
-/// A connection entry to be displayed to the user.
-/// 
-/// If [client] is null, treat the entry as if it is disconnected.
-class _ConnectionEntry
-{
-  final String ipAddress;
-  final int port;
-  final DateTime timeCreated;
-  airdroid_connection.AirdroidClient? client;
-
-  _ConnectionEntry(this.ipAddress, this.port, this.timeCreated, this.client);
-}
-
-
-/// File-scoped list of [_ConnectionEntry]s to display to the user.
-/// 
-/// TODO: Save these to a file and reload them on startup
-final List<_ConnectionEntry> _connectionEntries = [];
 
 /// The current setState function given by the builder.
 /// 
@@ -59,19 +36,6 @@ final List<_ConnectionEntry> _connectionEntries = [];
 /// a pointer to the proper setState() function and makes sure an outdated
 /// function call isn't made.
 void Function(void Function())? currSetState;
-
-/// Helper function that updates the connection statuses of all connected
-/// clients.
-void refreshConnections()
-{
-  for (final entry in _connectionEntries) {
-    if (entry.client == null || !entry.client!.isConnected()) {
-      continue;
-    }
-
-    entry.client!.updateConnectionStatus();
-  }
-}
 
 /* ============================ Connections page ============================ */
 
@@ -115,7 +79,7 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
                 spacing: 10.0,
                 children: [
                   _connectionStatusSymbols[entry.client?.status
-                    ?? airdroid_connection.ConnectionStatus.disconnected]!,
+                    ?? api.ConnectionStatus.disconnected]!,
 
                   material.Column(
                     crossAxisAlignment: material.CrossAxisAlignment.start,
@@ -149,7 +113,7 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
             material.FloatingActionButton(
               onPressed: () async
               {
-                final _ConnectionEntry? entry = await _showConnectionModal(
+                final _ConnectionSpec? entry = await _showConnectionModal(
                   context
                 );
                 refreshConnections();
@@ -178,9 +142,9 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
 /// Given the current build [context], shows the connection modal enabling the
 /// user to create a new connection.
 /// 
-/// Returns the [_ConnectionEntry] created by the user, or null if they
+/// Returns the [_ConnectionSpec] created by the user, or null if they
 /// cancelled its creation.
-Future<_ConnectionEntry?> _showConnectionModal(
+Future<_ConnectionSpec?> _showConnectionModal(
   material.BuildContext context
 ) async
 {
@@ -188,7 +152,7 @@ Future<_ConnectionEntry?> _showConnectionModal(
   String port = "";
   bool isConnecting = false;
 
-  airdroid_connection.AirdroidClient? client;
+  api.AirdroidClient? client;
 
   final material.GlobalKey<material.FormState> formKey = 
     material.GlobalKey<material.FormState>();
@@ -277,7 +241,7 @@ Future<_ConnectionEntry?> _showConnectionModal(
                               });
 
                               // create the client and connect
-                              client = airdroid_connection.AirdroidClient();
+                              client = api.AirdroidClient();
 
                               try {
                                 await client!.connect(
@@ -289,7 +253,7 @@ Future<_ConnectionEntry?> _showConnectionModal(
                                   // close modal
                                   material.Navigator.pop(context);
                                 }
-                              } on airdroid_connection.NetworkException {
+                              } on api.NetworkException {
                                 // TODO: properly handle connection failure
                                 print("connection couldn't be made");
                                 client = null;
@@ -320,7 +284,7 @@ Future<_ConnectionEntry?> _showConnectionModal(
     return null;
   }
 
-  return _ConnectionEntry(
+  return _ConnectionSpec(
     ipAddress,
     int.parse(port),
     DateTime.now(),

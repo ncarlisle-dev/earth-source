@@ -1,14 +1,16 @@
-// TODO: move these to a commmon module and implement them
-class ConnectionEntry {}
-class Project {}
+import '../common/common.dart' as common;
 
 class NetworkService {
   static NetworkService? instance;
+
+  /// Privately-named constructor to prevent other modules from creating a 
+  /// new service.
+  NetworkService._();
   
   static NetworkService getInstance() {
     if (instance != null) return instance!;
 
-    instance = NetworkService();
+    instance = NetworkService._();
     return instance!;
   }
 
@@ -18,25 +20,25 @@ class NetworkService {
   Future<void> logout()
     => throw UnimplementedError();
 
-  Future<List<ConnectionEntry>> getConnectionEntries()
+  Future<List<common.ConnectionSpec>> getConnectionEntries()
     => throw UnimplementedError();
 
-  Future<ConnectionEntry> getConnectionEntry()
+  Future<common.ConnectionSpec> getConnectionSpec()
     => throw UnimplementedError();
 
-  Future<void> uploadConnectionEntry(ConnectionEntry entry)
+  Future<void> uploadConnectionSpec(common.ConnectionSpec entry)
     => throw UnimplementedError();
 
-  Future<ConnectionEntry> deleteConnectionEntry(String id)
+  Future<common.ConnectionSpec> deleteConnectionSpec(String id)
     => throw UnimplementedError();
 
-  Future<List<Project>> getProjects()
+  Future<List<common.Project>> getProjects()
     => throw UnimplementedError();
 
-  Future<Project> getProject(String id)
+  Future<common.Project> getProject(String id)
     => throw UnimplementedError();
 
-  Future<void> uploadProject(Project project)
+  Future<void> uploadProject(common.Project project)
     => throw UnimplementedError();
 
   Future<void> deleteProject(String id)
