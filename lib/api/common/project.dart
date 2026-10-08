@@ -42,6 +42,8 @@ class Project
   final List<specs.UnitSpec> units = [];
   /// List of pXRF data files corresponding to the project.
   final List<specs.DataSpec> pxrfData = [];
+  /// List of training data files corresponding to the project.
+  final List<specs.DataSpec> trainingData = [];
   /// Map of layer and unit names to file names.
   final Map<String, Map <String, String>> dataAssignments = {};
 
@@ -49,33 +51,114 @@ class Project
 
   Future<void> addPxrfData(String fileName, String fileContents) async 
   {
-
+    NetworkService networkService = NetworkService.getInstance();
   }
 
-  Future<String> getPxrfData(String fileName) async 
+  /// Fetches a pXRF data file from the database.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the training data could not
+  /// successfully be fetched.
+  Future<String?> getPxrfData(String fileName) async 
   {
-    return "";
+    NetworkService networkService = NetworkService.getInstance();
+    /// TODO: As with layer image, change this to the appropriate filepath.
+    String filePath = "";
+    String? fileContents;
+    try {
+      fileContents = await networkService.fetchFile(filePath);
+      return fileContents;
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "pXRF data could not be fetched due to the following error:\n$error", 
+        error.statusCode
+      );
+    }
   }
 
-  Future<String> removePxrfData(String fileName) async 
+  /// Removes a pxrf data spec from the project alongside any corresponding data
+  /// assignments and deletes the appropriate file from the database.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the pXRF data could not
+  /// sunccessfully be removed.
+  Future<void> removePxrfData(String fileName) async 
   {
-    return "";
+    NetworkService networkService = NetworkService.getInstance();
+    int fileIndex = pxrfData.indexWhere(
+      (file) => file.fileName == fileName);
+    pxrfData.removeAt(fileIndex);
+    lastUpdated = DateTime.now();
+
+    dataAssignments.removeWhere((filename, assignment) => filename == fileName);
+
+    try {
+        String filePath = "";
+        await networkService.deleteFile(filePath);
+        await networkService.uploadProject(this);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "pXRF data failed to delete with the following error:\n$error", 
+        error.statusCode
+      );
+    }
   }
 
   Future<void> addTrainingData(String fileName, String fileContents) async 
   {
-
+    NetworkService networkService = NetworkService.getInstance();
+    specs.DataSpec trainingData = specs.DataSpec(fileName, id!, DateTime.now(), 0, 0);
   }
 
-  Future<String> getTrainingData(String fileName) async 
+  /// Fetches a training data file from the database.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the training data could not
+  /// successfully be fetched.
+  Future<String?> getTrainingData(String fileName) async 
   {
-    return "";
+    NetworkService networkService = NetworkService.getInstance();
+    /// TODO: As with layer image, change this to the appropriate filepath.
+    String filePath = "";
+    String? fileContents;
+    try {
+      fileContents = await networkService.fetchFile(filePath);
+      return fileContents;
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Training data could not be fetched"
+        "due to the following error:\n$error", 
+        error.statusCode
+      );
+    }
   }
 
-  Future<String> removeTrainingData(String fileName) async 
+  /// Removes a training data spec from the project and deletes the 
+  /// corresponding file from the database.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the training data could not
+  /// sunccessfully be removed.
+  Future<void> removeTrainingData(String fileName) async 
   {
-    return "";
+    NetworkService networkService = NetworkService.getInstance();
+    int fileIndex = trainingData.indexWhere(
+      (file) => file.fileName == fileName);
+    trainingData.removeAt(fileIndex);
+    lastUpdated = DateTime.now();
+
+    try {
+        String filePath = "";
+        await networkService.deleteFile(filePath);
+        await networkService.uploadProject(this);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Training data failed to delete with the following error:\n$error", 
+        error.statusCode
+      );
+    }
   }
+
   /// Creates a new layer at the current time using the given name and 
   /// description and adds it to the project.
   /// 
@@ -488,9 +571,9 @@ class Project
   }
 }
 
+/* ================================ Utility ================================ */
 
-/// Utility function - checks if two units are overlapping and returns true if
-/// so, false if not.
+/// Checks if two units are overlapping and returns true if so, false if not.
 bool isOverlapping(specs.UnitSpec unit1, specs.UnitSpec unit2)
 {
   // Determine the top latitude, bottom latitude, left longitude, and right 
