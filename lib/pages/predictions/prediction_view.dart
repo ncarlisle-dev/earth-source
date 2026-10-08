@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../mapping/visualizer.dart';
 
 /// A page providing a guide to using the app, documentation, troubleshooting
 /// tips, and contact information.
@@ -20,8 +21,13 @@ class _PredictionViewState extends State<PredictionView> {
           child: Text("Prediction"),),
         Center(
           child: Text("Job Status: ", style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: Colors.teal,
-                fontWeight: FontWeight.bold,),))
+            color: Colors.teal,
+            fontWeight: FontWeight.bold,),)),
+        Visualizer(
+          dataFilePath: "assets/ebk_mean_prediction.csv", 
+          imageFilePath: "assets/2D_Site_Map_Test.png",
+          cornerCoordinates: [],
+        )
       ]
       );
     }
