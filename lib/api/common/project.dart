@@ -79,7 +79,7 @@ class Project
   /// Creates a new layer at the current time using the given name and 
   /// description and adds it to the project.
   /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if given layer name matches
   /// a pre-existing layer.
   Future<specs.LayerSpec> createLayer(String name, String description) 
@@ -111,8 +111,8 @@ class Project
         await networkService.createDirectory(layerFilePath);
         return createdLayer;
       }
-      on network.NetworkException catch (error) {
-        throw network.NetworkException(
+      on network.ApiNetworkException catch (error) {
+        throw network.ApiNetworkException(
           "Layer creation failed with the following error:\n$error", 
           error.statusCode
         );
@@ -128,7 +128,7 @@ class Project
 
   /// Changes the name of a pre-existing layer.
   /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if new layer name matches
   /// a pre-existing layer.
   Future<void> setLayerName(String srcName, String newName) async
@@ -148,8 +148,8 @@ class Project
       try {
         await networkService.uploadProject(this);
       }
-      on network.NetworkException catch (error) {
-        throw network.NetworkException(
+      on network.ApiNetworkException catch (error) {
+        throw network.ApiNetworkException(
           "Project failed to update with the following error:\n$error", 
           error.statusCode
         );
@@ -164,7 +164,7 @@ class Project
 
   /// Changes the description of a pre-existing layer.
   /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification.
   Future<void> setLayerDescription(String name, String description) async
   {
@@ -177,8 +177,8 @@ class Project
     try {
         await networkService.uploadProject(this);
     }
-    on network.NetworkException catch (error) {
-      throw network.NetworkException(
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
         "Project failed to update with the following error:\n$error", 
         error.statusCode
       );
@@ -188,7 +188,7 @@ class Project
   /// Deletes a layer from the project and deletes the corresponding directory
   /// and image file.
   /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification or the layer cannot be successfully deleted.
   Future<void> deleteLayer(String name) async
   {
@@ -204,8 +204,8 @@ class Project
         await networkService.deleteDirectory(layerFilePath);
         await networkService.uploadProject(this);
     }
-    on network.NetworkException catch (error) {
-      throw network.NetworkException(
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
         "Layer failed to delete with the following error:\n$error", 
         error.statusCode
       );
@@ -215,7 +215,7 @@ class Project
   /// Creates a new unit and initializes its fields with the given parameters, 
   /// then checks for any conflict with pre-existing units.
   /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded
   /// after modification and a [Project.Exception] if either a unit already
   /// exists with the same name or the current unit overlaps with a pre-existing
   /// unit.
@@ -260,8 +260,8 @@ class Project
       try {
         await networkService.uploadProject(this);
       }
-      on network.NetworkException catch (error) {
-        throw network.NetworkException(
+      on network.ApiNetworkException catch (error) {
+        throw network.ApiNetworkException(
           "Project failed to update with the following error:\n$error", 
           error.statusCode
         );
@@ -275,7 +275,7 @@ class Project
 
   /// Changes the name of a pre-existing unit.
   /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if new unit name matches
   /// a pre-existing unit.
   Future<void> setUnitName(String srcName, String newName) async
@@ -297,8 +297,8 @@ class Project
       }
       // TODO: Rename file in the backend - renameFile() function needs to be
       // implemented in our network service
-      on network.NetworkException catch (error) {
-        throw network.NetworkException(
+      on network.ApiNetworkException catch (error) {
+        throw network.ApiNetworkException(
           "Project failed to update with the following error:\n$error", 
           error.statusCode
         );
@@ -313,7 +313,7 @@ class Project
   
   /// Changes the description of a pre-existing unit.
   /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification.
   Future<void> setUnitDescription(String name, String description) async
   {
@@ -326,8 +326,8 @@ class Project
     try {
       await networkService.uploadProject(this);
     }
-    on network.NetworkException catch (error) {
-      throw network.NetworkException(
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
         "Project failed to update with the following error:\n$error", 
         error.statusCode
       );
@@ -338,7 +338,7 @@ class Project
   /// overlap with any pre-existing units, and discards any data assignments
   /// that no longer fits the unit's new positioning.
   /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if repositioning would incur
   /// overlap with another unit.
   Future<void> repositionUnit(String name, ({double latitude, double longitude})
@@ -393,8 +393,8 @@ class Project
     try {
       await networkService.uploadProject(this);
     }
-    on network.NetworkException catch (error) {
-      throw network.NetworkException(
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
         "Project failed to update with the following error:\n$error", 
         error.statusCode
       );
@@ -403,7 +403,7 @@ class Project
 
   /// Deletes a unit from the project.
   /// 
-  /// Throws a [connection.NetworkException] if the project cannot be uploaded 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification.
   Future<void> deleteUnit(String name) async
   {
@@ -415,8 +415,8 @@ class Project
     try {
       await networkService.uploadProject(this);
     }
-    on network.NetworkException catch (error) {
-      throw network.NetworkException(
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
         "Project failed to update with the following error:\n$error", 
         error.statusCode
       );
@@ -431,7 +431,7 @@ class Project
   /// Uploads an image corresponding to a layer to the appropriate location in
   /// the database.
   /// 
-  /// Throws a [connection.NetworkException] if the image fails to upload.
+  /// Throws a [network.ApiNetworkException] if the image fails to upload.
   Future<void> uploadLayerImage(String layerName, String imageContents) async
   {
     NetworkService networkService = NetworkService.getInstance();
@@ -439,8 +439,8 @@ class Project
     try {
       networkService.writeFile(filePath, imageContents);
     }
-    on network.NetworkException catch (error) {
-      throw network.NetworkException(
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
         "Layer image failed to upload with the following error:\n$error", 
         error.statusCode
       );
@@ -450,7 +450,7 @@ class Project
   /// Fetches an image corresponding to a layer from the appropriate location in
   /// the database.
   /// 
-  /// Throws a [connection.NetworkException] if the image cannot be retrieved.
+  /// Throws a [network.ApiNetworkException] if the image cannot be retrieved.
   Future<String?> getLayerImage(String layerName) async
   {
     NetworkService networkService = NetworkService.getInstance();
@@ -460,8 +460,8 @@ class Project
       imageContents = await networkService.fetchFile(filePath);
       return imageContents;
     }
-    on network.NetworkException catch (error) {
-      throw network.NetworkException(
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
         "Layer image could not be fetched due to the following error:\n$error", 
         error.statusCode
       );
@@ -471,7 +471,7 @@ class Project
   /// Deletes an image corresponding to a layer from the appropriate location in
   /// the database.
   /// 
-  /// Throws a [connection.NetworkException] if the image cannot be deleted.
+  /// Throws a [network.ApiNetworkException] if the image cannot be deleted.
   Future<void> removeLayerImage(String layerName) async
   {
     NetworkService networkService = NetworkService.getInstance();
@@ -479,8 +479,8 @@ class Project
     try {
       await networkService.deleteFile(filePath);
     }
-    on network.NetworkException catch (error) {
-      throw network.NetworkException(
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
         "Layer image could not be deleted due to the following error:\n$error", 
         error.statusCode
       );

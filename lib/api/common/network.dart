@@ -1,6 +1,6 @@
 /// Thrown whenever a network request fails or an unexpected response is 
 /// received.
-class NetworkException implements Exception
+abstract class NetworkException implements Exception
 {
   /// The error message.
   final String message;
@@ -15,6 +15,14 @@ class NetworkException implements Exception
     => message;
 }
 
+class ApiNetworkException extends NetworkException {
+  const ApiNetworkException(super.message, super.statusCode);
+}
+
+class AirdroidNetworkException extends NetworkException {
+  const AirdroidNetworkException(super.message, super.statusCode);
+}
+
 /// The current state of a connection.
 enum ConnectionStatus {
   /// Indicates the connection is heading towards [disconnected].
@@ -25,8 +33,4 @@ enum ConnectionStatus {
   connecting,
   /// Indicates the connection is up and running; server calls may be made.
   connected,
-  /// Indicates the client is currently checking their status with the server.
-  pinging,
-  /// Indicates the client is currently fetching information from the server.
-  querying,
 }
