@@ -8,28 +8,13 @@ import 'package:http/http.dart' as http;
 
 /* ============================== Utility ============================== */
 
-/// The current state of a connection.
-enum ConnectionStatus {
-  /// Indicates the connection is heading towards [disconnected].
-  disconnecting,
-  /// Indicates that there is no connection and no server calls may be made.
-  disconnected,
-  /// Indicates the connection is heading toward [connected].
-  connecting,
-  /// Indicates the connection is up and running; server calls may be made.
-  connected,
-  /// Indicates the client is in the process of checking their status with
-  /// the server.
-  pinging,
-}
-
 /// Helper function that sends an HTTP GET request through a [client] to the
 /// provided [requestAddress].
 /// 
 /// Returns the HTTP response in the form of an [http.Response].
 /// 
-/// Throws a [common.NetworkException] if the request doesn't go through or the
-/// server responds with a non-200 status code.
+/// Throws a [common.AirdroidNetworkException] if the request doesn't go through
+/// or the server responds with a non-200 status code.
 Future<http.Response> _sendHttpGetRequest(
   http.Client client,
   String requestAddress
@@ -40,11 +25,14 @@ Future<http.Response> _sendHttpGetRequest(
   try {
     response = await client.get(Uri.parse(requestAddress));
   } on http.ClientException {
-    throw const common.NetworkException("Failed to send network request.", null);
+    throw const common.AirdroidNetworkException(
+      "Failed to send network request.",
+      null
+    );
   }
 
   if (response.statusCode != 200) {
-    throw common.NetworkException(
+    throw common.AirdroidNetworkException(
       "Server returned status code ${response.statusCode}.",
       response.statusCode
     );
@@ -53,7 +41,7 @@ Future<http.Response> _sendHttpGetRequest(
   return response;
 }
 
-/* ============================== Connection ============================== */
+/* ============================= AirdroidClient ============================= */
 
 /// A network/LAN connection to an AirDroid server.
 /// 
@@ -71,9 +59,13 @@ Future<http.Response> _sendHttpGetRequest(
 class AirdroidClient
 {
   /// The connection status between client and server
-  ConnectionStatus status = .disconnected;
+  common.ConnectionStatus _status = .disconnected;
 
-  void Function(ConnectionStatus)? _statusListener;
+  void Function(common.ConnectionStatus)? _statusListener;
+
+  /// The connection status between client and server.
+  common.ConnectionStatus get status
+    => _status; // use a getter to make this property read-only
 
   /// The AirDroid server's root URL.
   String _baseAddress = "";
@@ -91,26 +83,31 @@ class AirdroidClient
   /// HTTP connection to the server
   http.Client? _client;
 
-  void setStatusListener(void Function(ConnectionStatus)? statusListener)
+
+  /// Registers a [callback] to be called every time the connection [status] of
+  /// the client changes.
+  /// 
+  /// [callback] must take in a [common.ConnectionStatus]. The return value is
+  /// ignored. To unregister the status listener, call this function with 
+  /// argument null.
+  void setStatusListener(void Function(common.ConnectionStatus)? callback)
+    =>_statusListener = callback;
+
+
+  /// Helper function that sets the the client's [_status] and subsequently 
+  /// calls its [_statusListener], if it exists.
+  void _setStatus(common.ConnectionStatus status)
   {
-    _statusListener = statusListener;
+    if (_statusListener != null && status != _status) _statusListener!(status);
+    _status = status;
   }
 
-  void _setStatus(ConnectionStatus status)
-  {
-    this.status = status;
-    if (_statusListener != null) _statusListener!(status);
-  }
-
-  /// Returns true if the connection is active, false otherwise.
-  bool isConnected()
-    => status == .connected;
 
   /// Opens a connection to the AirDroid server with the given [ipAddress]
   /// and [port].
   /// 
   /// The client must not already be connected to a server. Make sure to call
-  /// [disconnect] one you are done making requests.
+  /// [disconnect] once you are done making requests.
   /// 
   /// ```dart
   ///   try {
@@ -122,12 +119,12 @@ class AirdroidClient
   ///   }
   /// ```
   /// 
-  /// Throws a [common.NetworkException] if the request fails or the server 
-  /// gives an unexpected response. When this happens, the client object should 
-  /// either attempt to call this function again or be deleted entirely.
+  /// Throws a [common.AirdroidNetworkException] if the request fails or the 
+  /// server gives an unexpected response. When this happens, the client object
+  /// should either attempt to call this function again or be deleted entirely.
   Future<void> connect(String ipAddress, int port) async
   {
-    assert(!isConnected(), "Client is already connected to a server.");
+    assert(_status == .disconnected, "Client isn't disconnected.");
     _setStatus(.connecting);
 
     // setup address
@@ -145,12 +142,15 @@ class AirdroidClient
       response = await _client!.get(Uri.parse(requestAddress));
     } on http.ClientException {
       _closeClient();
-      throw const common.NetworkException("Failed to send network request.", null);
+      throw const common.AirdroidNetworkException(
+        "Failed to send network request.",
+        null
+      );
     }
 
     if (response.statusCode != 200) {
       _closeClient();
-      throw common.NetworkException(
+      throw common.AirdroidNetworkException(
         "Server returned status code ${response.statusCode}.",
         response.statusCode
       );
@@ -167,7 +167,7 @@ class AirdroidClient
       connectionData = ad_schema.extractConnectionData(response.body);
     } on ad_schema.TypeMismatchException catch (e) {
       _closeClient();
-      throw common.NetworkException(
+      throw common.AirdroidNetworkException(
         "Server returned unexpected response body:\n$e",
         200
       );
@@ -184,10 +184,11 @@ class AirdroidClient
     _setStatus(.connected);
   }
 
+
   /// Helper function used to close the client and reset all class members.
   /// 
   /// See [disconnect] for the proper method of closing connections.
-  Future<void> _closeClient() async
+  void _closeClient()
   {
     _setStatus(.disconnecting);
     try {
@@ -205,16 +206,29 @@ class AirdroidClient
     _setStatus(.disconnected);
   }
 
+
   /// Disconnects the client from the currently-connected AirDroid server.
   /// 
   /// The client must be connected to a server.
   Future<void> disconnect() async
   {
-    assert(isConnected(), "Client is not yet connected to a server.");
-    // TODO: send the following GET request instead of just closing the client
-    // http://localhost:8888/sdctl/comm/logout/?7bb=[authToken]
+    assert(_status == .connected, "Client is not connected.");
+
+    _setStatus(.disconnecting);
+
+    try {
+      await _sendHttpGetRequest(
+        _client!,
+        "$_baseAddress/sdctl/comm/logout/?7bb=$_authToken"
+      );
+    } on common.AirdroidNetworkException {
+      // ignore the error
+    }
+
     _closeClient();
+    _setStatus(.disconnected);
   }
+
 
   /// Given the [filePath] to a directory, returns a list of directory's
   /// contents.
@@ -223,13 +237,16 @@ class AirdroidClient
   ///
   /// [filePath] must start with a '/'.
   /// 
-  /// Throws a [common.NetworkException] if the request fails or the server 
-  /// gives an unexpected reponse.
-  Future<List<({String name})>> queryDirectory(String filePath) async
+  /// Throws a [common.AirdroidNetworkException] if the request fails or the
+  /// server gives an unexpected reponse.
+  Future<List<common.DirectoryItemSpec>> queryDirectory(String filePath) async
   {
     // make sure directory can be queried
-    assert(isConnected(), "Client is not yet connected to a server.");
-    assert(filePath[0] == "/", "filePath must start with a '/'");
+    assert(_status == .connected, "Client is not connected.");
+    assert(
+      filePath.isNotEmpty && filePath[0] == "/",
+      "filePath must start with a '/'"
+    );
 
     // setup address
     filePath = filePath.replaceAll("/", "%2f");
@@ -242,9 +259,21 @@ class AirdroidClient
       requestAddress
     );
 
-    // extract the data
-    return ad_schema.extractDirectoryContents(response.body);
+    // extract the data and return
+    final List<common.DirectoryItemSpec> directoryItems;
+
+    try {
+      directoryItems = ad_schema.extractDirectoryContents(response.body);
+    } on ad_schema.TypeMismatchException catch (e) {
+      throw common.AirdroidNetworkException(
+        "Server returned unexpected response body:\n$e",
+        200
+      );
+    }
+
+    return directoryItems;
   }
+
 
   /// Given a [filePath], returns the file's stringifed contents.
   /// 
@@ -252,11 +281,11 @@ class AirdroidClient
   /// 
   /// [filePath] must start with a '/'.
   ///
-  /// Throws a [common.NetworkException] if the network request fails.
+  /// Throws a [common.AirdroidNetworkException] if the network request fails.
   Future<String> fetchFile(String filePath) async
   {
     // check params
-    assert(isConnected(), "Client is not yet connected to a server.");
+    assert(_status == .connected, "Client is not connected.");
 
     // setup address
     final String requestAddress =
@@ -274,6 +303,7 @@ class AirdroidClient
     return response.body;
   }
 
+
   /// Checks the connection status to the server, disconnecting if the server
   /// indicates the client is disconnected.
   /// 
@@ -283,8 +313,7 @@ class AirdroidClient
   Future<bool> updateConnectionStatus() async
   {
     // check client state
-    assert(isConnected(), "Client is not yet connected to a server.");
-    _setStatus(.pinging);
+    assert(_status == .connected, "Client is not connected.");
 
     // send a dummy request to the server. If it responds with "err":
     // "forbidden" in the response body, we've been disconnected.
@@ -303,7 +332,7 @@ class AirdroidClient
     bool shouldDisconnect = ad_schema.isForbiddenResponse(response.body);
 
     if (shouldDisconnect) {
-      await _closeClient();
+      _closeClient();
       return false;
     }
 

@@ -54,6 +54,7 @@ String getEncryptedFilePath(String filePath, String key)
 {
   // check parameters
   assert(key.length == 16, "Encryption key must be 16 characters long.");
+  assert(filePath.isNotEmpty && filePath[0] == '/', "");
 
   // generate key
   // (raw DES isn't supported, so we need to append the key to itself two times)

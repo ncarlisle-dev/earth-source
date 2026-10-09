@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart' as material;
+/*import 'package:flutter/material.dart' as material;
 import '../api/api.dart' as api;
 import 'package:intl/intl.dart' as intl;
 
+// TODO: port this page over to use new AirdroidController
+
 /* ============================== Utility ============================== */
 
-/// Maps [airdroid_connection.ConnectionStatus]es to symbols indicating their
-/// value.
+/// Maps [api.ConnectionStatus]es to symbols indicating their value.
 const _connectionStatusSymbols = {
   api.ConnectionStatus.disconnecting: material.Icon(
     material.Icons.circle,
@@ -27,31 +28,7 @@ const _connectionStatusSymbols = {
     color: material.Colors.green,
     size: 16.0
   ),
-  api.ConnectionStatus.pinging: material.Icon(
-    material.Icons.more_horiz,
-    color: material.Colors.black,
-    size: 16.0
-  ),
 };
-
-/// A connection entry to be displayed to the user.
-/// 
-/// If [client] is null, treat the entry as if it is disconnected.
-class _ConnectionEntry
-{
-  final String ipAddress;
-  final int port;
-  final DateTime timeCreated;
-  api.AirdroidClient? client;
-
-  _ConnectionEntry(this.ipAddress, this.port, this.timeCreated, this.client);
-}
-
-
-/// File-scoped list of [_ConnectionEntry]s to display to the user.
-/// 
-/// TODO: Save these to a file and reload them on startup
-final List<_ConnectionEntry> _connectionEntries = [];
 
 /// The current setState function given by the builder.
 /// 
@@ -59,19 +36,6 @@ final List<_ConnectionEntry> _connectionEntries = [];
 /// a pointer to the proper setState() function and makes sure an outdated
 /// function call isn't made.
 void Function(void Function())? currSetState;
-
-/// Helper function that updates the connection statuses of all connected
-/// clients.
-void refreshConnections()
-{
-  for (final entry in _connectionEntries) {
-    if (entry.client == null || !entry.client!.isConnected()) {
-      continue;
-    }
-
-    entry.client!.updateConnectionStatus();
-  }
-}
 
 /* ============================ Connections page ============================ */
 
@@ -149,7 +113,7 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
             material.FloatingActionButton(
               onPressed: () async
               {
-                final _ConnectionEntry? entry = await _showConnectionModal(
+                final _ConnectionSpec? entry = await _showConnectionModal(
                   context
                 );
                 refreshConnections();
@@ -178,9 +142,9 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
 /// Given the current build [context], shows the connection modal enabling the
 /// user to create a new connection.
 /// 
-/// Returns the [_ConnectionEntry] created by the user, or null if they
+/// Returns the [_ConnectionSpec] created by the user, or null if they
 /// cancelled its creation.
-Future<_ConnectionEntry?> _showConnectionModal(
+Future<_ConnectionSpec?> _showConnectionModal(
   material.BuildContext context
 ) async
 {
@@ -320,10 +284,10 @@ Future<_ConnectionEntry?> _showConnectionModal(
     return null;
   }
 
-  return _ConnectionEntry(
+  return _ConnectionSpec(
     ipAddress,
     int.parse(port),
     DateTime.now(),
     client
   );
-}
+}*/

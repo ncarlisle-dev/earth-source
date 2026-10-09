@@ -18,7 +18,7 @@ class ProjectController {
   /// Retrieves the ProjectController instance if already initialized; if not, 
   /// creates an instance and fetches the user's projects from the database
   /// 
-  /// Throws a [connection.NetworkException] if the request to fetch user 
+  /// Throws a [network.ApiNetworkException] if the request to fetch user 
   /// projects fails.
   static Future<ProjectController> getInstance() async
   {
@@ -29,8 +29,8 @@ class ProjectController {
     try {
       instance!.userProjects = await networkService.getProjects();
     }
-    on network.NetworkException catch (error) {
-      throw network.NetworkException(
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
         "Failed to upload user projects due to the following error:\n$error", 
         error.statusCode
       );
@@ -41,7 +41,7 @@ class ProjectController {
   /// Creates a project using a given name and description, uploads it to the 
   /// server, and returns it.
   /// 
-  /// Throws a [connection.NetworkException] if the server request to upload a 
+  /// Throws a [network.ApiNetworkException] if the server request to upload a 
   /// new project fails.
   Future<Project> createProject(String name, String description) async
   {
@@ -53,8 +53,8 @@ class ProjectController {
       await networkService.uploadProject(createdProject);
       userProjects.add(createdProject);
     }
-    on network.NetworkException catch (error) {
-      throw network.NetworkException(
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
         "Project upload failed with the following error:\n$error", 
         error.statusCode
       );
@@ -64,7 +64,7 @@ class ProjectController {
 
   /// Finds and deletes a project with the given id.
   /// 
-  /// Throws a [connection.NetworkException] if the server request to delete the 
+  /// Throws a [network.ApiNetworkException] if the server request to delete the 
   /// project fails.
   Future<void> deleteProject(String id) async
   {
@@ -75,8 +75,8 @@ class ProjectController {
       await networkService.deleteProject(id);
       userProjects.removeAt(deleteIndex);
     }
-    on network.NetworkException catch (error) {
-      throw network.NetworkException(
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
         "Project deletion failed with the following error:\n$error", 
         error.statusCode
       );
