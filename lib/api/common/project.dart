@@ -399,12 +399,41 @@ class Project
     }
   }
 
-  Future<jobs.PredictionJob> runPredictionJob(String name, String? modelId) async {
-    throw UnimplementedError();
+  Future<jobs.PredictionJob> runPredictionJob(
+    String name, 
+    String? modelId
+  ) async {
+    NetworkService networkService = NetworkService.getInstance();
+    jobs.PredictionJob predictionJob = jobs.PredictionJob();
+    predictions.add(predictionJob);
+    lastUpdated = DateTime.now();
+    try {
+      await networkService.uploadProject(this);
+      return predictionJob;
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
   }
 
   Future<jobs.TrainingJob> runTrainingJob(String name, String fileName) async {
-    throw UnimplementedError();
+    NetworkService networkService = NetworkService.getInstance();
+    jobs.TrainingJob trainingJob = jobs.TrainingJob();
+    models.add(trainingJob);
+    lastUpdated = DateTime.now();
+    try {
+      await networkService.uploadProject(this);
+      return trainingJob;
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
   }
 
   /// Uploads an image corresponding to a layer to the appropriate location in
