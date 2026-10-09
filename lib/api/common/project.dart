@@ -5,8 +5,8 @@ import 'network.dart' as network;
 import 'specs.dart' as specs;
 import 'package:flutter_map_math/flutter_geo_math.dart' as map_math;
 
-/// TODO: Change filepath in functions involving the layer image to accurately
-/// reflect where it will be stored in the database.
+/// TODO: Change filepath in functions involving file upload, retrieval, or
+/// deletion to accurately reflect where it will be stored in the database.
 
 const List<String> requiredPxrfFields = 
 [
@@ -17,7 +17,7 @@ const List<String> requiredPxrfFields =
   "Ni +/-", "P", "P +/-", "Pb", "Pb +/-", "Pd", "Pd +/-", "Re", "Re +/-", "Rh", 
   "Rh +/-", "Ru", "Ru +/-", "S", "S +/-", "Sb", "Sb +/-", "Se", "Se +/-", "Si", 
   "Si +/-", "Sn", "Sn +/-", "Sr", "Sr +/-", "Ta", "Ta +/-", "Ti", "Ti +/-", "V", 
-  "V +/-", "W", "W +/-", "Zn", "Zn +/-", "Zr", "Zr +/-", "X_Coord", "Y_Coord"
+  "V +/-", "W", "W +/-", "Zn", "Zn +/-", "Zr", "Zr +/-", "Latitude", "Longitude"
 ];
 
 /// Thrown whenever an attempt to modify a project would result in conflicts
@@ -92,7 +92,7 @@ class Project
       0
     );
     pxrfData.add(pxrfFile);
-    /// TODO: As with layer image, change this to the appropriate filepath.
+    lastUpdated = DateTime.now();
     String filePath = "";
     try {
       await networkService.writeFile(filePath, fileContents);
@@ -183,6 +183,7 @@ class Project
       0
     );
     trainingData.add(trainFile);
+    lastUpdated = DateTime.now();
     String filePath = "";
     try {
       await networkService.writeFile(filePath, fileContents);
@@ -549,10 +550,14 @@ class Project
     // remove assignments that do not.
     dataAssignments.forEach((filename, assignment) {
        assignment.forEach((layer, unit) {
-        if ((unit == name) && 
-          (!checkAssignment(filename, units[unitIndex])))
+        if (unit == name) 
         {
-          dataAssignments.remove(filename);
+          Future<String?> fileContents = getPxrfData(filename);
+          fileContents.then((value) {
+            if (!checkAssignment(value!, units[unitIndex])) {
+              dataAssignments.remove(filename);
+            }
+          });
         }
       });
     });
@@ -592,9 +597,41 @@ class Project
     }
   }
 
-  Future<void> assignData(String layerName, String unitName, String fileName) async
+  /// Assigns a layer and unit to a file after first confirming that the given
+  /// data fits within the unit.
+  /// 
+  /// Throws a [ProjectException] if data does not fit within the unit and a
+  /// [network.ApiNetworkException] if the project fails to upload.
+  Future<void> assignData(String layerName, String unitName, String fileName) 
+  async
   {
+    NetworkService networkService = NetworkService.getInstance();
 
+    // Ensure provided data fits within the given unit.
+    int unitIndex = units.indexWhere((unit) => unit.name == name);
+    Future<String?> fileContents = getPxrfData(fileName);
+    fileContents.then((value) {
+      if (!checkAssignment(value!, units[unitIndex])) {
+        throw ProjectException(
+          "Data from the file $fileName cannot be assigned to unit $unitName."
+        );
+      }
+    });
+
+    final layerUnitMap = <String, String>{layerName: unitName};
+    dataAssignments[fileName] = layerUnitMap;
+
+    lastUpdated = DateTime.now();
+
+    try {
+      await networkService.uploadProject(this);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
   }
 
   /// Uploads an image corresponding to a layer to the appropriate location in
@@ -760,9 +797,29 @@ bool isWithinUnit(specs.UnitSpec unit, double latitude, double longitude)
 /// 
 /// Returns true if all assigned data still falls within appropriate boundaries,
 /// false if not.
-bool checkAssignment(String filename, specs.UnitSpec unit) 
+bool checkAssignment(String fileContents, specs.UnitSpec unit) 
 {
-  throw UnimplementedError();
+  List<List<String>> formattedData = [];
+  List<String> fileLines = fileContents.split('\n');
+  for (var i = 0; i < fileLines.length; i++) {
+    formattedData.add(fileLines[i].split(','));
+  }
+
+  int latIndex = formattedData[0].indexWhere((field) => field == "Latitude");
+  int longIndex = formattedData[0].indexWhere((field) => field == "Longitude");
+
+  // Extract the coordinates for each data point and check if they fall within
+  // the unit.
+  for (var i = 1; i < fileLines.length; i++) {
+    double latitude = double.parse(formattedData[i][latIndex]);
+    double longitude = double.parse(formattedData[i][longIndex]);
+    if (!isWithinUnit(unit, latitude, longitude))
+    {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /// Checks to make sure all required fields are present in the data file (the
@@ -786,7 +843,7 @@ int validateDataFile(bool isTrainingData, String fileContents)
   // Check to make sure none of the required fields are missing.
   for (var i = 0; i < requiredPxrfFields.length; i++) {
     if (formattedData[0].indexWhere(
-      (data) => data == requiredPxrfFields[i]) == -1
+      (field) => field == requiredPxrfFields[i]) == -1
     ) {
       return 0;
     }
@@ -795,7 +852,7 @@ int validateDataFile(bool isTrainingData, String fileContents)
   // If the data is training data, check to make sure the material field is 
   // present.
   if (isTrainingData && formattedData[0].indexWhere(
-      (data) => data == "material") == -1
+      (field) => field == "material") == -1
   ) {
     return 0;
   }
