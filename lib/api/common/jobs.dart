@@ -21,10 +21,17 @@ abstract class Job
   DateTime createdAt;
   /// Current status of the job.
   JobStatus status;
-  /// List of status listeners for the job.
-  List<JobStatus> statusListeners = [];
+  /// A collection of status listeners called when the job's status changes.
+  final List<void Function(JobStatus)?> _statusListeners 
+    = [];
 
   Job(this.id, this.name, this.description, this.createdAt, this.status);
+
+  /// Sets a callback to be run every time the status of a given job changes
+  Future<void> watchStatus(void Function(JobStatus status)? callback) async
+  {
+    _statusListeners.add(callback);
+  }
 }
 
 /// An extension of the job class used specifically for model training.
@@ -37,11 +44,6 @@ class TrainingJob extends Job
     super.createdAt, 
     super.status
   );
-
-  Future<void> watchStatus(JobStatus status => void) async
-  {
-    
-  }
 }
 
 /// An extension of the job class used specifically for predictions, with a 
