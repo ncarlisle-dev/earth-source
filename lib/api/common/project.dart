@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import '../services/network_service.dart';
 import 'network.dart' as network;
 import 'specs.dart' as specs;
+import 'jobs.dart' as jobs;
 import 'package:flutter_map_math/flutter_geo_math.dart' as map_math;
 
 /// TODO: Change filepath in functions involving the layer image to accurately
@@ -42,6 +45,10 @@ class Project
   final List<specs.DataSpec> pxrfData = [];
   /// Map of layer and unit names to file names.
   final Map<String, Map <String, String>> dataAssignments = {};
+  /// List of batch jobs for generating predictions.
+  final List<jobs.PredictionJob> predictions = [];
+  /// List of batch jobs for training models.
+  final List<jobs.TrainingJob> models = [];
 
   Project(this.name, this.description, this.createdAt);
 
@@ -390,6 +397,14 @@ class Project
         error.statusCode
       );
     }
+  }
+
+  Future<jobs.PredictionJob> runPredictionJob(String name, String? modelId) async {
+    throw UnimplementedError();
+  }
+
+  Future<jobs.TrainingJob> runTrainingJob(String name, String fileName) async {
+    throw UnimplementedError();
   }
 
   /// Uploads an image corresponding to a layer to the appropriate location in
