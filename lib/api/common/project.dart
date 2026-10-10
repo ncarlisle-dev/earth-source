@@ -639,12 +639,57 @@ class Project
     }
   }
 
+  /// Sends the data files assigned to the layer passed by name as a parameter 
+  /// to a machine learning model (either the baseline model or a user-created 
+  /// model if passed a model ID) to generate predictions and returns a 
+  /// [jobs.PredictionJob] object that allows for status watching and result 
+  /// fetching.
+  /// 
+  /// Throws a [ProjectException] if no data files correspond to that layer and 
+  /// a [network.ApiNetworkException] if either the job fails to run or the 
+  /// project cannot be uploaded after modification.
   Future<jobs.PredictionJob> runPredictionJob(
     String name, 
     String? modelId
   ) async {
     NetworkService networkService = NetworkService.getInstance();
-    jobs.PredictionJob predictionJob = jobs.PredictionJob();
+
+    // Find all data files corresponding to the given layer for filepath 
+    // creation.
+    int layerIndex = layers.indexWhere((layer) => name == name);
+    List<String> filePaths = [];
+    dataAssignments.forEach((filename, assignment) {
+       assignment.forEach((layer, unit) {
+        if (layer == name) {
+          filePaths.add(name);
+        }
+      });
+    });
+
+    if (filePaths.isEmpty) {
+      throw ProjectException("No data files correspond to the given layer.");
+    }
+    for (var i = 0; i < filePaths.length; i++) {
+      // TODO: Use file names to create actual file paths to where the files 
+      //will be located on the backend.
+    }
+
+    jobs.PredictionJob predictionJob = jobs.PredictionJob(
+      DateTime.now(), 
+      jobs.JobStatus.starting,
+      layers[layerIndex]
+    );
+
+    try {
+      await networkService.runModel(modelId, predictionJob, filePaths);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Prediction job failed to run with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+
     predictions.add(predictionJob);
     lastUpdated = DateTime.now();
     try {
@@ -659,9 +704,31 @@ class Project
     }
   }
 
+  /// Runs a training job using a given file as training data for the new model 
+  /// and returns a [jobs.TrainingJob] object.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the job fails to run or the 
+  /// project cannot be uploaded after modification.
   Future<jobs.TrainingJob> runTrainingJob(String name, String fileName) async {
     NetworkService networkService = NetworkService.getInstance();
-    jobs.TrainingJob trainingJob = jobs.TrainingJob();
+    jobs.TrainingJob trainingJob = jobs.TrainingJob(
+      DateTime.now(), 
+      jobs.JobStatus.starting
+    );
+    trainingJob.name = name;
+    // TODO: Use file name to construct proper filepath.
+    String filepath = "";
+
+    try {
+      await networkService.trainModel(filepath, trainingJob);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Training job failed to run with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+
     models.add(trainingJob);
     lastUpdated = DateTime.now();
     try {

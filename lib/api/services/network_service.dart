@@ -64,4 +64,14 @@ class NetworkService {
 
   Future<void> deleteDirectory(String filePath)
     => throw UnimplementedError();
+
+  Future<void> trainModel(String filepath, common.TrainingJob job)
+    => throw UnimplementedError();
+  
+  Future<void> runModel(
+    String? modelId, 
+    common.PredictionJob job, 
+    List<String> filepaths
+  )
+    => throw UnimplementedError();
 }
