@@ -72,6 +72,8 @@ class UnitSpec
 /// Pxrf data from a given file corresponding to a specific project.
 class DataSpec 
 {
+  /// Id of the data file.
+  String? id;
   /// Name of the data file.
   String fileName; 
   /// Id of the corresponding project.

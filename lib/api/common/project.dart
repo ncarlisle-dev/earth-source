@@ -115,7 +115,7 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the training data could not
   /// successfully be fetched.
-  Future<String?> getPxrfData(String fileName) async 
+  Future<String?> getPxrfData(String fileId) async 
   {
     NetworkService networkService = NetworkService.getInstance();
     String filePath = "";
@@ -137,15 +137,23 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the pXRF data could not
   /// sunccessfully be removed.
-  Future<void> removePxrfData(String fileName) async 
+  Future<void> removePxrfData(String fileId) async 
   {
     NetworkService networkService = NetworkService.getInstance();
     int fileIndex = pxrfData.indexWhere(
-      (file) => file.fileName == fileName);
+      (file) => file.id == fileId);
+
+    dataAssignments.forEach((layerName, layerAssignments) {
+      layerAssignments.forEach((unitName, fileName) {
+        if (pxrfData[fileIndex].fileName == fileName) 
+        {
+          dataAssignments.remove(layerName);
+        }
+      });
+    });
+
     pxrfData.removeAt(fileIndex);
     lastUpdated = DateTime.now();
-
-    dataAssignments.removeWhere((filename, assignment) => filename == fileName);
 
     try {
         String filePath = "";
@@ -206,7 +214,7 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the training data could not
   /// successfully be fetched.
-  Future<String?> getTrainingData(String fileName) async 
+  Future<String?> getTrainingData(String fileId) async 
   {
     NetworkService networkService = NetworkService.getInstance();
     /// TODO: As with layer image, change this to the appropriate filepath.
@@ -230,11 +238,11 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the training data could not
   /// sunccessfully be removed.
-  Future<void> removeTrainingData(String fileName) async 
+  Future<void> removeTrainingData(String fileId) async 
   {
     NetworkService networkService = NetworkService.getInstance();
     int fileIndex = trainingData.indexWhere(
-      (file) => file.fileName == fileName);
+      (file) => file.id == fileId);
     trainingData.removeAt(fileIndex);
     lastUpdated = DateTime.now();
 
@@ -306,7 +314,7 @@ class Project
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if new layer name matches
   /// a pre-existing layer.
-  Future<void> setLayerName(String srcName, String newName) async
+  Future<void> setLayerName(String id, String newName) async
   {
     NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing layer has the same name and only change the
@@ -315,7 +323,7 @@ class Project
       (layer) => layer.name == newName);
 
     if (duplicateName.isEmpty) {
-      int layerIndex = layers.indexWhere((layer) => layer.name == srcName);
+      int layerIndex = layers.indexWhere((layer) => layer.id == id);
       layers[layerIndex].name = newName;
       layers[layerIndex].lastUpdated = DateTime.now();
       lastUpdated = DateTime.now();
@@ -341,10 +349,10 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification.
-  Future<void> setLayerDescription(String name, String description) async
+  Future<void> setLayerDescription(String id, String description) async
   {
     NetworkService networkService = NetworkService.getInstance();
-    int layerIndex = layers.indexWhere((layer) => layer.name == name);
+    int layerIndex = layers.indexWhere((layer) => layer.id == id);
     layers[layerIndex].description = description;
     layers[layerIndex].lastUpdated = DateTime.now();
     lastUpdated = DateTime.now();
@@ -365,10 +373,10 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification or the layer cannot be successfully deleted.
-  Future<void> deleteLayer(String name) async
+  Future<void> deleteLayer(String id) async
   {
     NetworkService networkService = NetworkService.getInstance();
-    int layerIndex = layers.indexWhere((layer) => layer.name == name);
+    int layerIndex = layers.indexWhere((layer) => layer.id == id);
     layers.removeAt(layerIndex);
     lastUpdated = DateTime.now();
 
@@ -453,7 +461,7 @@ class Project
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if new unit name matches
   /// a pre-existing unit.
-  Future<void> setUnitName(String srcName, String newName) async
+  Future<void> setUnitName(String id, String newName) async
   {
     NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing unit has the same name and only change the
@@ -462,7 +470,7 @@ class Project
       (unit) => unit.name == newName);
 
     if (duplicateName.isEmpty) {
-      int unitIndex = units.indexWhere((unit) => unit.name == srcName);
+      int unitIndex = units.indexWhere((unit) => unit.id == id);
       units[unitIndex].name = newName;
       units[unitIndex].lastUpdated = DateTime.now();
       lastUpdated = DateTime.now();
@@ -490,10 +498,10 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification.
-  Future<void> setUnitDescription(String name, String description) async
+  Future<void> setUnitDescription(String id, String description) async
   {
     NetworkService networkService = NetworkService.getInstance();
-    int unitIndex = units.indexWhere((unit) => unit.name == name);
+    int unitIndex = units.indexWhere((unit) => unit.id == id);
     units[unitIndex].description = description;
     units[unitIndex].lastUpdated = DateTime.now();
     lastUpdated = DateTime.now();
@@ -516,13 +524,13 @@ class Project
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if repositioning would incur
   /// overlap with another unit.
-  Future<void> repositionUnit(String name, ({double latitude, double longitude})
+  Future<void> repositionUnit(String id, ({double latitude, double longitude})
    topLeft, double width, double height, double pointInterval) async
   {
     NetworkService networkService = NetworkService.getInstance();
     // Initialize updated unit with position fields in order to check for
     // overlap.
-    int unitIndex = units.indexWhere((unit) => unit.name == name);
+    int unitIndex = units.indexWhere((unit) => unit.id == id);
     specs.UnitSpec updatedUnit = specs.UnitSpec(
       "", 
       "", 
@@ -555,7 +563,7 @@ class Project
     // remove assignments that do not.
     dataAssignments.forEach((layerName, layerAssignments) {
        layerAssignments.forEach((unitName, fileName) {
-        if (unitName == name) 
+        if (unitName == units[unitIndex].name) 
         {
           Future<String?> fileContents = getPxrfData(fileName);
           fileContents.then((value) {
@@ -584,10 +592,10 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification.
-  Future<void> deleteUnit(String name) async
+  Future<void> deleteUnit(String id) async
   {
     NetworkService networkService = NetworkService.getInstance();
-    int unitIndex = units.indexWhere((unit) => unit.name == name);
+    int unitIndex = units.indexWhere((unit) => unit.id == id);
     units.removeAt(unitIndex);
     lastUpdated = DateTime.now();
 
@@ -607,24 +615,26 @@ class Project
   /// 
   /// Throws a [ProjectException] if data does not fit within the unit and a
   /// [network.ApiNetworkException] if the project fails to upload.
-  Future<void> assignData(String layerName, String unitName, String fileName) 
+  Future<void> assignData(String layerId, String unitId, String fileName) 
   async
   {
     NetworkService networkService = NetworkService.getInstance();
 
     // Ensure provided data fits within the given unit.
-    int unitIndex = units.indexWhere((unit) => unit.name == name);
+    int unitIndex = units.indexWhere((unit) => unit.id == unitId);
     Future<String?> fileContents = getPxrfData(fileName);
     fileContents.then((value) {
       if (!checkAssignment(value!, units[unitIndex])) {
         throw ProjectException(
-          "Data from the file $fileName cannot be assigned to unit $unitName."
+          "Data from the file $fileName cannot be assigned to unit "
+          "${units[unitIndex].name}."
         );
       }
     });
 
-    final layerUnitMap = <String, String>{layerName: unitName};
-    dataAssignments[fileName] = layerUnitMap;
+    int layerIndex = layers.indexWhere((layer) => layer.id == layerId);
+    final layerUnitMap = <String, String>{units[unitIndex].name: fileName};
+    dataAssignments[layers[layerIndex].name] = layerUnitMap;
 
     lastUpdated = DateTime.now();
 
@@ -649,7 +659,7 @@ class Project
   /// a [network.ApiNetworkException] if either the job fails to run or the 
   /// project cannot be uploaded after modification.
   Future<jobs.PredictionJob> runPredictionJob(
-    String layerName, 
+    String layerId, 
     String? modelId
   ) async 
   {
@@ -657,7 +667,7 @@ class Project
 
     // Find all data files corresponding to the given layer for filepath 
     // creation.
-    int layerIndex = layers.indexWhere((layer) => name == layerName);
+    int layerIndex = layers.indexWhere((layer) => layer.id == layerId);
     List<String> filePaths = [];
     dataAssignments.forEach((layerName, layerAssignments) {
        layerAssignments.forEach((unitName, fileName) {
@@ -740,7 +750,7 @@ class Project
   /// the database.
   /// 
   /// Throws a [network.ApiNetworkException] if the image fails to upload.
-  Future<void> uploadLayerImage(String layerName, String imageContents) async
+  Future<void> uploadLayerImage(String layerId, String imageContents) async
   {
     NetworkService networkService = NetworkService.getInstance();
     String filePath = "";
@@ -759,7 +769,7 @@ class Project
   /// the database.
   /// 
   /// Throws a [network.ApiNetworkException] if the image cannot be retrieved.
-  Future<String?> getLayerImage(String layerName) async
+  Future<String?> getLayerImage(String layerId) async
   {
     NetworkService networkService = NetworkService.getInstance();
     String filePath = "";
@@ -780,7 +790,7 @@ class Project
   /// the database.
   /// 
   /// Throws a [network.ApiNetworkException] if the image cannot be deleted.
-  Future<void> removeLayerImage(String layerName) async
+  Future<void> removeLayerImage(String layerId) async
   {
     NetworkService networkService = NetworkService.getInstance();
     String filePath = "";
