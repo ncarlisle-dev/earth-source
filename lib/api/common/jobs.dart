@@ -70,22 +70,22 @@ class PredictionJob extends Job
     try {
       bool fileCreated = await networkService.fileExists(filePath);
       if (!fileCreated) return [];
-      
-      try {
-        fileContents = await networkService.fetchFile(filePath);
-      }
-      on network.ApiNetworkException catch (error) {
-        throw network.ApiNetworkException(
-          "Prediction file could not be fetched due to the following error:"
-          " $error",
-          error.statusCode
-        );
-      }
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
         "Network service failed to check if predictions file was created due"
         " to the following error: $error",
+        error.statusCode
+      );
+    }
+
+    try {
+      fileContents = await networkService.fetchFile(filePath);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Prediction file could not be fetched due to the following error:"
+        " $error",
         error.statusCode
       );
     }
