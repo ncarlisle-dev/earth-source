@@ -20,6 +20,8 @@ class ConnectionSpec {
 /// different materials are found.
 class LayerSpec
 {
+  /// Id of the layer.
+  String? id;
   /// Given name of the layer.
   String name;
   /// Given description of the layer.
@@ -36,6 +38,8 @@ class LayerSpec
 /// a given width and height.
 class UnitSpec
 {
+  /// Id of the unit.
+  String? id;
   /// Given name of the unit.
   String name; 
   /// Given description of the unit.

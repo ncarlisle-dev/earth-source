@@ -553,14 +553,14 @@ class Project
 
     // Check that data assigned to the unit still falls within its bounds and
     // remove assignments that do not.
-    dataAssignments.forEach((filename, assignment) {
-       assignment.forEach((layer, unit) {
-        if (unit == name) 
+    dataAssignments.forEach((layerName, layerAssignments) {
+       layerAssignments.forEach((unitName, fileName) {
+        if (unitName == name) 
         {
-          Future<String?> fileContents = getPxrfData(filename);
+          Future<String?> fileContents = getPxrfData(fileName);
           fileContents.then((value) {
             if (!checkAssignment(value!, units[unitIndex])) {
-              dataAssignments.remove(filename);
+              dataAssignments.remove(layerName);
             }
           });
         }
@@ -649,20 +649,19 @@ class Project
   /// a [network.ApiNetworkException] if either the job fails to run or the 
   /// project cannot be uploaded after modification.
   Future<jobs.PredictionJob> runPredictionJob(
-    String name, 
+    String layerName, 
     String? modelId
-  ) async {
+  ) async 
+  {
     NetworkService networkService = NetworkService.getInstance();
 
     // Find all data files corresponding to the given layer for filepath 
     // creation.
-    int layerIndex = layers.indexWhere((layer) => name == name);
+    int layerIndex = layers.indexWhere((layer) => name == layerName);
     List<String> filePaths = [];
-    dataAssignments.forEach((filename, assignment) {
-       assignment.forEach((layer, unit) {
-        if (layer == name) {
-          filePaths.add(name);
-        }
+    dataAssignments.forEach((layerName, layerAssignments) {
+       layerAssignments.forEach((unitName, fileName) {
+        if (layerName == layerName) filePaths.add(layerName);
       });
     });
 
@@ -674,11 +673,7 @@ class Project
       //will be located on the backend.
     }
 
-    jobs.PredictionJob predictionJob = jobs.PredictionJob(
-      DateTime.now(), 
-      jobs.JobStatus.starting,
-      layers[layerIndex]
-    );
+    jobs.PredictionJob predictionJob = jobs.PredictionJob(layers[layerIndex]);
 
     try {
       await networkService.runModel(modelId, predictionJob, filePaths);
@@ -709,12 +704,10 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the job fails to run or the 
   /// project cannot be uploaded after modification.
-  Future<jobs.TrainingJob> runTrainingJob(String name, String fileName) async {
+  Future<jobs.TrainingJob> runTrainingJob(String name, String fileName) async 
+  {
     NetworkService networkService = NetworkService.getInstance();
-    jobs.TrainingJob trainingJob = jobs.TrainingJob(
-      DateTime.now(), 
-      jobs.JobStatus.starting
-    );
+    jobs.TrainingJob trainingJob = jobs.TrainingJob();
     trainingJob.name = name;
     // TODO: Use file name to construct proper filepath.
     String filepath = "";

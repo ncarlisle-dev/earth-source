@@ -20,16 +20,16 @@ abstract class Job
   /// The description of the job.
   String? description;
   /// Time at which the job was created.
-  DateTime createdAt;
+  DateTime createdAt = DateTime.now();
   /// Current status of the job.
   JobStatus status = JobStatus.starting;
   /// A collection of status listeners called when the job's status changes.
-  final List<void Function(JobStatus)?> _statusListeners = [];
+  final List<void Function(JobStatus)> _statusListeners = [];
 
-  Job(this.createdAt, this.status);
+  Job();
 
   /// Sets a callback to be run every time the status of a given job changes
-  Future<void> watchStatus(void Function(JobStatus status)? callback) async
+  Future<void> watchStatus(void Function(JobStatus status) callback) async
   {
     _statusListeners.add(callback);
   }
@@ -38,10 +38,7 @@ abstract class Job
 /// An extension of the job class used specifically for model training.
 class TrainingJob extends Job 
 {
-  TrainingJob(
-    super.createdAt, 
-    super.status
-  );
+  TrainingJob();
 }
 
 /// An extension of the job class used specifically for predictions, with a 
@@ -54,11 +51,7 @@ class PredictionJob extends Job
   /// if not.)
   String? modelId;
 
-  PredictionJob(
-    super.createdAt, 
-    super.status, 
-    this.layer
-  );
+  PredictionJob(this.layer);
 
   /// Obtains the results of generating a prediction and returns them formatted
   /// as a 2D list of doubles. If results are not yet available, returns an 
@@ -69,53 +62,51 @@ class PredictionJob extends Job
   {
     List<List<double>> results = [];
     NetworkService networkService = NetworkService.getInstance();
-    if (status == JobStatus.complete)
-    {
-      // TODO: Construct filepath to where prediction file will actually be 
-      // stored on the backend using presumably job id or name.
-      String filePath = "";
-      String? fileContents = "";
+    if (status != JobStatus.complete) return [];
+    // TODO: Construct filepath to where prediction file will actually be 
+    // stored on the backend using presumably job id or name.
+    String filePath = "";
+    String? fileContents = "";
+    try {
+      bool fileCreated = await networkService.fileExists(filePath);
+      if (!fileCreated) return [];
+      
       try {
-        bool fileCreated = await networkService.fileExists(filePath);
-        if (fileCreated) {
-          try {
-            fileContents = await networkService.fetchFile(filePath);
-          }
-          on network.ApiNetworkException catch (error) {
-            throw network.ApiNetworkException(
-              "Prediction file could not be fetched due to the following error:"
-              " $error",
-              error.statusCode
-            );
-          }
-        }
+        fileContents = await networkService.fetchFile(filePath);
       }
       on network.ApiNetworkException catch (error) {
         throw network.ApiNetworkException(
-          "Network service failed to check if predictions file was created due"
-          "to the following error: $error",
+          "Prediction file could not be fetched due to the following error:"
+          " $error",
           error.statusCode
         );
       }
-
-      // Parse file contents into a 2D list of strings, then convert strings to 
-      // doubles.
-      if (fileContents != "" && fileContents != null) {
-        List<List<String>> resultsAsString = [];
-        List<String> fileLines = fileContents.split('\n');
-        for (var i = 0; i < fileLines.length; i++) {
-          resultsAsString.add(fileLines[i].split(','));
-        }
-        for (var i = 0; i < fileLines.length; i++) {
-          List<double> parsedList = [];
-          for (var j = 0; j < fileLines[0].length; j++) {
-            parsedList.add(double.parse(resultsAsString[i][j]));
-          }
-          results.add(parsedList);
-        }
-      }
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Network service failed to check if predictions file was created due"
+        " to the following error: $error",
+        error.statusCode
+      );
     }
 
+    // Parse file contents into a 2D list of strings, then convert strings to 
+    // doubles.
+    if (fileContents == "" || fileContents == null) return [];
+
+    List<List<String>> resultsAsString = [];
+    List<String> fileLines = fileContents.split('\n');
+    for (var i = 0; i < fileLines.length; i++) {
+      resultsAsString.add(fileLines[i].split(','));
+    }
+    for (var i = 0; i < fileLines.length; i++) {
+      List<double> parsedList = [];
+      for (var j = 0; j < fileLines[0].length; j++) {
+        parsedList.add(double.parse(resultsAsString[i][j]));
+      }
+      results.add(parsedList);
+    }
+    
     return results;
   }
 }
