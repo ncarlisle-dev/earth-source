@@ -28,6 +28,8 @@ class LayerSpec
   String description;
   /// Time the layer was last updated.
   DateTime lastUpdated;
+  /// Coordinates of the four corner points of the layer image.
+  List<List<double>>? cornerCoordinates;
   /// Time the layer was created.
   final DateTime createdAt;
 
