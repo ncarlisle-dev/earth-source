@@ -1,3 +1,8 @@
+import 'specs.dart' as specs;
+import '../services/network_service.dart';
+import 'network.dart' as network;
+
+/// Possible job statuses.
 enum JobStatus {
   starting,
   running,
@@ -5,8 +10,103 @@ enum JobStatus {
   failed,
 }
 
-abstract class Job {}
+/// A batch job that serves to either run or train a model.
+abstract class Job 
+{
+  /// The id of the job.
+  String? id;
+  /// The name of the job.
+  String? name;
+  /// The description of the job.
+  String? description;
+  /// Time at which the job was created.
+  DateTime createdAt = DateTime.now();
+  /// Current status of the job.
+  JobStatus status = JobStatus.starting;
+  /// A collection of status listeners called when the job's status changes.
+  final List<void Function(JobStatus)> _statusListeners = [];
 
-class TrainingJob extends Job {}
+  Job();
 
-class PredictionJob extends Job {}
+  /// Sets a callback to be run every time the status of a given job changes
+  Future<void> watchStatus(void Function(JobStatus status) callback) async
+  {
+    _statusListeners.add(callback);
+  }
+}
+
+/// An extension of the job class used specifically for model training.
+class TrainingJob extends Job 
+{
+  TrainingJob();
+}
+
+/// An extension of the job class used specifically for predictions, with a 
+/// corresponding layer and model id if a new model is being used.
+class PredictionJob extends Job 
+{
+  /// Layer over which the current predictions should run.
+  specs.LayerSpec layer;
+  /// Model id if a newly trained model is being used (defaults to base model
+  /// if not.)
+  String? modelId;
+
+  PredictionJob(this.layer);
+
+  /// Obtains the results of generating a prediction and returns them formatted
+  /// as a 2D list of doubles. If results are not yet available, returns an 
+  /// empty list.
+  /// 
+  /// Throws a [network.ApiNetworkException] if results file cannot be fetched.
+  Future<List<List<double>>>? getResults() async
+  {
+    List<List<double>> results = [];
+    NetworkService networkService = NetworkService.getInstance();
+    if (status != JobStatus.complete) return [];
+    // TODO: Construct filepath to where prediction file will actually be 
+    // stored on the backend using presumably job id or name.
+    String filePath = "";
+    String? fileContents = "";
+    try {
+      bool fileCreated = await networkService.fileExists(filePath);
+      if (!fileCreated) return [];
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Network service failed to check if predictions file was created due"
+        " to the following error: $error",
+        error.statusCode
+      );
+    }
+
+    try {
+      fileContents = await networkService.fetchFile(filePath);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Prediction file could not be fetched due to the following error:"
+        " $error",
+        error.statusCode
+      );
+    }
+
+    // Parse file contents into a 2D list of strings, then convert strings to 
+    // doubles.
+    if (fileContents == "" || fileContents == null) return [];
+
+    List<List<String>> resultsAsString = [];
+    List<String> fileLines = fileContents.split('\n');
+    for (var i = 0; i < fileLines.length; i++) {
+      resultsAsString.add(fileLines[i].split(','));
+    }
+    for (var i = 0; i < fileLines.length; i++) {
+      List<double> parsedList = [];
+      for (var j = 0; j < fileLines[0].length; j++) {
+        parsedList.add(double.parse(resultsAsString[i][j]));
+      }
+      results.add(parsedList);
+    }
+    
+    return results;
+  }
+}
