@@ -4,10 +4,10 @@ import 'package:latlong2/latlong.dart' as latlong;
 import '../../api/api.dart' as api;
 import '../home_page.dart';
 
-
 class PredictionView extends StatefulWidget {
-  const PredictionView({super.key, required this.predictionJob, required this.layerAssignments});
+  const PredictionView({super.key, required this.projectId, required this.predictionJob, required this.layerAssignments});
 
+  final String projectId;
   final api.PredictionJob predictionJob;
   final Map<String, String> layerAssignments;
 
@@ -31,7 +31,8 @@ class _PredictionViewState extends State<PredictionView> {
   bool isDescriptionChanged = false;
 
   /// Displays a pop-up dialogue box that allows the user to set a new name for
-  /// the prediction job.
+  /// the prediction job and changes the name of the job within the appropriate
+  /// project.
   void renameJob()
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
@@ -57,9 +58,22 @@ class _PredictionViewState extends State<PredictionView> {
                       }
                       return null;
                     },
-                    onSaved: (value) {
+                    onSaved: (value) async {
+                      // Find the appropriate project in the project controller
+                      // and change the name of the corresponding prediction 
+                      // job.
+                      api.ProjectController projectController = 
+                        await api.ProjectController.getInstance();
+                      int projectIndex = 
+                        projectController.userProjects.indexWhere(
+                        (project) => project.id == widget.projectId);
+                      projectController.userProjects[projectIndex].setJobName(
+                        widget.predictionJob.id!, 
+                        value!
+                      );
+
                       setState(() {
-                        changedName = value!;
+                        changedName = value;
                       });
                     },
                   ),
@@ -85,7 +99,8 @@ class _PredictionViewState extends State<PredictionView> {
   }
 
   /// Displays a pop-up dialogue box that allows the user to set a new 
-  /// description for the prediction job.
+  /// description for the prediction job and changes the description for the job
+  /// within the appropriate project.
   void changeDescription()
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
@@ -111,9 +126,23 @@ class _PredictionViewState extends State<PredictionView> {
                       }
                       return null;
                     },
-                    onSaved: (value) {
+                    onSaved: (value) async {
+                      // Find the appropriate project in the project controller
+                      // and change the description of the corresponding 
+                      // prediction job.
+                      api.ProjectController projectController = 
+                        await api.ProjectController.getInstance();
+                      int projectIndex = 
+                        projectController.userProjects.indexWhere(
+                        (project) => project.id == widget.projectId);
+                      projectController.userProjects[projectIndex].
+                        setJobDescription(
+                          widget.predictionJob.id!, 
+                          value!
+                      );
+
                       setState(() {
-                        changedDescription = value!;
+                        changedDescription = value;
                       });
                     },
                   ),
@@ -154,11 +183,23 @@ class _PredictionViewState extends State<PredictionView> {
           actions: [
             ElevatedButton(
               child: const Text("Confirm Deletion"),
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute<void>(
-                  builder: (context) => const HomePage(),
-                  ),
-                );
+              onPressed: () async {
+                // Find the appropriate project in the project controller
+                // and delete the corresponding prediction job.
+                api.ProjectController projectController = 
+                  await api.ProjectController.getInstance();
+                int projectIndex = 
+                  projectController.userProjects.indexWhere(
+                  (project) => project.id == widget.projectId);
+                projectController.userProjects[projectIndex].
+                  deleteJob(widget.predictionJob.id!);
+                if (context.mounted)
+                {
+                  Navigator.push(context, MaterialPageRoute<void>(
+                    builder: (context) => const HomePage(),
+                    ),
+                  );
+                }
               },
             ),
             ElevatedButton(
