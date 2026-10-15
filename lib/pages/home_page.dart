@@ -6,8 +6,6 @@ import './languages_page.dart' as languages_page;
 import './projects_page.dart' as projects_page;
 import './settings_page.dart' as settings_page;
 import './connections_page.dart' as connections_page;
-import './predictions/prediction_view.dart';
-import '../api/api.dart' as api;
 
 /// A page containing the navigation bar for the app from which all other pages
 /// can be accessed.
@@ -25,13 +23,6 @@ class _HomePageState extends material.State<HomePage> {
 
   @override
   material.Widget build(material.BuildContext context) {
-    api.LayerSpec layer = api.LayerSpec("Layer 1", "An archaeological stratum", DateTime.now(), DateTime.now());
-    api.PredictionJob job = api.PredictionJob(layer);
-    job.name = "Prediction 1";
-    job.description = "This is a prediction!";
-    job.createdAt = DateTime.now();
-    job.status = api.JobStatus.complete;
-    Map<String, String> layerAssignments = {"Unit 1": "pXRF_1.csv", "Unit 2": "pXRF_2.csv", "Unit 3": "pXRF_1.csv"};
     return material.Scaffold(
       bottomNavigationBar: material.NavigationBar(
         onDestinationSelected: (int index) {
@@ -64,10 +55,10 @@ class _HomePageState extends material.State<HomePage> {
             icon: material.Icon(material.Icons.info_outline),
             label: 'About',
           ),
-          material.NavigationDestination(
+          /*material.NavigationDestination(
             icon: material.Icon(material.Icons.warning),
             label: 'WIP'
-          ),
+          ),*/
         ],
       ),
       
@@ -78,7 +69,6 @@ class _HomePageState extends material.State<HomePage> {
         projects_page.ProjectsPage(),
         help_page.HelpPage(),
         about_page.AboutPage(),
-        PredictionView(predictionJob: job, layerAssignments: layerAssignments),
         ///connections_page.ConnectionsPage(),
       ][currentPageIndex],
     );

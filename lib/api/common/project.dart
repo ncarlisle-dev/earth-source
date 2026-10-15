@@ -5,6 +5,7 @@ import 'network.dart' as network;
 import 'specs.dart' as specs;
 import 'jobs.dart' as jobs;
 import 'package:flutter_map_math/flutter_geo_math.dart' as map_math;
+import 'package:latlong2/latlong.dart' as latlong;
 
 /// TODO: Change filepath in functions involving file upload, retrieval, or
 /// deletion to accurately reflect where it will be stored in the database.
@@ -265,7 +266,11 @@ class Project
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if given layer name matches
   /// a pre-existing layer.
-  Future<specs.LayerSpec> createLayer(String name, String description) 
+  Future<specs.LayerSpec> createLayer(
+    String name, 
+    String description, 
+    List<latlong.LatLng> cornerCoordinates
+  ) 
     async
   {
     NetworkService networkService = NetworkService.getInstance();
@@ -279,7 +284,8 @@ class Project
         name, 
         description, 
         DateTime.now(), 
-        DateTime.now()
+        DateTime.now(),
+        cornerCoordinates
       );
       layers.add(createdLayer);
       lastUpdated = DateTime.now();

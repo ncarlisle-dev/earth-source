@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../mapping/visualizer.dart' as visualizer;
-import 'package:latlong2/latlong.dart' as latlong;
 import '../../api/api.dart' as api;
 import '../home_page.dart';
 
+/// A stateful widget for the prediction view page, which takes the id for the
+/// current project and a prediction job object as required fields.
 class PredictionView extends StatefulWidget {
-  const PredictionView({super.key, required this.projectId, required this.predictionJob, required this.layerAssignments});
+  const PredictionView({
+    super.key, 
+    required this.projectId, 
+    required this.predictionJob
+  });
 
   final String projectId;
   final api.PredictionJob predictionJob;
-  final Map<String, String> layerAssignments;
 
   @override
   State<PredictionView> createState() => _PredictionViewState();
@@ -212,6 +216,36 @@ class _PredictionViewState extends State<PredictionView> {
     );
   }
 
+  Future<Map<String, String>> getLayerAssignments() async
+  {
+    api.ProjectController projectController = 
+      await api.ProjectController.getInstance();
+    int projectIndex = projectController.userProjects.indexWhere(
+      (project) => project.id == widget.projectId);
+
+    Map<String, String>? layerAssignments = 
+      projectController.userProjects[projectIndex].
+      dataAssignments[widget.predictionJob.layer.id];
+
+    return layerAssignments!;
+  }
+
+  Future<(String, List<List<double>>)> loadPredictionData() async
+  {
+    api.ProjectController projectController = 
+      await api.ProjectController.getInstance();
+    int projectIndex = projectController.userProjects.indexWhere(
+      (project) => project.id == widget.projectId);
+
+    List<List<double>>? results = await widget.predictionJob.getResults();
+    String? imageContents = 
+      await projectController.userProjects[projectIndex].getLayerImage(
+        widget.predictionJob.layer.id!
+      );
+
+    return (imageContents!, results!);
+  }
+
   @override
   Widget build(BuildContext context) {
     String jobStatus = jobStatusList[widget.predictionJob.status.index];
@@ -296,10 +330,28 @@ class _PredictionViewState extends State<PredictionView> {
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: Center(
             child: Text("Layer: ${widget.predictionJob.layer.name}"))),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Center(
-            child: Text("Layer Assignments: ${widget.layerAssignments}"))),
+        FutureBuilder(
+            future: getLayerAssignments(),
+            builder: (
+              BuildContext ctx, 
+              AsyncSnapshot<Map> snapshot
+            ) 
+            => snapshot.hasData
+            ?
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(
+                child: Text("Layer Assignments: ${snapshot.data!}")
+              )
+            )
+            :
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(
+                child: Text("Layer assignments could not be retrieved.")
+              )
+            )
+        ),
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton(
@@ -315,24 +367,31 @@ class _PredictionViewState extends State<PredictionView> {
         ),
         SizedBox(
           height: MediaQuery.of(context).size.height * 0.75,
-          child: mapDisplay ? visualizer.Visualizer(
-            predictionData: [[0, 0.5, 0.7, 0.6], [0.2, 0.8, 0.6, 0.63], [0.9, 0.5, 0.72, 0.84], [0.1, 0.3, 0.4, 0.55]], 
-            imageFilePath: "assets/2D_Site_Map_Test.png",
-            cornerCoordinates: [
-              latlong.LatLng(-6.464587823350703, -79.81167832340672), 
-              latlong.LatLng(-6.464714347149058, -79.81167832340672), 
-              latlong.LatLng(-6.464587823350703, -79.8115973391495), 
-              latlong.LatLng(-6.464714347149058, -79.8115973391495)
-            ],
-            threshold: 0.5
-          )
-          :
-          visualizer.TextDisplay(cornerCoordinates: [
-              latlong.LatLng(-6.464587823350703, -79.81167832340672), 
-              latlong.LatLng(-6.464714347149058, -79.81167832340672), 
-              latlong.LatLng(-6.464587823350703, -79.8115973391495), 
-              latlong.LatLng(-6.464714347149058, -79.8115973391495)
-            ], predictionData: [[0, 0.5, 0.7, 0.6], [0.2, 0.8, 0.6, 0.63], [0.9, 0.5, 0.72, 0.84], [0.1, 0.3, 0.4, 0.55]], threshold: 0.5)
+          child: FutureBuilder(
+            future: loadPredictionData(),
+            builder: (
+              BuildContext ctx, 
+              AsyncSnapshot<(String, List)> snapshot
+            ) 
+            => snapshot.hasData
+            ?
+            mapDisplay 
+              ? 
+              visualizer.Visualizer(
+                predictionData: snapshot.data!.$2 as List<List<double>>, 
+                imageFilePath: snapshot.data!.$1,
+                cornerCoordinates: widget.predictionJob.layer.cornerCoordinates,
+                threshold: 0.5
+              )
+              :
+              visualizer.TextDisplay(
+                cornerCoordinates: widget.predictionJob.layer.cornerCoordinates, 
+                predictionData: snapshot.data!.$2 as List<List<double>>, 
+                threshold: 0.5
+              )
+            :
+            Center(child: Text("Prediction data failed to load."))
+          ),
         ),
       ]
     );
