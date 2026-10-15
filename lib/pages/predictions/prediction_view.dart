@@ -12,14 +12,18 @@ class PredictionView extends StatefulWidget {
     required this.predictionJob
   });
 
+  /// The id of the current project.
   final String projectId;
+  /// The prediction job currently being displayed.
   final api.PredictionJob predictionJob;
 
   @override
   State<PredictionView> createState() => _PredictionViewState();
 }
 
+/// The mutable state of the prediction view page.
 class _PredictionViewState extends State<PredictionView> {
+  /// List of job status strings corresponding to the JobStatus enum.
   static const List<String> jobStatusList = [
     "Starting", 
     "Running", 
@@ -27,11 +31,18 @@ class _PredictionViewState extends State<PredictionView> {
     "Failed"
   ];
 
+  /// Variable to store the updated name of the prediction, should the user
+  /// change it.
   String changedName = "";
+  /// Variable to store the updated description of the prediction, should the 
+  /// user change it.
   String changedDescription = "";
-
+  /// Tracks whether the predictions are currently being displayed as a map or
+  /// as text.
   bool mapDisplay = true;
+  /// Tracks whether the name of the prediction has been changed.
   bool isNameChanged = false;
+  /// Tracks whether the description of a prediction has been changed.
   bool isDescriptionChanged = false;
 
   /// Displays a pop-up dialogue box that allows the user to set a new name for
@@ -216,6 +227,8 @@ class _PredictionViewState extends State<PredictionView> {
     );
   }
 
+  /// Fetches the unit and data file assignments corresponding to the layer
+  /// for the current prediction.
   Future<Map<String, String>> getLayerAssignments() async
   {
     api.ProjectController projectController = 
@@ -230,6 +243,8 @@ class _PredictionViewState extends State<PredictionView> {
     return layerAssignments!;
   }
 
+  /// Loads both the image and the prediction results for display on the 
+  /// prediction view page.
   Future<(String, List<List<double>>)> loadPredictionData() async
   {
     api.ProjectController projectController = 

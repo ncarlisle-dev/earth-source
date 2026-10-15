@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart' as material;
-import '../mapping/visualizer.dart' as visualizer;
-import 'package:latlong2/latlong.dart' as latlong;
 
 /// A page for describing the project, with links to the repository and website.
 class AboutPage extends material.StatefulWidget {
