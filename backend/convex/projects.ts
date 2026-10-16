@@ -5,18 +5,22 @@ import { internal } from "./_generated/api";
 import * as z from "zod";
 import { zid } from "convex-helpers/server/zod4";
 
-import { 
-  authenticateUser,
+import { authenticateUser } from "./auth";
+
+import {
   zodMutation,
   zodQuery,
   zodInternalMutation,
   zodAction,
+  zodInternalQuery,
+} from "./builders";
+
+import { 
   InvalidRequestError,
   ResourceNotFoundError,
   UnauthorizedError,
-  zodInternalQuery,
   UnknownServerError,
-} from "./helper";
+} from "./errors";
 
 import {
   zDbProject,
@@ -35,6 +39,7 @@ import {
   Timestamp,
   PredictionJob,
   TrainingJob,
+  zTimestamp,
 } from "./schema";
 
 
@@ -42,7 +47,9 @@ import {
 
 /**
  * Helper function that fetches a project and validates that the user may
- * read/write to it.
+ * read/write to it. Throws a {@link ResourceNotFoundError} if the project
+ * doesn't exist, and an {@link UnauthorizedError} if the user is not
+ * authorized to edit the project.
  * @param ctx The Convex-provided query/mutation context.
  * @param projectId ID of the project.
  * @param userId ID of the user.
@@ -59,6 +66,8 @@ async function getDbProject(
   if (dbProject === null)
     throw new ResourceNotFoundError(`Project with ID ${projectId} not found.`);
 
+  // TODO: Only throw a ResourceNotFoundError if the user isn't authorized?
+
   if (dbProject.userId !== userId) 
     throw new UnauthorizedError(
       `User does not have access to project with ID '${projectId}'.`
@@ -67,6 +76,12 @@ async function getDbProject(
   return dbProject;
 }
 
+/**
+ * Helper function that removes empty fields from an update object and throws
+ * an {@link InvalidRequestError} if no updates were specfied.
+ * @param updates The update object.
+ * @returns The non-empty update fields.
+ */
 async function validateUpdates(updates: Record<string, any>) {
     for (const key of Object.keys(updates)) {
       if (updates[key] === undefined)
@@ -81,6 +96,10 @@ async function validateUpdates(updates: Record<string, any>) {
 
 /* ======================== Create/delete endpoints ======================== */
 
+/**
+ * Mutation that creates a project given its name, description, top left
+ * coordinates, width, and height. Returns the created project's ID.
+ */
 export const createProject = zodMutation({
   args: {
     name: zDbProject.shape.name,
@@ -114,6 +133,7 @@ export const createProject = zodMutation({
   }
 })
 
+/** Mutation that deletes a project given its ID. */
 export const deleteProject = zodMutation({
   args: {
     id: zid("projects"),
@@ -127,6 +147,7 @@ export const deleteProject = zodMutation({
 
 /* =========================== Getters =========================== */
 
+/** Helper query that fetches a project given its ID and owner. */
 export const getDbProjectQuery = zodInternalQuery({
   args: {
     userId: zid("users"),
@@ -137,6 +158,7 @@ export const getDbProjectQuery = zodInternalQuery({
   }
 });
 
+/** Query that fetches a user's projects' metadata. */
 export const getUserProjectSpecs = zodQuery({
   handler: async (ctx) => {
     const userId = await authenticateUser(ctx);
@@ -168,6 +190,7 @@ export const getUserProjectSpecs = zodQuery({
   },
 });
 
+/** Query that fetches a project given its ID. */
 export const getProjectById = zodQuery({
   args: {
     id: zid("projects"),
@@ -178,7 +201,6 @@ export const getProjectById = zodQuery({
 
     const project: Project = {
       id: dbProject._id,
-      owner: dbProject.userId,
       name: dbProject.name,
       description: dbProject.description,
       topLeftCoords: dbProject.topLeftCoords,
@@ -319,6 +341,10 @@ export const getProjectById = zodQuery({
 
 /* =========================== Setters =========================== */
 
+/**
+ * Mutation that sets a project's name and description. Returns the update
+ * timestamp.
+ */
 export const setProjectMetadata = zodMutation({
   args: {
     id: zid("projects"),
@@ -342,13 +368,12 @@ export const setProjectMetadata = zodMutation({
   },
 })
 
-interface ConfigureProjectSiteDbResult {
-  createdLayerIds: Id<"layers">[];
-  createdUnitIds: Id<"units">[];
-  storageIdsToDelete: Id<"_storage">[];
-  timestamp: Timestamp;
-}
-
+/**
+ * Action that updates a project's location, width, height, units, and
+ * layers given its ID. Deletes any jobs and files associated with deleted
+ * layers. Returns the created units' IDs, created layers' IDs, and the update
+ * timestamp.
+ */
 export const configureProjectSite = zodAction({
   args: {
     projectId: zid("projects"),
@@ -426,6 +451,17 @@ export const configureProjectSite = zodAction({
   }
 });
 
+/** The return type of {@link configureProjectSiteDb}. */
+interface ConfigureProjectSiteDbResult {
+  createdLayerIds: Id<"layers">[];
+  createdUnitIds: Id<"units">[];
+  storageIdsToDelete: Id<"_storage">[];
+  timestamp: Timestamp;
+}
+
+/** Helper mutation that handles database transactions for
+ * {@link configureProjectSite}. Returns a {@link ConfigureProjectSiteDbResult}.
+ */
 export const configureProjectSiteDb = zodInternalMutation({
   args: {
     userId: zid("users"),
@@ -793,6 +829,10 @@ async function assertProjectHasTrainingDataSpec(
   return { dataSpec, dataSpecIndex, };
 }
 
+/**
+ * Internal mutation used by HTTP endpoints to handle pXRF file upload 
+ * database transactions. Returns the data spec's ID.
+ */
 export const finalizePxrfFileUpload = zodInternalMutation({
   args: {
     projectId: zid("projects"),
@@ -801,13 +841,12 @@ export const finalizePxrfFileUpload = zodInternalMutation({
     description: zDbPxrfDataSpec.shape.description,
     numPoints: zDbPxrfDataSpec.shape.numPoints,
     size: zDbPxrfDataSpec.shape.numPoints,
+    timestamp: zTimestamp,
   },
   handler: async (ctx, args) => {
-    const timestamp = Date.now();
-
     const specId = await ctx.db.insert("dataSpecs", {
       kind: "pxrf",
-      lastUpdated: timestamp,
+      lastUpdated: args.timestamp,
       ...args,
     });
 
@@ -817,11 +856,17 @@ export const finalizePxrfFileUpload = zodInternalMutation({
     await ctx.db.patch(
       "projects",
       args.projectId,
-      { pxrfDataSpecIds, lastUpdated: timestamp }
+      { pxrfDataSpecIds, lastUpdated: args.timestamp }
     );
+
+    return specId;
   }
 });
 
+/**
+ * Internal mutation used by HTTP endpoints to handle training file upload
+ * database transactions. Returns the data spec's ID.
+ */
 export const finalizeTrainingFileUpload = zodInternalMutation({
   args: {
     projectId: zid("projects"),
@@ -830,13 +875,12 @@ export const finalizeTrainingFileUpload = zodInternalMutation({
     description: zDbTrainingDataSpec.shape.description,
     numPoints: zDbTrainingDataSpec.shape.numPoints,
     size: zDbTrainingDataSpec.shape.numPoints,
+    timestamp: zTimestamp,
   },
   handler: async (ctx, args) => {
-    const timestamp = Date.now();
-
     const specId = await ctx.db.insert("dataSpecs", {
       kind: "training",
-      lastUpdated: timestamp,
+      lastUpdated: args.timestamp,
       ...args,
     });
 
@@ -849,14 +893,17 @@ export const finalizeTrainingFileUpload = zodInternalMutation({
     await ctx.db.patch(
       "projects",
       args.projectId,
-      { trainingDataSpecIds, lastUpdated: timestamp }
+      { trainingDataSpecIds, lastUpdated: args.timestamp }
     );
+
+    return specId;
   }
 });
 
 /* ========================= Public file endpoints ========================= */
 // See http.ts for the uploading endpoints
 
+/** Query that returns a download URL for a pXRF data spec file. */
 export const getProjectPxrfDataUrl = zodQuery({
   args: {
     projectId: zid("projects"),
@@ -879,6 +926,10 @@ export const getProjectPxrfDataUrl = zodQuery({
   }
 });
 
+/**
+ * Mutation that sets a pXRF data spec's name and/or description. Returns the
+ * update timestamp.
+ */
 export const setProjectPxrfDataMetadata = zodMutation({
  args: {
     projectId: zid("projects"),
@@ -912,6 +963,10 @@ export const setProjectPxrfDataMetadata = zodMutation({
   }
 });
 
+/**
+ * Mutation that deletes a pXRF data spec and its associated file.
+ * Returns the deletion timestamp.
+ */
 export const deleteProjectPxrfData = zodMutation({
   args: {
     projectId: zid("projects"),
@@ -945,6 +1000,10 @@ export const deleteProjectPxrfData = zodMutation({
   }
 });
 
+/**
+ * Mutation that assigns a project's layer and unit to a pXRF data spec.
+ * Returns the update timestamp.
+ */
 export const assignProjectPxrfData = zodMutation({
   args: {
     projectId: zid("projects"),
@@ -986,6 +1045,7 @@ export const assignProjectPxrfData = zodMutation({
   },
 });
 
+/** Query that returns a download URL for a training data spec file. */
 export const getProjectTrainingDataUrl = zodQuery({
   args: {
     projectId: zid("projects"),
@@ -1008,6 +1068,10 @@ export const getProjectTrainingDataUrl = zodQuery({
   },
 });
 
+/**
+ * Mutation that sets a training data spec's name and/or description. Returns
+ * the update timestamp.
+ */
 export const setProjectTrainingDataMetadata = zodMutation({
  args: {
     projectId: zid("projects"),
@@ -1041,6 +1105,10 @@ export const setProjectTrainingDataMetadata = zodMutation({
   }
 });
 
+/**
+ * Mutation that deletes a pXRF data spec and its associated file. Returns
+ * the deletion timestamp.
+ */
 export const deleteProjectTrainingData = zodMutation({
   args: {
     projectId: zid("projects"),
@@ -1078,11 +1146,23 @@ export const deleteProjectTrainingData = zodMutation({
 
 /* ============================= Job endpoints ============================= */
 
+/**
+ * Helper function that checks if a project has a prediction job. If it
+ * doesn't, it throws a {@link ResourceNotFoundError}.
+ * @param ctx The Convex-provided query/mutation context.
+ * @param project The {@link DbProject} to reference.
+ * @param jobId The prediction job's ID to search for.
+ * @returns The {@link DbPredictionJob} associated with the inputted ID, and the
+ *          index in the project's prediction job array where the ID was found.
+ */
 async function assertProjectHasPredictionJob(
   ctx: QueryCtx | MutationCtx,
   project: DbProject,
   jobId: Id<"jobs">
-)
+): Promise<{
+  job: DbPredictionJob,
+  jobIndex: number,
+}>
 {
   const job = await ctx.db.get("jobs", jobId);
   const jobIndex = project.predictionJobIds.findIndex(
@@ -1101,11 +1181,23 @@ async function assertProjectHasPredictionJob(
   return { job, jobIndex };
 }
 
+/**
+ * Helper function that checks if a project has a training job. If it doesn't,
+ * it throws a {@link ResourceNotFoundError}.
+ * @param ctx The Convex-provided query/mutation context.
+ * @param project The {@link DbProject} to reference.
+ * @param jobId The training job's ID to search for.
+ * @returns The {@link DbTrainingJob} associated with the inputted ID, and the
+ *          index in the project's training job array where the ID was found.
+ */
 async function assertProjectHasTrainingJob(
   ctx: QueryCtx | MutationCtx,
   project: DbProject,
   jobId: Id<"jobs">
-)
+): Promise<{
+  job: DbTrainingJob,
+  jobIndex: number,
+}>
 {
   const job = await ctx.db.get("jobs", jobId);
   const jobIndex = project.trainingJobIds.findIndex(
@@ -1124,11 +1216,17 @@ async function assertProjectHasTrainingJob(
   return { job, jobIndex };
 }
 
+/** The return type of {@link createDbPredictionJob}. */
 interface CreateDbPredictionJobResult {
   jobId: Id<"jobs">;
   timestamp: Timestamp;
 };
 
+/**
+ * Helper mutation used by {@link runPredictionJob} that handles database
+ * transactions for creating a prediction job. Returns a
+ * {@link CreateDbPredictionJobResult}.
+ */
 export const createDbPredictionJob = zodInternalMutation({
   args: {
     userId: zid("users"),
@@ -1177,6 +1275,11 @@ export const createDbPredictionJob = zodInternalMutation({
   }
 });
 
+/**
+ * Action that runs a prediction job, sending an HTTP request to the batch
+ * service and creating its associated database entry. Returns the job's ID and
+ * creation timestamp.
+ */
 export const runPredictionJob = zodAction({
   args: {
     projectId: zid("projects"),
@@ -1204,6 +1307,10 @@ export const runPredictionJob = zodAction({
   },
 });
 
+/**
+ * Mutation that sets a prediction job's name and description. Returns the
+ * update timestamp.
+ */
 export const setPredictionJobMetadata = zodMutation({
   args: {
     projectId: zid("projects"),
@@ -1237,6 +1344,7 @@ export const setPredictionJobMetadata = zodMutation({
   },
 });
 
+/** Query that fetches a project's {@link PredictionJob}. */
 export const getPredictionJob = zodQuery({
   args: {
     projectId: zid("projects"),
@@ -1265,6 +1373,7 @@ export const getPredictionJob = zodQuery({
   }
 })
 
+/** Mutation that deletes a prediction job and its associated files. */
 export const deletePredictionJob = zodMutation({
   args: {
     projectId: zid("projects"),
@@ -1279,7 +1388,7 @@ export const deletePredictionJob = zodMutation({
       args.jobId
     );
 
-    if (job.status !== "complete")
+    if (job.status !== "complete" && job.status !== "failed")
       throw new InvalidRequestError(
         `Prediction job with ID '${args.jobId}' is still ongoing.`
       );
@@ -1302,11 +1411,17 @@ export const deletePredictionJob = zodMutation({
   },
 });
 
+/** The return type of {@link createDbPredictionJob}. */
 interface CreateDbTrainingJobResult {
   jobId: Id<"jobs">;
   timestamp: Timestamp;
 };
 
+/**
+ * Helper mutation used by {@link runTrainingJob} that handles database
+ * transactions for creating a training job. Returns a 
+ * {@link CreateDbTrainingJobResult}.
+ */
 export const createDbTrainingJob = zodInternalMutation({
   args: {
     userId: zid("users"),
@@ -1352,6 +1467,11 @@ export const createDbTrainingJob = zodInternalMutation({
   }
 });
 
+/**
+ * Action that runs a training job, sending an HTTP request to the batch
+ * service and creating its associated database entry. Returns the job's ID and
+ * creation timestamp.
+ */
 export const runTrainingJob = zodAction({
   args: {
     projectId: zid("projects"),
@@ -1378,6 +1498,10 @@ export const runTrainingJob = zodAction({
   },
 });
 
+/**
+ * Mutation that sets a training job's name and description. Returns the
+ * update's timestamp.
+ */
 export const setTrainingJobMetadata = zodMutation({
   args: {
     projectId: zid("projects"),
@@ -1411,6 +1535,8 @@ export const setTrainingJobMetadata = zodMutation({
   },
 });
 
+
+/** Query that fetches a project's {@link TrainingJob}. */
 export const getTrainingJob = zodQuery({
   args: {
     projectId: zid("projects"),
@@ -1435,8 +1561,12 @@ export const getTrainingJob = zodQuery({
       status: job.status,
     };
   }
-})
+});
 
+/**
+ * Mutation that deletes a training job and its associated files. Returns the
+ * deletion timestamp.
+ */
 export const deleteTrainingJob = zodMutation({
   args: {
     projectId: zid("projects"),
