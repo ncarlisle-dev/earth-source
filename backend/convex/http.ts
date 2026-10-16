@@ -7,8 +7,10 @@ import * as z from "zod";
 import { zPxrfDataSpec, zTrainingDataSpec } from "./schema";
 import { ApiError, authenticateUser } from "./helper";
 
+/** The HTTP router object used to initialize all HTTP endpoints. */
 const http = httpRouter();
 
+/** Zod object defining the shape of arguments for uploading pXRF data. */
 const zUploadPxrfDataArgs = z.object({
   projectId: zid("projects"),
   description: zPxrfDataSpec.shape.description,
@@ -27,6 +29,10 @@ const zUploadPxrfDataArgs = z.object({
     ),
 });
 
+/**
+ * POST endpoint that adds pXRF data to a project. Returns the resulting data
+ * spec's ID and the update timestamp.
+ */
 http.route({
   path: "/uploadPxrfData",
   method: "POST",
@@ -55,6 +61,7 @@ http.route({
     
     // put into storage
     const storageId = await ctx.storage.store(args.file);
+    const timestamp = Date.now();
 
     // write to database and return
     try {
@@ -67,10 +74,11 @@ http.route({
           description: args.description,
           size: args.file.size,
           numPoints: 0, // TODO: get the number of points
+          timestamp,
         }
       );
 
-      return Response.json({ specId }, { status: 201 });
+      return Response.json({ specId, timestamp }, { status: 201 });
     } catch (e) {
       await ctx.storage.delete(storageId);
 
@@ -81,6 +89,7 @@ http.route({
   }),
 });
 
+/** Zod object defining the shape of arguments for uploading training data. */
 const zUploadTrainingDataArgs = z.object({
   projectId: zid("projects"),
   description: zTrainingDataSpec.shape.description,
@@ -99,6 +108,10 @@ const zUploadTrainingDataArgs = z.object({
     ),
 });
 
+/**
+ * POST endpoint that adds training data to a project. Returns the resulting
+ * data spec's ID and the update timestamp.
+ */
 http.route({
   path: "/uploadTrainingData",
   method: "POST",
@@ -127,6 +140,7 @@ http.route({
     
     // put into storage
     const storageId = await ctx.storage.store(args.file);
+    const timestamp = Date.now();
 
     // write to database and return
     try {
@@ -139,10 +153,11 @@ http.route({
           description: args.description,
           size: args.file.size,
           numPoints: 0, // TODO: get the number of points
+          timestamp,
         }
       );
 
-      return Response.json({ specId }, { status: 201 });
+      return Response.json({ specId, timestamp }, { status: 201 });
     } catch (e) {
       await ctx.storage.delete(storageId);
 
@@ -153,4 +168,5 @@ http.route({
   }),
 });
 
+// Export the HTTP router for Convex to deploy.
 export default http;

@@ -2,6 +2,10 @@ import { authenticateUser, zodQuery, zodMutation, UnauthorizedError, ResourceNot
 import { zDbConnectionSpec } from "./schema";
 import { zid } from "convex-helpers/server/zod4";
 
+/**
+ * Given an IP address and port, creates a connection spec in the database.
+ * Returns the generated spec's ID.
+ */
 export const createConnectionSpec = zodMutation({
   args: {
     ipAddress: zDbConnectionSpec.shape.ipAddress,
@@ -20,6 +24,7 @@ export const createConnectionSpec = zodMutation({
   },
 });
 
+/** Given a connection spec ID, removes the spec from the database. */
 export const deleteConnectionSpec = zodMutation({
   args: {
     id: zid("connectionSpecs"),
@@ -29,15 +34,20 @@ export const deleteConnectionSpec = zodMutation({
 
     const existingSpec = await ctx.db.get("connectionSpecs", args.id);
     if (!existingSpec)
-      throw new ResourceNotFoundError(`Connection spec with ID '${args.id}' not found.`);
+      throw new ResourceNotFoundError(
+        `Connection spec with ID '${args.id}' not found.`
+      );
 
     if (existingSpec.userId !== userId)
-      throw new UnauthorizedError(`User is not authorized to delete connection spec with ID '${args.id}'.`);
+      throw new UnauthorizedError(
+        `User is not authorized to delete connection spec with ID '${args.id}'.`
+      );
 
     await ctx.db.delete("connectionSpecs", args.id);
   }
 });
 
+/** Query that returns the user's connection specs. */
 export const getUserConnectionSpecs = zodQuery({
   handler: async (ctx) => {
     const userId = await authenticateUser(ctx);
