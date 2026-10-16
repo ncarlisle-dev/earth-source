@@ -35,6 +35,8 @@ frontend-dev:
 backend-dev-once:
     npx convex dev --once
 
+alias backend-dev := backend-dev-once
+
 [group('execution')]
 [working-directory: './backend']
 backend-dev-watch:
