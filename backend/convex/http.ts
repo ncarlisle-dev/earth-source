@@ -5,7 +5,8 @@ import { internal } from "./_generated/api";
 import { zid } from "convex-helpers/server/zod4";
 import * as z from "zod";
 import { zPxrfDataSpec, zTrainingDataSpec } from "./schema";
-import { ApiError, authenticateUser } from "./helper";
+import { ApiError } from "./errors";
+import { authenticateUser } from "./auth";
 
 /** The HTTP router object used to initialize all HTTP endpoints. */
 const http = httpRouter();

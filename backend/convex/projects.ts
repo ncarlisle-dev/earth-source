@@ -5,18 +5,22 @@ import { internal } from "./_generated/api";
 import * as z from "zod";
 import { zid } from "convex-helpers/server/zod4";
 
-import { 
-  authenticateUser,
+import { authenticateUser } from "./auth";
+
+import {
   zodMutation,
   zodQuery,
   zodInternalMutation,
   zodAction,
+  zodInternalQuery,
+} from "./builders";
+
+import { 
   InvalidRequestError,
   ResourceNotFoundError,
   UnauthorizedError,
-  zodInternalQuery,
   UnknownServerError,
-} from "./helper";
+} from "./errors";
 
 import {
   zDbProject,
@@ -197,7 +201,6 @@ export const getProjectById = zodQuery({
 
     const project: Project = {
       id: dbProject._id,
-      owner: dbProject.userId,
       name: dbProject.name,
       description: dbProject.description,
       topLeftCoords: dbProject.topLeftCoords,
@@ -1558,7 +1561,7 @@ export const getTrainingJob = zodQuery({
       status: job.status,
     };
   }
-})
+});
 
 /**
  * Mutation that deletes a training job and its associated files. Returns the

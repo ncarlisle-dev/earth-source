@@ -307,7 +307,6 @@ export const zProject = zDbProject
   })
   .extend({
     id: zid("projects"),
-    owner: zDbProject.shape.userId,
     createdAt: zTimestamp,
     layers: z.array(zLayer),
     units: z.array(zUnit),

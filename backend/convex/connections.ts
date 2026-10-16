@@ -1,4 +1,6 @@
-import { authenticateUser, zodQuery, zodMutation, UnauthorizedError, ResourceNotFoundError } from "./helper";
+import { UnauthorizedError, ResourceNotFoundError } from "./errors";
+import { zodQuery, zodMutation, } from "./builders";
+import { authenticateUser } from "./auth";
 import { zDbConnectionSpec } from "./schema";
 import { zid } from "convex-helpers/server/zod4";
 
