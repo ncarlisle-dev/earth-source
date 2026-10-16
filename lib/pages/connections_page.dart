@@ -55,234 +55,239 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
   @override
   material.Widget build(material.BuildContext context)
   {
-    // get setState
-    currSetState = setState;
-
-    // build
-    return material.Padding(
-      padding: material.EdgeInsetsGeometry.symmetric(
-        vertical: 20.0,
-        horizontal: 30.0
-      ),
-      child: material.Scaffold(
-        body: material.Column(
-          spacing: 15.0,
-          crossAxisAlignment: material.CrossAxisAlignment.stretch,
-          children: _connectionEntries.map((entry)
-            => material.Container(
-              padding: material.EdgeInsets.all(10.0),
-              decoration: material.BoxDecoration(
-                color: material.Color.fromARGB(255, 231, 231, 231),
-                borderRadius: material.BorderRadius.circular(10.0),
-              ),
-              child: material.Row(
-                spacing: 10.0,
-                children: [
-                  _connectionStatusSymbols[entry.client?.status
-                    ?? api.ConnectionStatus.disconnected]!,
-
-                  material.Column(
-                    crossAxisAlignment: material.CrossAxisAlignment.start,
-                    children: [
-                      material.Text(
-                        "${entry.ipAddress}:${entry.port}",
-                        style: material.TextStyle(
-                          fontWeight: material.FontWeight.bold
-                        ),
-                      ),
-                      material.Text(
-                        "${intl.DateFormat.yMMMEd().format(entry.timeCreated)} "
-                        "at ${intl.DateFormat.jm().format(entry.timeCreated)}"
-                      )
-                    ]
-                  ),
-                ]
-              )
-            )
-          ).toList().reversed.toList(),
-        ),
-        floatingActionButton: material.Row(
-          mainAxisAlignment: .end,
-          spacing: 10.0,
-          children: [
-            material.IconButton(
-              onPressed: refreshConnections,
-              icon: const material.Icon(material.Icons.refresh),
-            ),
-
-            material.FloatingActionButton(
-              onPressed: () async
-              {
-                final _ConnectionSpec? entry = await _showConnectionModal(
-                  context
-                );
-                refreshConnections();
-                
-                if (entry != null)
-                {
-                  entry.client!.setStatusListener((_)
-                    => currSetState!(() {})
-                  );
-
-                  setState(() {
-                    _connectionEntries.add(entry);
-                  });
-                }
-              },
-              tooltip: 'Add connection',
-              child: const material.Icon(material.Icons.add),
-            ),
-          ],
-        ),
-      ),
-    );
+    return material.Text("Connections page");
   }
-}
+   @override
+   material.Widget build(material.BuildContext context)
+   {
+     // get setState
+     currSetState = setState;
 
-/// Given the current build [context], shows the connection modal enabling the
-/// user to create a new connection.
-/// 
-/// Returns the [_ConnectionSpec] created by the user, or null if they
-/// cancelled its creation.
-Future<_ConnectionSpec?> _showConnectionModal(
-  material.BuildContext context
-) async
-{
-  String ipAddress = "";
-  String port = "";
-  bool isConnecting = false;
+     // build
+     return material.Padding(
+       padding: material.EdgeInsetsGeometry.symmetric(
+         vertical: 20.0,
+         horizontal: 30.0
+       ),
+       child: material.Scaffold(
+         body: material.Column(
+           spacing: 15.0,
+           crossAxisAlignment: material.CrossAxisAlignment.stretch,
+           children: _connectionEntries.map((entry)
+             => material.Container(
+               padding: material.EdgeInsets.all(10.0),
+               decoration: material.BoxDecoration(
+                 color: material.Color.fromARGB(255, 231, 231, 231),
+                 borderRadius: material.BorderRadius.circular(10.0),
+               ),
+               child: material.Row(
+                 spacing: 10.0,
+                 children: [
+                   _connectionStatusSymbols[entry.client?.status
+                     ?? api.ConnectionStatus.disconnected]!,
 
-  api.AirdroidClient? client;
+                   material.Column(
+                     crossAxisAlignment: material.CrossAxisAlignment.start,
+                     children: [
+                       material.Text(
+                         "${entry.ipAddress}:${entry.port}",
+                         style: material.TextStyle(
+                           fontWeight: material.FontWeight.bold
+                         ),
+                       ),
+                       material.Text(
+                         "${intl.DateFormat.yMMMEd().format(entry.timeCreated)} "
+                         "at ${intl.DateFormat.jm().format(entry.timeCreated)}"
+                       )
+                     ]
+                   ),
+                 ]
+               )
+             )
+           ).toList().reversed.toList(),
+         ),
+         floatingActionButton: material.Row(
+           mainAxisAlignment: .end,
+           spacing: 10.0,
+           children: [
+             material.IconButton(
+               onPressed: refreshConnections,
+               icon: const material.Icon(material.Icons.refresh),
+             ),
 
-  final material.GlobalKey<material.FormState> formKey = 
-    material.GlobalKey<material.FormState>();
+             material.FloatingActionButton(
+               onPressed: () async
+               {
+                 final _ConnectionSpec? entry = await _showConnectionModal(
+                   context
+                 );
+                 refreshConnections();
+              
+                 if (entry != null)
+                 {
+                   entry.client!.setStatusListener((_)
+                     => currSetState!(() {})
+                   );
 
-  await material.showDialog(
-    barrierDismissible: false,
-    context: context,
-    builder: (material.BuildContext context)
-      => material.StatefulBuilder(
-        builder: (
-          material.BuildContext context,
-          material.StateSetter setModalState
-        )
-          => material.AlertDialog(
-            // padding: const material.EdgeInsets.all(24.0),
-            content: material.Form(
-              key: formKey,
-              child: material.Column(
-                mainAxisSize: material.MainAxisSize.min,
-                crossAxisAlignment: material.CrossAxisAlignment.stretch,
-                children: [
-                  const material.Text(
-                    "Add connection",
-                    style: material.TextStyle(fontSize: 25.0),
-                  ),
+                   setState(() {
+                     _connectionEntries.add(entry);
+                   });
+                 }
+               },
+               tooltip: 'Add connection',
+               child: const material.Icon(material.Icons.add),
+             ),
+           ],
+         ),
+       ),
+     );
+   }
 
-                  material.TextFormField(
-                    decoration: const material.InputDecoration(
-                      hintText: 'IP address'
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the IP address';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      ipAddress = value ?? "";
-                    },
-                  ),
 
-                  // TODO: make this field number-only
-                  material.TextFormField(
-                    decoration: const material.InputDecoration(
-                      hintText: 'Port number'
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the port number';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      port = value ?? "";
-                    },
-                  ),
+ /// Given the current build [context], shows the connection modal enabling the
+ /// user to create a new connection.
+ /// 
+ /// Returns the [_ConnectionSpec] created by the user, or null if they
+ /// cancelled its creation.
+ Future<_ConnectionSpec?> _showConnectionModal(
+   material.BuildContext context
+ ) async
+ {
+   String ipAddress = "";
+   String port = "";
+   bool isConnecting = false;
 
-                  material.Padding(
-                    padding: .only(top: 15.0),
-                    child: material.Row(
-                      mainAxisAlignment: .spaceBetween,
-                      children: [
-                        material.ElevatedButton(
-                          onPressed: () => material.Navigator.pop(context),
-                          child: const material.Text('Cancel'),
-                        ),
+   api.AirdroidClient? client;
 
-                        // TODO: add another button that cancels the connection
-                        // request instead of also closing the modal
+   final material.GlobalKey<material.FormState> formKey = 
+     material.GlobalKey<material.FormState>();
 
-                        material.ElevatedButton(
-                          onPressed: isConnecting
-                            ? null
-                            : () async
-                            {
-                              // validate and save the form data
-                              if (!formKey.currentState!.validate()) {
-                                return;
-                              }
+   await material.showDialog(
+     barrierDismissible: false,
+     context: context,
+     builder: (material.BuildContext context)
+       => material.StatefulBuilder(
+         builder: (
+           material.BuildContext context,
+           material.StateSetter setModalState
+         )
+           => material.AlertDialog(
+             // padding: const material.EdgeInsets.all(24.0),
+             content: material.Form(
+               key: formKey,
+               child: material.Column(
+                 mainAxisSize: material.MainAxisSize.min,
+                 crossAxisAlignment: material.CrossAxisAlignment.stretch,
+                 children: [
+                   const material.Text(
+                     "Add connection",
+                     style: material.TextStyle(fontSize: 25.0),
+                   ),
 
-                              formKey.currentState!.save();
+                   material.TextFormField(
+                     decoration: const material.InputDecoration(
+                       hintText: 'IP address'
+                     ),
+                     validator: (String? value) {
+                       if (value == null || value.isEmpty) {
+                         return 'Please enter the IP address';
+                       }
+                       return null;
+                     },
+                     onSaved: (value) {
+                       ipAddress = value ?? "";
+                     },
+                   ),
 
-                              // update frontend to show connection progress
-                              setModalState(() {
-                                isConnecting = true;
-                              });
+                   // TODO: make this field number-only
+                   material.TextFormField(
+                     decoration: const material.InputDecoration(
+                       hintText: 'Port number'
+                     ),
+                     validator: (String? value) {
+                       if (value == null || value.isEmpty) {
+                         return 'Please enter the port number';
+                       }
+                       return null;
+                     },
+                     onSaved: (value) {
+                       port = value ?? "";
+                     },
+                   ),
 
-                              // create the client and connect
-                              client = api.AirdroidClient();
+                   material.Padding(
+                     padding: .only(top: 15.0),
+                     child: material.Row(
+                       mainAxisAlignment: .spaceBetween,
+                       children: [
+                         material.ElevatedButton(
+                           onPressed: () => material.Navigator.pop(context),
+                           child: const material.Text('Cancel'),
+                         ),
 
-                              try {
-                                await client!.connect(
-                                  ipAddress,
-                                  int.parse(port)
-                                );
+                         // TODO: add another button that cancels the connection
+                         // request instead of also closing the modal
 
-                                if (context.mounted) {
-                                  // close modal
-                                  material.Navigator.pop(context);
-                                }
-                              } on api.NetworkException {
-                                // TODO: properly handle connection failure
-                                print("connection couldn't be made");
-                                client = null;
+                         material.ElevatedButton(
+                           onPressed: isConnecting
+                             ? null
+                             : () async
+                             {
+                               // validate and save the form data
+                               if (!formKey.currentState!.validate()) {
+                                 return;
+                               }
 
-                                setModalState(() {
-                                  isConnecting = false;
-                                });
-                              }
-                            },
-                          child: material.Text(
-                            isConnecting
-                              ? 'Connecting... (Check your device)'
-                              : 'Connect',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ),
-  );
+                               formKey.currentState!.save();
 
-  if (client == null)
-  {
-    return null;
-  }
+                               // update frontend to show connection progress
+                               setModalState(() {
+                                 isConnecting = true;
+                               });
+
+                               // create the client and connect
+                               client = api.AirdroidClient();
+
+                               try {
+                                 await client!.connect(
+                                   ipAddress,
+                                   int.parse(port)
+                                 );
+
+                                 if (context.mounted) {
+                                   // close modal
+                                   material.Navigator.pop(context);
+                                 }
+                               } on api.NetworkException {
+                                 // TODO: properly handle connection failure
+                                 print("connection couldn't be made");
+                                 client = null;
+
+                                 setModalState(() {
+                                   isConnecting = false;
+                                 });
+                               }
+                             },
+                           child: material.Text(
+                             isConnecting
+                               ? 'Connecting... (Check your device)'
+                               : 'Connect',
+                           ),
+                         ),
+                       ],
+                     ),
+                   ),
+                 ],
+               ),
+             ),
+           ),
+       ),
+   );
+
+   if (client == null)
+   {
+     return null;
+   }
 
   return _ConnectionSpec(
     ipAddress,
