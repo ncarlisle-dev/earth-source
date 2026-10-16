@@ -20,6 +20,7 @@ jobs:
         with:
           node-version: "24"
           cache: "npm" # Caches dependencies for faster runs
+          cache-dependency-path: 'backend/package-lock.json' 
 
       - name: Update npm packages
         run: npm ci --ignore-scripts --include=dev
