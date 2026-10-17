@@ -18,35 +18,20 @@ class PredictionsPage extends StatefulWidget
 /// The mutable state of the prediction view page.
 class _PredictionsPageState extends State<PredictionsPage> 
 {
-  int i = 0;
+  static const List<String> titles = ["Prediction 1", "Prediction 2", "Yet Another Prediction", "Prediction 1000"];
+  static const List<String> descriptions = ["Status: Complete\nDate Created: 10/17", "Status: Running\nDate Created: 10/17", "Status: Complete\nDate Created: 10/10", "Status: Complete\nDate Created: 9/03"];
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: AlignmentDirectional.bottomCenter,
+  
+    return ListView(
       children: [
-        Positioned(
-          top: 0.0,
+        Padding(
+          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: Center(child: Text("Predictions", style: TextTheme.of(context).headlineLarge?.copyWith(fontWeight: FontWeight.bold, 
                   color: Colors.indigo))), //Icon
         ), 
-        GridView.count(
-          // Create a grid with 2 columns.
-          // If you change the scrollDirection to horizontal,
-          // this produces 2 rows.
-          crossAxisCount: 2,
-          // Generate 100 widgets that display their index in the list.
-          children: List.generate(100, (index) {
-            return Center(
-              child: Text(
-                'Item $index',
-                style: TextTheme.of(context).headlineSmall,
-              ),
-            );
-          }),
-        ),
-        Positioned(
-          bottom: 16,
-          right: 16,
+        Padding(
+          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
             onPressed: () => Navigator.push(
               context, 
@@ -57,6 +42,57 @@ class _PredictionsPageState extends State<PredictionsPage>
             child: const Icon(Icons.add)
           )
         ),
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.75,
+        child:ListView.builder(
+            itemCount: 4, 
+            itemBuilder: (BuildContext context, int index) {
+              return Card(
+              elevation: 50,
+              shadowColor: Colors.black,
+              child: SizedBox(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                  children: [
+                    const SizedBox(
+                      height: 10,
+                    ), //SizedBox
+                    Text(
+                      titles[index],
+                      style: TextStyle(
+                        fontSize: 30,
+                        color: Colors.indigo,
+                        fontWeight: FontWeight.w500,
+                      ), //Textstyle
+                    ), //Text
+                    SizedBox(
+                      height: 10,
+                    ), //SizedBox
+                    Text(
+                      descriptions[index],
+                      style: TextStyle(
+                        fontSize: 15,
+                      ), //Textstyle
+                    ), //Text
+                    SizedBox(
+                      height: 10,
+                    ), //SizedBox
+                    SizedBox(
+                      width: 100,
+
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: 
+                (context) => PredictionGeneration(projectId: "$index")
+              ),),
+                        child: Text("View")
+                    ),
+                  ) //SizedBox
+                ],
+              ), //Column
+            ), //Padding
+          ), //SizedBox
+        );}),),
       ],
     );
   }

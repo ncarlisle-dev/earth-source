@@ -23,6 +23,6 @@ class PredictionGenerationState extends State<PredictionGeneration>
   Widget build(BuildContext context)
   {
 
-    return Padding(padding: EdgeInsets.symmetric(vertical: 16.0));
+    return Padding(padding: EdgeInsets.symmetric(vertical: 16.0), child: Text(widget.projectId));
   }
 }
