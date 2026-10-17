@@ -746,6 +746,64 @@ class Project
     }
   }
 
+  /// Changes the name of a prediction job.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
+  /// after modification and a [ProjectException] if new job name matches
+  /// a pre-existing job.
+  Future<void> setJobName(String id, String newName) async
+  {
+    NetworkService networkService = NetworkService.getInstance();
+    // Check if a pre-existing layer has the same name and only change the
+    // name if not
+    Iterable<jobs.PredictionJob> duplicateName = predictions.where(
+      (job) => job.name == newName);
+
+    if (duplicateName.isEmpty) {
+      int jobIndex = predictions.indexWhere((job) => job.id == id);
+      predictions[jobIndex].name = newName;
+      lastUpdated = DateTime.now();
+
+      try {
+        await networkService.uploadProject(this);
+      }
+      on network.ApiNetworkException catch (error) {
+        throw network.ApiNetworkException(
+          "Project failed to update with the following error:\n$error", 
+          error.statusCode
+        );
+      }
+    }
+    else {
+      throw ProjectException(
+        "Prediction cannot have the same name as a pre-existing prediction."
+      );
+    }
+  }
+
+  /// Changes the description of a prediction job.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
+  /// after modification.
+  Future<void> setJobDescription(String id, String description) async
+  {
+    NetworkService networkService = NetworkService.getInstance();
+    
+    int jobIndex = predictions.indexWhere((job) => job.id == id);
+    predictions[jobIndex].description = description;
+    lastUpdated = DateTime.now();
+
+    try {
+      await networkService.uploadProject(this);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+  }
+
   /// Uploads an image corresponding to a layer to the appropriate location in
   /// the database.
   /// 
