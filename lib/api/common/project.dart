@@ -5,6 +5,7 @@ import 'network.dart' as network;
 import 'specs.dart' as specs;
 import 'jobs.dart' as jobs;
 import 'package:flutter_map_math/flutter_geo_math.dart' as map_math;
+import 'package:latlong2/latlong.dart' as latlong;
 
 /// TODO: Change filepath in functions involving file upload, retrieval, or
 /// deletion to accurately reflect where it will be stored in the database.
@@ -265,7 +266,11 @@ class Project
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if given layer name matches
   /// a pre-existing layer.
-  Future<specs.LayerSpec> createLayer(String name, String description) 
+  Future<specs.LayerSpec> createLayer(
+    String name, 
+    String description, 
+    List<latlong.LatLng> cornerCoordinates
+  ) 
     async
   {
     NetworkService networkService = NetworkService.getInstance();
@@ -279,7 +284,8 @@ class Project
         name, 
         description, 
         DateTime.now(), 
-        DateTime.now()
+        DateTime.now(),
+        cornerCoordinates
       );
       layers.add(createdLayer);
       lastUpdated = DateTime.now();
@@ -799,6 +805,48 @@ class Project
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
         "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+  }
+
+  /// Deletes a prediction job from the project and deletes the corresponding 
+  /// data file if it exists.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
+  /// after modification or the prediction job cannot be successfully deleted.
+  Future<void> deleteJob(String id) async
+  {
+    NetworkService networkService = NetworkService.getInstance();
+    int jobIndex = predictions.indexWhere((job) => job.id == id);
+    predictions.removeAt(jobIndex);
+    lastUpdated = DateTime.now();
+
+    bool fileCreated = false;
+
+    // TODO: Construct filepath to where prediction file will actually be 
+    // stored on the backend using presumably job id.
+    String filePath = "";
+
+    // Check if the job has completed and a file has been created.
+    try {
+      fileCreated = await networkService.fileExists(filePath);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Network service failed to check if predictions file was created due"
+        " to the following error: $error",
+        error.statusCode
+      );
+    }
+
+    try {
+        if (fileCreated) await networkService.deleteFile(filePath);
+        await networkService.uploadProject(this);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Prediction job failed to delete with the following error:\n$error", 
         error.statusCode
       );
     }
