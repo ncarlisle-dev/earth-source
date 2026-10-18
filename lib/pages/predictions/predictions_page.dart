@@ -101,8 +101,8 @@ class _PredictionsPageState extends State<PredictionsPage>
                           Text(
                           "Status: "
                           "${jobStatusList[snapshot.data![index].status.index]}"
-                          "\nDescription: ${snapshot.data![index].name!}\n"
-                          "Date Created: ${snapshot.data![index].createdAt}",
+                          "\nDescription: ${snapshot.data![index].description!}"
+                          "\nDate Created: ${snapshot.data![index].createdAt}",
                             style: TextStyle(
                               fontSize: 15,
                             ),
