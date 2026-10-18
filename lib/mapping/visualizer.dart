@@ -1,21 +1,35 @@
 import 'dart:io' as io;
-import 'dart:convert' as convert;
 import 'package:flutter/material.dart';
-import 'package:csv/csv.dart' as csv_dart;
 import 'package:flutter_map/flutter_map.dart' as map;
 import 'package:latlong2/latlong.dart' as latlong;
 import 'package:flutter_map_math/flutter_geo_math.dart' as flutter_geo_math;
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'heat_palette.dart';
+import 'package:coordinate_converter/coordinate_converter.dart' as 
+  coord_converter;
 
-/// Utility function - opens the given data file and reads and validates its 
-/// contents.
+/// A single data point with attached UTM coordinates.
+class MappedPoint
+{
+  /// The predicted value at the current point.
+  double predictionPoint;
+  /// The UTM coordinates at which that point is located.
+  coord_converter.UTMCoordinates coordinates;
+  /// The color of the data point so that points exceeding the threshold are 
+  /// more easily distinguishable.
+  Color pointColor;
+
+  MappedPoint(this.predictionPoint, this.coordinates, this.pointColor);
+}
+
+/// Utility function - validates the contents of a given 2D list of data and 
+/// attaches coordinates to each data point.
 /// 
 /// Returns a list of type Polygon representing appropriately-colored polygons
 /// to be drawn onto the map if the file contains valid content; an empty list 
 /// if invalid or if no data file is provided.
 Future<List<map.Polygon>> _validateData(
-  String dataFilePath, 
+  List<List<double>> predictionData, 
   List<latlong.LatLng> cornerCoordinates,
   double threshold
 ) async
@@ -26,18 +40,11 @@ Future<List<map.Polygon>> _validateData(
   /// a valid range.
   bool isDataValid = true;
 
-  if (dataFilePath != "")
+  if (predictionData != [])
   {
-    io.File dataFile = io.File(dataFilePath);
-    List<List<dynamic>> rows = await dataFile
-      .openRead()
-      .transform(convert.utf8.decoder)
-      .transform(csv_dart.csv.decoder)
-      .toList();
-    
-    for (var i = 0; i < rows.length; i++) {
-      for (var j = 0; j < rows[i].length; j++) {
-        if (double.parse(rows[i][j]) <= 0 || double.parse(rows[i][j]) >= 1) {
+    for (var i = 0; i < predictionData.length; i++) {
+      for (var j = 0; j < predictionData[i].length; j++) {
+        if (predictionData[i][j] < 0 || predictionData[i][j] > 1) {
           isDataValid = false;
         }
       }
@@ -62,12 +69,12 @@ Future<List<map.Polygon>> _validateData(
         ""
       );
 
-      heightInterval = heightInterval / rows.length;
-      widthInterval = widthInterval / rows[0].length;
+      heightInterval = heightInterval / predictionData.length;
+      widthInterval = widthInterval / predictionData[0].length;
 
-      for (var i = 0; i < rows.length; i++) {
-        for (var j = 0; j < rows[0].length; j++) {
-          double predictionPoint = double.parse(rows[i][j]);
+      for (var i = 0; i < predictionData.length; i++) {
+        for (var j = 0; j < predictionData[0].length; j++) {
+          double predictionPoint = predictionData[i][j];
 
           // Check that current prediction point is above the user-set threshold
           // - if not, to cut down on rendering costs, that point won't be
@@ -127,17 +134,95 @@ Future<List<map.Polygon>> _validateData(
   return polygons;
 }
 
+/// Utility function - determines the UTM coordinates associated with each data
+/// point (specifically, the coordinates of the center of each plotted 
+/// rectangle) and returns a list of geolocated data points.
+Future<List<MappedPoint>> _attachCoords(
+  List<List<double>> predictionData, 
+  List<latlong.LatLng> cornerCoordinates,
+  double threshold
+) async
+{
+  List<MappedPoint> mappedData = [];
+  
+  // Calculate the intervals in height (i.e. latitude) and width 
+  // (i.e. longitude) between points in the grid by evenly spacing them over
+  // the distance between corner coordinates.
+  double heightInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
+    cornerCoordinates[0].latitude, 
+    cornerCoordinates[0].longitude, 
+    cornerCoordinates[1].latitude, 
+    cornerCoordinates[1].longitude, 
+    ""
+  );
+  double widthInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
+    cornerCoordinates[0].latitude, 
+    cornerCoordinates[0].longitude, 
+    cornerCoordinates[2].latitude, 
+    cornerCoordinates[2].longitude, 
+    ""
+  );
+
+  heightInterval = heightInterval / predictionData.length;
+  widthInterval = widthInterval / predictionData[0].length;
+
+  for (var i = 0; i < predictionData.length; i++) {
+    for (var j = 0; j < predictionData[0].length; j++) {
+      double predictionPoint = predictionData[i][j];
+
+      // Calculate distance to the center of the polygon that would be drawn
+      // for each point.
+      double height = (i + 0.5) * heightInterval;
+      double width = (j + 0.5) * widthInterval;
+      // Use these distances to calculate latitude and longitude for each
+      // of the four corner points of the polygon.
+      double longitude = flutter_geo_math.FlutterMapMath.destinationPoint(
+        cornerCoordinates[0].latitude, 
+        cornerCoordinates[0].longitude, 
+        width, 
+        90
+      ).longitude;
+      double latitude = flutter_geo_math.FlutterMapMath.destinationPoint(
+        cornerCoordinates[0].latitude, 
+        cornerCoordinates[0].longitude, 
+        height, 
+        180
+      ).latitude;
+        
+      // Convert latitude and longitude to UTM coordinates.
+      coord_converter.DDCoordinates ddCoords = coord_converter.DDCoordinates(
+        latitude: latitude, 
+        longitude: longitude
+      );
+      coord_converter.UTMCoordinates utmCoords = 
+        coord_converter.UTMCoordinates.fromDD(ddCoords);
+
+      Color pointColor;
+
+      // Set the color of the prediction point to red if it exceeds the given
+      // threshold for easier visualization.
+      if (predictionPoint >= threshold) {
+        pointColor = Colors.red;
+      }
+      else {
+        pointColor = Colors.green;
+      }
+
+      mappedData.add(MappedPoint(predictionPoint, utmCoords, pointColor));
+    }
+  } 
+  return mappedData;
+}
+
 /// A visualizer widget that displays either an image with no modifications if
 /// no data file is provided, or an image with a heatmap overlaid onto it.
 class Visualizer extends StatelessWidget
 {
-  /// Filepath to a CSV file storing prediction results (given an empty string
-  /// if non-applicable);
-  final String dataFilePath;
+  /// 2D list of data representing the prediction points to be displayed.
+  final List<List<double>> predictionData;
   /// Filepath to the image to be displayed.
   final String imageFilePath;
-  /// List of decimal coordinates for the four corners of the image - currently
-  /// not in use.
+  /// List of decimal coordinates for the four corners of the image.
   final List<latlong.LatLng> cornerCoordinates;
   /// Threshold for the minimum value at which prediction points are displayed
   /// on the map, set by the user in the prediction page UI.
@@ -146,7 +231,7 @@ class Visualizer extends StatelessWidget
   const Visualizer({
     super.key, 
     required this.imageFilePath, 
-    required this.dataFilePath, 
+    required this.predictionData, 
     required this.cornerCoordinates,
     required this.threshold
   });
@@ -210,7 +295,7 @@ class Visualizer extends StatelessWidget
               ),
               FutureBuilder(
                 future: _validateData(
-                  dataFilePath, 
+                  predictionData, 
                   cornerCoordinates, 
                   threshold
                 ),
@@ -254,8 +339,57 @@ class Visualizer extends StatelessWidget
               ),
             ]
           )
-        )
+        ),
       ]
     );
   }  
+}
+
+/// A widget that displays text-formatted predictions as a scrollable list of
+/// points with coordinates attached.
+class TextDisplay extends StatelessWidget
+{
+  /// 2D list of data representing the prediction points to be displayed.
+  final List<List<double>> predictionData;
+  /// List of decimal coordinates for the four corners of the image.
+  final List<latlong.LatLng> cornerCoordinates;
+  /// Threshold for the minimum value at which prediction points are displayed
+  /// on the map, set by the user in the prediction page UI.
+  final double threshold;
+
+  const TextDisplay({
+    super.key,  
+    required this.predictionData, 
+    required this.cornerCoordinates,
+    required this.threshold
+  });
+
+  @override
+  Widget build(BuildContext context)
+  {
+    return FutureBuilder(
+      future: _attachCoords(predictionData, cornerCoordinates, threshold), 
+      builder: (BuildContext ctx, AsyncSnapshot<List> snapshot) 
+        => snapshot.hasData
+      ?
+        ListView.builder(
+            itemCount: snapshot.data!.length, 
+            itemBuilder: (BuildContext context, int index) {
+              return ListTile(
+                leading: Text(
+                  "X Coordinate: ${snapshot.data![index].coordinates.x}\t "
+                  "Y Coordinate: ${snapshot.data![index].coordinates.y}"),
+                trailing: Text(
+                  "Prediction Value: ${snapshot.data![index].predictionPoint}",
+                  style: TextStyle(
+                    color: snapshot.data![index].pointColor, 
+                    fontSize: 15
+                  ), 
+                ),
+              );
+            },
+          )
+      :
+        Center(child: Text("Predicted data is currently unavailable.")));
+  }
 }
