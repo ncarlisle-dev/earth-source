@@ -1,0 +1,414 @@
+import 'package:flutter/material.dart';
+import '../../mapping/visualizer.dart' as visualizer;
+import '../../api/api.dart' as api;
+import '../home_page.dart';
+
+/// A stateful widget for the prediction view page, which takes the id for the
+/// current project and a prediction job object as required fields.
+class PredictionView extends StatefulWidget {
+  const PredictionView({
+    super.key, 
+    required this.projectId, 
+    required this.predictionJob
+  });
+
+  /// The id of the current project.
+  final String projectId;
+  /// The prediction job currently being displayed.
+  final api.PredictionJob predictionJob;
+
+  @override
+  State<PredictionView> createState() => _PredictionViewState();
+}
+
+/// The mutable state of the prediction view page.
+class _PredictionViewState extends State<PredictionView> {
+  /// List of job status strings corresponding to the JobStatus enum.
+  static const List<String> jobStatusList = [
+    "Starting", 
+    "Running", 
+    "Complete", 
+    "Failed"
+  ];
+
+  /// Variable to store the updated name of the prediction, should the user
+  /// change it.
+  String changedName = "";
+  /// Variable to store the updated description of the prediction, should the 
+  /// user change it.
+  String changedDescription = "";
+  /// Tracks whether the predictions are currently being displayed as a map or
+  /// as text.
+  bool mapDisplay = true;
+  /// Tracks whether the name of the prediction has been changed.
+  bool isNameChanged = false;
+  /// Tracks whether the description of a prediction has been changed.
+  bool isDescriptionChanged = false;
+
+  /// Displays a pop-up dialogue box that allows the user to set a new name for
+  /// the prediction job and changes the name of the job within the appropriate
+  /// project.
+  void renameJob()
+  {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          scrollable: true,
+          content: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter new name:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a value for the new job name';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      // Find the appropriate project in the project controller
+                      // and change the name of the corresponding prediction 
+                      // job.
+                      api.ProjectController projectController = 
+                        await api.ProjectController.getInstance();
+                      int projectIndex = 
+                        projectController.userProjects.indexWhere(
+                        (project) => project.id == widget.projectId);
+                      projectController.userProjects[projectIndex].setJobName(
+                        widget.predictionJob.id!, 
+                        value!
+                      );
+
+                      setState(() {
+                        changedName = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              child: const Text("Submit"),
+              onPressed: () {
+                formKey.currentState!.save();
+                setState(() {
+                  isNameChanged = true;
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ]
+        );
+      }
+    );
+  }
+
+  /// Displays a pop-up dialogue box that allows the user to set a new 
+  /// description for the prediction job and changes the description for the job
+  /// within the appropriate project.
+  void changeDescription()
+  {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          scrollable: true,
+          content: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter new description:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a value for the new description';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      // Find the appropriate project in the project controller
+                      // and change the description of the corresponding 
+                      // prediction job.
+                      api.ProjectController projectController = 
+                        await api.ProjectController.getInstance();
+                      int projectIndex = 
+                        projectController.userProjects.indexWhere(
+                        (project) => project.id == widget.projectId);
+                      projectController.userProjects[projectIndex].
+                        setJobDescription(
+                          widget.predictionJob.id!, 
+                          value!
+                      );
+
+                      setState(() {
+                        changedDescription = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              child: const Text("Submit"),
+              onPressed: () {
+                formKey.currentState!.save();
+                setState(() {
+                  isDescriptionChanged = true;
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ]
+        );
+      }
+    );
+  }
+
+  /// Displays a pop-up dialogue box that confirms if the user wants to delete
+  /// their prediction, and if so, returns them to the main page.
+  void deletePrediction() async
+  {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          scrollable: true,
+          content: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text("Are you sure you want to delete this prediction?")
+          ),
+          actions: [
+            ElevatedButton(
+              child: const Text("Confirm Deletion"),
+              onPressed: () async {
+                // Find the appropriate project in the project controller
+                // and delete the corresponding prediction job.
+                api.ProjectController projectController = 
+                  await api.ProjectController.getInstance();
+                int projectIndex = 
+                  projectController.userProjects.indexWhere(
+                  (project) => project.id == widget.projectId);
+                projectController.userProjects[projectIndex].
+                  deleteJob(widget.predictionJob.id!);
+                if (context.mounted)
+                {
+                  Navigator.push(context, MaterialPageRoute<void>(
+                    builder: (context) => const HomePage(),
+                    ),
+                  );
+                }
+              },
+            ),
+            ElevatedButton(
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ]
+        );
+      }
+    );
+  }
+
+  /// Fetches the unit and data file assignments corresponding to the layer
+  /// for the current prediction.
+  Future<Map<String, String>> getLayerAssignments() async
+  {
+    api.ProjectController projectController = 
+      await api.ProjectController.getInstance();
+    int projectIndex = projectController.userProjects.indexWhere(
+      (project) => project.id == widget.projectId);
+
+    Map<String, String>? layerAssignments = 
+      projectController.userProjects[projectIndex].
+      dataAssignments[widget.predictionJob.layer.id];
+
+    return layerAssignments!;
+  }
+
+  /// Loads both the image and the prediction results for display on the 
+  /// prediction view page.
+  Future<(String, List<List<double>>)> loadPredictionData() async
+  {
+    api.ProjectController projectController = 
+      await api.ProjectController.getInstance();
+    int projectIndex = projectController.userProjects.indexWhere(
+      (project) => project.id == widget.projectId);
+
+    List<List<double>>? results = await widget.predictionJob.getResults();
+    String? imageContents = 
+      await projectController.userProjects[projectIndex].getLayerImage(
+        widget.predictionJob.layer.id!
+      );
+
+    return (imageContents!, results!);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String jobStatus = jobStatusList[widget.predictionJob.status.index];
+    
+    return ListView(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child:
+            isNameChanged 
+            ?
+              Text(
+                changedName, 
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.bold, 
+                  color: Colors.indigo
+                )
+              )
+            :
+              Text(
+                "${widget.predictionJob.name}", 
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.bold, 
+                  color: Colors.indigo
+                )
+              )
+            )
+          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: 
+            isDescriptionChanged
+            ?
+            Text("Description: $changedDescription")
+            :
+            Text("Description: ${widget.predictionJob.description}")
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: renameJob,
+            child: Text("Rename Prediction"),
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: changeDescription,
+            child: Text("Change Description"),
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: deletePrediction,
+            child: Text("Delete Prediction"),
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text(
+              "Job Information", 
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold, color: Colors.indigo
+              )
+            )
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text("Job Status: $jobStatus"))),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text("Date Created: ${widget.predictionJob.createdAt}"))),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text("Layer: ${widget.predictionJob.layer.name}"))),
+        FutureBuilder(
+            future: getLayerAssignments(),
+            builder: (
+              BuildContext ctx, 
+              AsyncSnapshot<Map> snapshot
+            ) 
+            => snapshot.hasData
+            ?
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(
+                child: Text("Layer Assignments: ${snapshot.data!}")
+              )
+            )
+            :
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(
+                child: Text("Layer assignments could not be retrieved.")
+              )
+            )
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: (() => setState(() {
+              mapDisplay ? mapDisplay = false : mapDisplay = true;
+            })),
+            child: Text(
+              mapDisplay 
+              ? "Toggle text-formatted predictions" 
+              : "Toggle map display"
+            ),
+          )
+        ),
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.75,
+          child: FutureBuilder(
+            future: loadPredictionData(),
+            builder: (
+              BuildContext ctx, 
+              AsyncSnapshot<(String, List)> snapshot
+            ) 
+            => snapshot.hasData
+            ?
+            mapDisplay 
+              ? 
+              visualizer.Visualizer(
+                predictionData: snapshot.data!.$2 as List<List<double>>, 
+                imageFilePath: snapshot.data!.$1,
+                cornerCoordinates: widget.predictionJob.layer.cornerCoordinates,
+                threshold: 0.5
+              )
+              :
+              visualizer.TextDisplay(
+                cornerCoordinates: widget.predictionJob.layer.cornerCoordinates, 
+                predictionData: snapshot.data!.$2 as List<List<double>>, 
+                threshold: 0.5
+              )
+            :
+            Center(child: Text("Prediction data failed to load."))
+          ),
+        ),
+      ]
+    );
+  }
+}

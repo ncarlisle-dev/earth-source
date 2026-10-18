@@ -55,10 +55,10 @@ class _HomePageState extends material.State<HomePage> {
             icon: material.Icon(material.Icons.info_outline),
             label: 'About',
           ),
-          material.NavigationDestination(
+          /*material.NavigationDestination(
             icon: material.Icon(material.Icons.warning),
             label: 'WIP'
-          ),
+          ),*/
         ],
       ),
       
@@ -69,7 +69,7 @@ class _HomePageState extends material.State<HomePage> {
         projects_page.UserProjectsPage(),
         help_page.HelpPage(),
         about_page.AboutPage(),
-        //connections_page.ConnectionsPage(),
+        ///connections_page.ConnectionsPage(),
       ][currentPageIndex],
     );
   }
