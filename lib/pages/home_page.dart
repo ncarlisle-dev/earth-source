@@ -6,7 +6,6 @@ import './languages_page.dart' as languages_page;
 import './projects_page.dart' as projects_page;
 import './settings_page.dart' as settings_page;
 import './connections_page.dart' as connections_page;
-import 'predictions/prediction_generation.dart';
 
 /// A page containing the navigation bar for the app from which all other pages
 /// can be accessed.
