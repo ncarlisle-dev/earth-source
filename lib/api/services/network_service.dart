@@ -1,7 +1,17 @@
 import '../common/common.dart' as common;
+import 'package:logto_dart_sdk/logto_dart_sdk.dart' as logto;
+import 'package:convex_flutter/convex_flutter.dart' as convex;
+
+const _logtoConfig = logto.LogtoConfig(
+  endpoint: "https://5uk3n8.logto.app",
+  appId: "zezv2cwbq7xi0gw6wrmzf",
+);
+
+const _logtoRedirectUrl = "io.logto://callback";
 
 class NetworkService {
   static NetworkService? instance;
+  final _logtoClient = logto.LogtoClient(config: _logtoConfig);
 
   /// Privately-named constructor to prevent other modules from creating a 
   /// new service.
@@ -14,11 +24,42 @@ class NetworkService {
     return instance!;
   }
 
-  Future<bool> login(String username, String password)
-    => throw UnimplementedError();
+  Future<void> login() async
+  {
+    await _logtoClient.signIn(_logtoRedirectUrl);
+    final userInfo = await _logtoClient.getUserInfo();
+    print(userInfo.toJson());
+    print(userInfo.sub);
 
-  Future<void> logout()
-    => throw UnimplementedError();
+    await convex.ConvexClient.initialize(
+      convex.ConvexConfig(
+        deploymentUrl: 'https://standing-eel-607.convex.cloud',
+        clientId: 'flutter-app-1.0',
+        operationTimeout: Duration(seconds: 30), // Optional, defaults to 30s
+      ),
+    );
+
+    final convexClient = convex.ConvexClient.instance;
+
+    await convexClient.setAuth(token: userInfo.sub);
+    final test = await convexClient.mutation(
+      name: 'users:list',
+      args: {
+        "ipAddress": "127.0.0.1",
+        "port": "8888",
+      },
+    );
+
+    print("Inserted connection spec with id: $test");
+  }
+
+  Future<void> logout() async
+  {
+    await _logtoClient.signOut(_logtoRedirectUrl);
+  }
+
+  Future<bool> isAuthenticated() async
+    => _logtoClient.isAuthenticated;
 
   Future<List<common.ConnectionSpec>> getConnectionEntries()
     => throw UnimplementedError();
