@@ -116,8 +116,8 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   }
 
   @override
-  Widget build(BuildContext context) {
-  
+  Widget build(BuildContext context) 
+  {
     return ListView(
       children: [
         Padding(
