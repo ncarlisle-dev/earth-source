@@ -1,21 +1,21 @@
 import '../common/common.dart' as common;
-import 'package:logto_dart_sdk/logto_dart_sdk.dart' as logto;
+// import 'package:logto_dart_sdk/logto_dart_sdk.dart' as logto;
 import 'package:convex_flutter/convex_flutter.dart' as convex;
 import 'package:flutter/material.dart' as material;
 
-const _logtoConfig = logto.LogtoConfig(
-  endpoint: "https://5uk3n8.logto.app",
-  appId: "zezv2cwbq7xi0gw6wrmzf",
-  resources: [
-    "https://5uk3n8.logto.app/api",
-  ],
-);
+// const _logtoConfig = logto.LogtoConfig(
+//   endpoint: "https://5uk3n8.logto.app",
+//   appId: "zezv2cwbq7xi0gw6wrmzf",
+//   resources: [
+//     "https://5uk3n8.logto.app/api",
+//   ],
+// );
 
-const _logtoRedirectUrl = "io.logto://callback";
+// const _logtoRedirectUrl = "io.logto://callback";
 
 class NetworkService {
   static NetworkService? _instance;
-  final logto.LogtoClient _logtoClient = logto.LogtoClient(config: _logtoConfig);
+  // final logto.LogtoClient _logtoClient = logto.LogtoClient(config: _logtoConfig);
 
   /// Privately-named constructor to prevent other modules from creating a 
   /// new service.
@@ -41,27 +41,27 @@ class NetworkService {
 
   Future<void> login() async
   {
-    await _logtoClient.signIn(_logtoRedirectUrl);
-    final accessToken = await _logtoClient.getAccessToken(
-      resource: "https://5uk3n8.logto.app/api"
-    );
+    // await _logtoClient.signIn(_logtoRedirectUrl);
+    // final accessToken = await _logtoClient.getAccessToken(
+    //   resource: "https://5uk3n8.logto.app/api"
+    // );
 
-    final convexClient = convex.ConvexClient.instance;
-    print("????????????????? Setting auth token to '${accessToken!.token}'");
-    await convexClient.setAuth(token: accessToken!.token);
+    // final convexClient = convex.ConvexClient.instance;
+    // print("Setting auth token to '${accessToken!.token}'");
+    // await convexClient.setAuth(token: accessToken!.token);
 
-    print('????????????????? Connected: ${convexClient.isConnected}');
-    print('????????????????? Connection state: ${convexClient.currentConnectionState}');
+    // print('Connected: ${convexClient.isConnected}');
+    // print('Connection state: ${convexClient.currentConnectionState}');
 
-    print("Storing user ???????????????????");
-    try {
-      final _ = await convexClient.mutation(name: "auth:storeUser", args: {});
-    } catch (e) {
-      print(e.toString());
-    }
+    // print("Storing user");
+    // try {
+    //   final _ = await convexClient.mutation(name: "auth:storeUser", args: {});
+    // } catch (e) {
+    //   print(e.toString());
+    // }
 
 
-    // print("Creating connection spec ???????????????????");
+    // print("Creating connection spec");
     // final test = await convexClient.mutation(
     //   name: "connections:createConnectionSpec",
     //   args: {
@@ -75,11 +75,12 @@ class NetworkService {
 
   Future<void> logout() async
   {
-    await _logtoClient.signOut(_logtoRedirectUrl);
+    // await _logtoClient.signOut(_logtoRedirectUrl);
   }
 
   Future<bool> isAuthenticated() async
-    => _logtoClient.isAuthenticated;
+    => throw UnimplementedError();
+    // => _logtoClient.isAuthenticated;
 
   Future<List<common.ConnectionSpec>> getConnectionEntries()
     => throw UnimplementedError();
