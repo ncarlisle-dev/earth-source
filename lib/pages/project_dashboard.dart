@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import '../../mapping/visualizer.dart' as visualizer;
 import '../../api/api.dart' as api;
 
-/// A stateful widget for the prediction view page, which takes the id for the
-/// current project and a prediction job object as required fields.
+/// A stateful widget for the project dashboard page, which a given project
+/// as a required field.
 class ProjectDashboard extends StatefulWidget 
 {
   const ProjectDashboard({super.key, required this.project});
 
-  /// The id of the current project.
+  /// The current project being viewed.
   final api.Project project;
 
   @override
   State<ProjectDashboard> createState() => _ProjectDashboardState();
 }
 
-/// The mutable state of the prediction view page.
+/// The mutable state of the project dashboard page.
 class _ProjectDashboardState extends State<ProjectDashboard> 
 {
   @override

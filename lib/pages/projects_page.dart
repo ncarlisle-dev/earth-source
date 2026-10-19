@@ -2,21 +2,23 @@ import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
 import './project_dashboard.dart';
 
-class UserProjectsPage extends StatefulWidget {
-  const UserProjectsPage({
-    super.key
-  });
+/// A stateful widget for the user projects page.
+class UserProjectsPage extends StatefulWidget 
+{
+  const UserProjectsPage({super.key});
 
   @override
   State<UserProjectsPage> createState() => _UserProjectsPageState();
 }
 
-/// The mutable state of the project predictions page.
+/// The mutable state of the user projects page.
 class _UserProjectsPageState extends State<UserProjectsPage>
 {
+  /// Name of the created project.
   String? projectName;
+  /// Description of the created project.
   String? projectDescription;
-  
+
   /// Fetches a list of all the user's projects.
   Future<List<api.Project>> fetchProjects() async
   {
@@ -25,7 +27,10 @@ class _UserProjectsPageState extends State<UserProjectsPage>
     return projectController.userProjects;
   }
 
-  void renameJob()
+  /// Displays a dialogue box containing forms for the user to fill out for
+  /// project creation, adds the new project to the project controller, and
+  /// navigates to the dashboard for the newly created project.
+  void createProject()
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
@@ -78,11 +83,31 @@ class _UserProjectsPageState extends State<UserProjectsPage>
           ),
           actions: [
             ElevatedButton(
-              child: const Text("Submit"),
-              onPressed: () {
+              child: const Text("Create Project"),
+              // Access project controller and add new project before navigating
+              // to project dashboard.
+              onPressed: () async {
                 formKey.currentState!.save();
-                Navigator.of(context).pop();
+                api.ProjectController projectController = 
+                  await api.ProjectController.getInstance();
+                api.Project newProject = await projectController.createProject(
+                  projectName!, 
+                  projectDescription!
+                );
+                if (context.mounted)
+                {
+                  Navigator.push(
+                    context, 
+                    MaterialPageRoute<void>(builder: 
+                      (context) => ProjectDashboard(project: newProject)
+                    )
+                  );
+                }
               },
+            ),
+            ElevatedButton(
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
             ),
           ]
         );
@@ -99,7 +124,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: Center(
             child: Text(
-              "Predictions", 
+              "Projects", 
               style: TextTheme.of(context).headlineLarge?.copyWith(
                 fontWeight: FontWeight.bold, 
                 color: Colors.indigo
@@ -107,12 +132,10 @@ class _UserProjectsPageState extends State<UserProjectsPage>
             )
           ), //Icon
         ), 
-        // Button for adding predictions which navigates to the prediction
-        // generation page.
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
-            onPressed: () => "null",
+            onPressed: createProject,
             child: const Icon(Icons.add)
           )
         ),
@@ -127,14 +150,14 @@ class _UserProjectsPageState extends State<UserProjectsPage>
             => snapshot.hasData
             ?
             ListView.builder(
-              itemCount: 4, 
+              itemCount: 1, 
               itemBuilder: (BuildContext context, int index) {
                 return Card(
                   elevation: 50,
                   shadowColor: Colors.black,
                   child: SizedBox(
                     child: Padding(
-                      padding: const EdgeInsets.all(20.0),
+                      padding: EdgeInsets.all(20.0),
                       child: Column(
                         children: [
                           Text(
@@ -175,8 +198,8 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                           ),
                           // Button which navigates to the project dashboard
                           // page for the selected project.
-                          SizedBox(
-                            width: 100,
+                          Padding(
+                            padding: EdgeInsets.all(20),
                             child: ElevatedButton(
                               onPressed: () => Navigator.push(
                                   context, 
