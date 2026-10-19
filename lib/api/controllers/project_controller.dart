@@ -22,7 +22,7 @@ class ProjectController {
   /// projects fails.
   static Future<ProjectController> getInstance() async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    NetworkService networkService = await NetworkService.getInstance();
     if (instance != null) return instance!;
 
     instance = ProjectController._();
@@ -45,7 +45,7 @@ class ProjectController {
   /// new project fails.
   Future<Project> createProject(String name, String description) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    NetworkService networkService = await NetworkService.getInstance();
     Project createdProject = 
       Project(name, description, DateTime.now());
     createdProject.lastUpdated = DateTime.now();
@@ -68,7 +68,7 @@ class ProjectController {
   /// project fails.
   Future<void> deleteProject(String id) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    NetworkService networkService = await NetworkService.getInstance();
     int deleteIndex = userProjects.indexWhere((project) => project.id == id);
     assert(deleteIndex != -1);
     try {

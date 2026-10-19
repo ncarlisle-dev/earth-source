@@ -49,24 +49,25 @@ class AirdroidController
     = {};
 
   /// List of all the user's [ConnectionSpec]s.
-  List<common.ConnectionSpec>? connections;
+  late final List<common.ConnectionSpec> connections;
 
 
   /// Internal constructor used to prevent other modules from creating a new
   /// [AirdroidController] instance.
-  AirdroidController._()
-  {
-    NetworkService networkService = NetworkService.getInstance();
-    networkService.getConnectionEntries()
-      .then((entries) => connections = entries);
-  }
+  AirdroidController._();
 
 
   /// Returns the singleton [AirdroidController] instance, creating a new one
   /// if it is not yet initialized.
-  AirdroidController getInstance()
+  Future<AirdroidController> getInstance() async
   {
-    _instance ??= AirdroidController._();
+    if (_instance != null) return _instance!;
+
+    _instance = AirdroidController._();
+
+    NetworkService networkService = await NetworkService.getInstance();
+    _instance!.connections = await networkService.getConnectionEntries();
+
     return _instance!;
   }
 
@@ -105,7 +106,6 @@ class AirdroidController
     // check params
     assert(_isValidIpAddress(ipAddress), "IP address is invalid.");
     assert(_isValidPort(port), "Port is invalid.");
-    assert(connections != null, "Connections isn't fetched yet.");
 
     // initialize client
     final String clientKey = convertAddressToKey(ipAddress, port);
@@ -120,12 +120,12 @@ class AirdroidController
 
     // set connection spec
     final common.ConnectionSpec connSpec;
-    int existingConnSpecIndex = connections!.indexWhere(
+    int existingConnSpecIndex = connections.indexWhere(
       (spec) => spec.ipAddress == ipAddress && spec.port == port
     );
 
     if (existingConnSpecIndex > 0) {
-      connSpec = connections![existingConnSpecIndex];
+      connSpec = connections[existingConnSpecIndex];
     } else {
       connSpec = common.ConnectionSpec(
         ipAddress,
@@ -136,7 +136,7 @@ class AirdroidController
       );
     }
 
-    connections!.add(connSpec);
+    connections.add(connSpec);
 
     // set status lisenter
     client.setStatusListener((status) {
@@ -154,12 +154,12 @@ class AirdroidController
     try {
       await client.connect(ipAddress, port);
     } on common.ApiNetworkException {
-      connections!.removeLast();
+      connections.removeLast();
       client.setStatusListener(null);
     }
 
     // upload the connection spec
-    final networkService = NetworkService.getInstance();
+    final networkService = await NetworkService.getInstance();
     await networkService.uploadConnectionSpec(connSpec);
   }
 

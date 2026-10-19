@@ -1,56 +1,76 @@
 import '../common/common.dart' as common;
 import 'package:logto_dart_sdk/logto_dart_sdk.dart' as logto;
 import 'package:convex_flutter/convex_flutter.dart' as convex;
+import 'package:flutter/material.dart' as material;
 
 const _logtoConfig = logto.LogtoConfig(
   endpoint: "https://5uk3n8.logto.app",
   appId: "zezv2cwbq7xi0gw6wrmzf",
+  resources: [
+    "https://5uk3n8.logto.app/api",
+  ],
 );
 
 const _logtoRedirectUrl = "io.logto://callback";
 
 class NetworkService {
-  static NetworkService? instance;
-  final _logtoClient = logto.LogtoClient(config: _logtoConfig);
+  static NetworkService? _instance;
+  final logto.LogtoClient _logtoClient = logto.LogtoClient(config: _logtoConfig);
 
   /// Privately-named constructor to prevent other modules from creating a 
   /// new service.
   NetworkService._();
   
-  static NetworkService getInstance() {
-    if (instance != null) return instance!;
+  static Future<NetworkService> getInstance() async {
+    if (_instance != null) return _instance!;
 
-    instance = NetworkService._();
-    return instance!;
+    material.WidgetsFlutterBinding.ensureInitialized();
+
+    await convex.ConvexClient.initialize(
+      convex.ConvexConfig(
+        deploymentUrl: 'https://standing-eel-607.convex.cloud',
+        operationTimeout: Duration(seconds: 15),
+        healthCheckQuery: "health:ping",
+      ),
+    );
+
+    _instance = NetworkService._();
+
+    return _instance!;
   }
 
   Future<void> login() async
   {
     await _logtoClient.signIn(_logtoRedirectUrl);
-    final userInfo = await _logtoClient.getUserInfo();
-    print(userInfo.toJson());
-    print(userInfo.sub);
-
-    await convex.ConvexClient.initialize(
-      convex.ConvexConfig(
-        deploymentUrl: 'https://standing-eel-607.convex.cloud',
-        clientId: 'flutter-app-1.0',
-        operationTimeout: Duration(seconds: 30), // Optional, defaults to 30s
-      ),
+    final accessToken = await _logtoClient.getAccessToken(
+      resource: "https://5uk3n8.logto.app/api"
     );
 
     final convexClient = convex.ConvexClient.instance;
+    print("????????????????? Setting auth token to '${accessToken!.token}'");
+    await convexClient.setAuth(token: accessToken!.token);
 
-    await convexClient.setAuth(token: userInfo.sub);
-    final test = await convexClient.mutation(
-      name: 'users:list',
-      args: {
-        "ipAddress": "127.0.0.1",
-        "port": "8888",
-      },
-    );
+    print('????????????????? Connected: ${convexClient.isConnected}');
+    print('????????????????? Connection state: ${convexClient.currentConnectionState}');
 
-    print("Inserted connection spec with id: $test");
+    print("Storing user ???????????????????");
+    try {
+      final _ = await convexClient.mutation(name: "auth:storeUser", args: {});
+    } catch (e) {
+      print(e.toString());
+    }
+
+
+    // print("Creating connection spec ???????????????????");
+    // final test = await convexClient.mutation(
+    //   name: "connections:createConnectionSpec",
+    //   args: {
+    //     "ipAddress": "127.0.0.1",
+    //     "port": 8888,
+    //   },
+    // );
+
+    // print("Inserted connection spec with result: $test");
   }
 
   Future<void> logout() async

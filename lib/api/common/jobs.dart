@@ -61,7 +61,7 @@ class PredictionJob extends Job
   Future<List<List<double>>>? getResults() async
   {
     List<List<double>> results = [];
-    NetworkService networkService = NetworkService.getInstance();
+    NetworkService networkService = await NetworkService.getInstance();
     if (status != JobStatus.complete) return [];
     // TODO: Construct filepath to where prediction file will actually be 
     // stored on the backend using presumably job id or name.

@@ -1,9 +1,11 @@
+import './api/api.dart' as api;
 import 'package:flutter/material.dart';
 import './pages/home_page.dart' as home_page;
 
 
-void main()
+void main() async
 {
+  await api.NetworkService.getInstance();
   runApp(const MyApp());
 }
 

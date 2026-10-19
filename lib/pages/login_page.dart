@@ -24,7 +24,8 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               ElevatedButton(
                 onPressed: () async {
-                  await api.NetworkService.getInstance().login();
+                  final networkService = await api.NetworkService.getInstance();
+                  await networkService.login();
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
