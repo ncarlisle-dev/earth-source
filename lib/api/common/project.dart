@@ -45,7 +45,7 @@ class Project
   /// User-given name of the project.
   final String name;
   /// User-given description of the project.
-  final String description;
+  String description;
   /// Time the project was created.
   final DateTime createdAt;
   /// Most recent time the project was updated.
@@ -66,6 +66,26 @@ class Project
   final List<jobs.TrainingJob> models = [];
 
   Project(this.name, this.description, this.createdAt);
+
+  /// Changes the description of a project and uploads the modified project to
+  /// the database.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the project cannot be modified.
+  Future<void> changeDescription(String newDescription) async
+  {
+    NetworkService networkService = NetworkService.getInstance();
+    description = newDescription;
+    lastUpdated = DateTime.now();
+    try {
+      await networkService.uploadProject(this);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+  }
 
   /// Adds a file containing pXRF data to the project after validating the
   /// file's contents.
