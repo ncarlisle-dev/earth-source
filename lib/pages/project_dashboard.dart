@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
 import 'project_settings.dart';
+import 'predictions/predictions_page.dart';
+import 'data/data_page.dart';
+import 'map_page.dart';
+
+/// Note: I'm not sure whether it's best to pass the current project as a whole
+/// or the project id to each subsequent page following project creation/viewing
+/// - passing the whole project as a required field has the advantage of not
+/// having to keep going back to the project controller to find the project and
+/// load the necessary info, but there might be some drawback I'm missing. (Or
+/// just a better way of passing info between pages altogether.)
 
 /// A stateful widget for the project dashboard page, with a given project
 /// as a required field.
@@ -18,8 +28,11 @@ class ProjectDashboard extends StatefulWidget
 /// The mutable state of the project dashboard page.
 class _ProjectDashboardState extends State<ProjectDashboard> 
 {
+  /// New description of the project, if changed.
   String? projectDescription;
 
+  /// Boolean variable to track whether the description of the project has
+  /// been changed.
   bool isDescriptionChanged = false;
 
   /// Displays a pop-up dialogue box that allows the user to set a new 
@@ -120,28 +133,37 @@ class _ProjectDashboardState extends State<ProjectDashboard>
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
-            onPressed: () => "null",
+            onPressed: changeDescription,
             child: Text("Change description")
           )
         ),
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
-            onPressed: () => "null",
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder: 
+                (context) => MapPage(project: widget.project),
+            )),
             child: Text("Site Map")
           )
         ),
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
-            onPressed: () => "null",
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder: 
+                (context) => DataPage(project: widget.project),
+            )),
             child: Text("Sample Data")
           )
         ),
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
-            onPressed: () => "null",
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder: 
+                (context) => PredictionsPage(projectId: widget.project.id!),
+            )),
             child: Text("Predictions")
           )
         ),

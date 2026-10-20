@@ -6,6 +6,7 @@ import 'projects_page.dart';
 /// as a required field.
 class ProjectSettings extends StatefulWidget
 {
+  // Id of the current project.
   final String projectId;
   const ProjectSettings({super.key, required this.projectId});
 
@@ -29,14 +30,12 @@ class _ProjectSettingsState extends State<ProjectSettings>
             padding: const EdgeInsets.all(8.0),
             child: Text("Are you sure you want to delete this project? All "
             "associated project data (e.g. layers, units, pXRF sample data, and"
-            " predictions) will be deleted from the app with the project.")
+            " predictions) will also be deleted from the app.")
           ),
           actions: [
             ElevatedButton(
               child: const Text("Confirm Deletion"),
               onPressed: () async {
-                // Find the appropriate project in the project controller
-                // and delete the corresponding prediction job.
                 api.ProjectController projectController = 
                   await api.ProjectController.getInstance();
                 projectController.deleteProject(widget.projectId);
