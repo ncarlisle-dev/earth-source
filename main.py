@@ -77,3 +77,7 @@ async def ebk(file: UploadFile = File(...)):
             "attachment; filename=ArchaeoSight_EBK_Grid.csv"
         }
     )
+#TODO: New get call for Batch Processing
+@app.get("/run")
+def run_job( job_id: str):
+    return process_job(job_id, model)
