@@ -8,12 +8,14 @@ import '../common/common.dart' as common;
 /// Object given by [dzod] to access types.
 final _z = dzod.z;
 
+/* ================================ Utility ================================ */
+
 /// Zard type defining a valid ID. Must be string UUID.
-final _zId = _z.string().uuid();
+final zId = _z.string().uuid();
 
 /// Zard type defining a valid timestamp. Must be an integer >= 0. Represents
 /// milliseconds since epoch.
-final _zTimestamp = _z.integer().min(0);
+final zTimestamp = _z.integer().min(0).transform((val) => val.toInt());
 
 /// Zard type defining a valid width value. Must be a number > 0 and <= 360.
 final _zWidth = _z.number().max(360).gt(0);
@@ -49,7 +51,7 @@ class ApiUser
 }
 
 final zApiUser = _z.object({
-  'id':   _zId,
+  'id':   zId,
   'name': _z.string().nonempty(),
 }).transform(ApiUser.fromMap);
 
@@ -87,11 +89,11 @@ final _ipv4AddrRegex = RegExp(
 );
 
 final zApiConnectionSpec = _z.object({
-  'id':        _zId,
-  'userId':    _zId,
+  'id':        zId,
+  'userId':    zId,
   'ipAddress': _z.string().regex(_ipv4AddrRegex),
   'port':      _z.integer().min(0).max(65535),
-  'createdAt': _zTimestamp,
+  'createdAt': zTimestamp,
 }).transform(ApiConnectionSpec.fromMap);
 
 /* ================================= Layer ================================= */
@@ -123,9 +125,9 @@ class ApiLayer
 }
 
 final zApiLayer = _z.object({
-  'id':          _zId,
-  'createdAt':   _zTimestamp,
-  'lastUpdated': _zTimestamp,
+  'id':          zId,
+  'createdAt':   zTimestamp,
+  'lastUpdated': zTimestamp,
   'name':        _z.string(),
   'description': _z.string(),
 }).transform(ApiLayer.fromMap);
@@ -174,20 +176,20 @@ class ApiUnit
 }
 
 final zApiUnit = _z.object({
-  'id':            _zId,
+  'id':            zId,
   'name':          _z.string(),
   'description':   _z.string(),
   'width':         _zWidth,
   'height':        _zHeight,
   'pointInterval': _z.number().min(0),
-  'createdAt':     _zTimestamp,
-  'lastUpdated':   _zTimestamp,
+  'createdAt':     zTimestamp,
+  'lastUpdated':   zTimestamp,
   'topLeftCoords': _zCoordinate,
 }).transform(ApiUnit.fromMap);
 
 /* ============================ Data spec (base) ============================ */
 
-abstract class ApiDataSpec
+abstract class _ApiDataSpec
 {
   final String id;
   final String fileName;
@@ -197,7 +199,7 @@ abstract class ApiDataSpec
   final int    lastUpdated;
   final int    createdAt;
 
-  ApiDataSpec({
+  _ApiDataSpec({
     required this.id,
     required this.fileName,
     required this.description,
@@ -208,19 +210,19 @@ abstract class ApiDataSpec
   });
 }
 
-final zApiDataSpec = _z.object({
-  'id':          _zId,
+final _zApiDataSpec = _z.object({
+  'id':          zId,
   'fileName':    _z.string().nonempty(),
   'description': _z.string(),
   'numPoints':   _z.integer().min(0),
   'size':        _z.integer().min(0),
-  'lastUpdated': _zTimestamp,
-  'createdAt':   _zTimestamp,
+  'lastUpdated': zTimestamp,
+  'createdAt':   zTimestamp,
 });
 
 /* ============================= pXRF data spec ============================= */
 
-class ApiPxrfDataSpec extends ApiDataSpec
+class ApiPxrfDataSpec extends _ApiDataSpec
 {
   ApiPxrfDataSpec({
     required super.id,
@@ -244,11 +246,13 @@ class ApiPxrfDataSpec extends ApiDataSpec
     );
 }
 
-final zApiPxrfDataSpec = zApiDataSpec.extend({});
+final zApiPxrfDataSpec = _zApiDataSpec
+  .extend({})
+  .transform(ApiPxrfDataSpec.fromMap);
 
 /* =========================== Training data spec =========================== */
 
-class ApiTrainingDataSpec extends ApiDataSpec
+class ApiTrainingDataSpec extends _ApiDataSpec
 {
   ApiTrainingDataSpec({
     required super.id,
@@ -272,7 +276,9 @@ class ApiTrainingDataSpec extends ApiDataSpec
     );
 }
 
-final zApiTrainingDataSpec = zApiDataSpec.extend({});
+final zApiTrainingDataSpec = _zApiDataSpec
+  .extend({})
+  .transform(ApiTrainingDataSpec.fromMap);
 
 /* =============================== Job (base) =============================== */
 
@@ -296,11 +302,11 @@ abstract class _ApiJob
 }
 
 final _zApiJob = _z.object({
-  'id':          _zId,
+  'id':          zId,
   'name':        _z.string(),
   'description': _z.string(),
-  'createdAt':   _zTimestamp,
-  'lastUpdated': _zTimestamp,
+  'createdAt':   zTimestamp,
+  'lastUpdated': zTimestamp,
   'status':      _z.enum_(common.JobStatus.values as List<String>),
 });
 
@@ -339,11 +345,11 @@ class ApiPredictionJob extends _ApiJob
 }
 
 final zApiPredictionJob = _zApiJob.extend({
-  'layerId':         _zId,
-  'modelId':         _zId,
+  'layerId':         zId,
+  'modelId':         zId,
   'dataAssignments': _z.record(
-    _z.record(_zId.nullable()).keySchema(_zId)
-  ).keySchema(_zId),
+    _z.record(zId.nullable()).keySchema(zId)
+  ).keySchema(zId),
 });
 
 /* ============================== Training job ============================== */
@@ -375,7 +381,7 @@ class ApiTrainingJob extends _ApiJob
 }
 
 final zApiTrainingJob = _zApiJob.extend({
-  'trainignDataSpecId': _zId,
+  'trainignDataSpecId': zId,
 });
 
 /* ================================ Project ================================ */
@@ -389,12 +395,12 @@ class ApiProject
   final double                                  height;
   final ({ double latitude, double longitude }) topLeftCoords;
   final Map<String, Map<String, String>>        dataAssignments;
-  final List<ApiLayer>                           layers;
-  final List<ApiUnit>                            units;
-  final List<ApiPxrfDataSpec>                    pxrfData;
-  final List<ApiTrainingDataSpec>                trainingData;
-  final List<ApiPredictionJob>                   predictions;
-  final List<ApiTrainingJob>                     models;
+  final List<ApiLayer>                          layers;
+  final List<ApiUnit>                           units;
+  final List<ApiPxrfDataSpec>                   pxrfData;
+  final List<ApiTrainingDataSpec>               trainingData;
+  final List<ApiPredictionJob>                  predictions;
+  final List<ApiTrainingJob>                    models;
   final int                                     lastUpdated;
   final int                                     createdAt;
   
@@ -440,19 +446,19 @@ class ApiProject
 }
 
 final zApiProject = _z.object({
-  'id':              _zId,
+  'id':              zId,
   'name':            _z.string(),
   'description':     _z.string(),
   'width':           _zWidth,
   'height':          _zHeight,
   'topLeftCoords':   _zCoordinate,
-  'dataAssignments': _z.record(_z.record(_zId)),
+  'dataAssignments': _z.record(_z.record(zId)),
   'layers':          _z.array(zApiLayer),
   'units':           _z.array(zApiUnit),
   'pxrfData':        _z.array(zApiPxrfDataSpec),
   'trainingData':    _z.array(zApiTrainingDataSpec),
   'predictions':     _z.array(zApiPredictionJob),
   'models':          _z.array(zApiTrainingJob),
-  'lastUpdated':     _zTimestamp,
-  'createdAt':       _zTimestamp,
+  'lastUpdated':     zTimestamp,
+  'createdAt':       zTimestamp,
 }).transform(ApiProject.fromMap);

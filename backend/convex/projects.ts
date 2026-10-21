@@ -129,7 +129,7 @@ export const createProject = zodMutation({
       trainingJobIds: [],
     });
 
-    return projectId;
+    return await ctx.db.get("projects", projectId);
   }
 })
 
@@ -859,7 +859,7 @@ export const finalizePxrfFileUpload = zodInternalMutation({
       { pxrfDataSpecIds, lastUpdated: args.timestamp }
     );
 
-    return specId;
+    return await ctx.db.get("dataSpecs", specId);
   }
 });
 

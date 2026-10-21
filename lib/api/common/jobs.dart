@@ -14,19 +14,29 @@ enum JobStatus {
 abstract class Job 
 {
   /// The id of the job.
-  String? id;
+  final String id;
   /// The name of the job.
-  String? name;
+  String name;
   /// The description of the job.
-  String? description;
-  /// Time at which the job was created.
-  DateTime createdAt = DateTime.now();
+  String description;
   /// Current status of the job.
-  JobStatus status = JobStatus.starting;
+  JobStatus status;
+  /// Time at which the job was created.
+  final DateTime createdAt;
+  /// Time at which the job was last updated.
+  DateTime lastUpdated;
+
   /// A collection of status listeners called when the job's status changes.
   final List<void Function(JobStatus)> _statusListeners = [];
 
-  Job();
+  Job({
+    required this.id,
+    required this.createdAt,
+    required this.lastUpdated,
+    this.name = "",
+    this.description = "",
+    this.status = .starting,
+  });
 
   /// Sets a callback to be run every time the status of a given job changes
   Future<void> watchStatus(void Function(JobStatus status) callback) async
@@ -38,7 +48,14 @@ abstract class Job
 /// An extension of the job class used specifically for model training.
 class TrainingJob extends Job 
 {
-  TrainingJob();
+  TrainingJob({
+    required super.id,
+    required super.createdAt,
+    required super.lastUpdated,
+    super.name = "",
+    super.description = "",
+    super.status = .starting,
+  });
 }
 
 /// An extension of the job class used specifically for predictions, with a 
@@ -46,12 +63,21 @@ class TrainingJob extends Job
 class PredictionJob extends Job 
 {
   /// Layer over which the current predictions should run.
-  specs.LayerSpec layer;
-  /// Model id if a newly trained model is being used (defaults to base model
-  /// if not.)
-  String? modelId;
+  final String layerId;
+  /// Model id if a newly trained model is being used (defaults to base model if 
+  /// empty).
+  String modelId;
 
-  PredictionJob(this.layer);
+  PredictionJob({
+    required super.id,
+    required super.createdAt,
+    required super.lastUpdated,
+    required this.layerId,
+    required this.modelId,
+    super.name = "",
+    super.description = "",
+    super.status = .starting,
+  });
 
   /// Obtains the results of generating a prediction and returns them formatted
   /// as a 2D list of doubles. If results are not yet available, returns an 

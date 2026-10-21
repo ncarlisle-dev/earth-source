@@ -66,7 +66,7 @@ http.route({
 
     // write to database and return
     try {
-      const specId = await ctx.runMutation(
+      const createdSpec = await ctx.runMutation(
         internal.projects.finalizePxrfFileUpload,
         {
           projectId: args.projectId,
@@ -79,7 +79,20 @@ http.route({
         }
       );
 
-      return Response.json({ specId, timestamp }, { status: 201 });
+      if (createdSpec === null)
+        return new Response(`Failed to fetch created spec.`, { status: 500 });
+
+      const apiSpec = {
+        id: createdSpec._id,
+        fileName: createdSpec.fileName,
+        description: createdSpec.description,
+        numPoints: createdSpec.numPoints,
+        size: createdSpec.size,
+        createdAt: createdSpec._creationTime,
+        lastUpdated: createdSpec._creationTime,
+      };
+
+      return Response.json(apiSpec, { status: 201 });
     } catch (e) {
       await ctx.storage.delete(storageId);
 

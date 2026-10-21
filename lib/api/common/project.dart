@@ -41,31 +41,53 @@ class ProjectException implements Exception
 class Project 
 {
   /// Id of the project.
-  String? id;
+  final String id;
   /// User-given name of the project.
-  final String name;
+  String name;
   /// User-given description of the project.
   String description;
+  /// Location of the top-left corner of the project site.
+  ({ double latitude, double longitude }) topLeftCoords;
+  /// Width of the project site.
+  double width;
+  /// Height of the project site.
+  double height;
+  /// List of layers the project contains.
+  final List<specs.Layer> layers;
+  /// List of units the project contains.
+  final List<specs.Unit> units;
+  /// List of pXRF data files corresponding to the project.
+  final List<specs.PxrfDataSpec> pxrfData;
+  /// List of training data files corresponding to the project.
+  final List<specs.TrainingDataSpec> trainingData;
+  /// Map of layer and unit names to file names.
+  final Map<String, Map <String, String?>> dataAssignments;
+  /// List of batch jobs for generating predictions.
+  final List<jobs.PredictionJob> predictions;
+  /// List of batch jobs for training models.
+  final List<jobs.TrainingJob> models;
   /// Time the project was created.
   final DateTime createdAt;
   /// Most recent time the project was updated.
-  DateTime? lastUpdated;
-  /// List of layers the project contains.
-  final List<specs.LayerSpec> layers = [];
-  /// List of units the project contains.
-  final List<specs.UnitSpec> units = [];
-  /// List of pXRF data files corresponding to the project.
-  final List<specs.DataSpec> pxrfData = [];
-  /// List of training data files corresponding to the project.
-  final List<specs.DataSpec> trainingData = [];
-  /// Map of layer and unit names to file names.
-  final Map<String, Map <String, String>> dataAssignments = {};
-  /// List of batch jobs for generating predictions.
-  final List<jobs.PredictionJob> predictions = [];
-  /// List of batch jobs for training models.
-  final List<jobs.TrainingJob> models = [];
+  DateTime lastUpdated;
 
-  Project(this.name, this.description, this.createdAt);
+  Project({
+    required this.id,
+    required this.createdAt,
+    required this.lastUpdated,
+    required this.topLeftCoords,
+    required this.width,
+    required this.height,
+    this.name            = "",
+    this.description     = "",
+    this.layers          = const [],
+    this.units           = const [],
+    this.pxrfData        = const [],
+    this.trainingData    = const [],
+    this.dataAssignments = const {},
+    this.predictions     = const [],
+    this.models          = const [],
+  });
 
   /// Changes the description of a project and uploads the modified project to
   /// the database.
@@ -286,7 +308,7 @@ class Project
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if given layer name matches
   /// a pre-existing layer.
-  Future<specs.LayerSpec> createLayer(
+  Future<specs.Layer> createLayer(
     String name, 
     String description, 
     List<latlong.LatLng> cornerCoordinates
@@ -296,11 +318,11 @@ class Project
     NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing layer has the same name and only make a new 
     // layer if not
-    Iterable<specs.LayerSpec> duplicateName = layers.where(
+    Iterable<specs.Layer> duplicateName = layers.where(
       (layer) => layer.name == name);
 
     if (duplicateName.isEmpty) {
-      specs.LayerSpec createdLayer = specs.LayerSpec(
+      specs.Layer createdLayer = specs.Layer(
         name, 
         description, 
         DateTime.now(), 
@@ -345,7 +367,7 @@ class Project
     NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing layer has the same name and only change the
     // name if not
-    Iterable<specs.LayerSpec> duplicateName = layers.where(
+    Iterable<specs.Layer> duplicateName = layers.where(
       (layer) => layer.name == newName);
 
     if (duplicateName.isEmpty) {
@@ -428,7 +450,7 @@ class Project
   /// after modification and a [Project.Exception] if either a unit already
   /// exists with the same name or the current unit overlaps with a pre-existing
   /// unit.
-  Future<specs.UnitSpec> createUnit(
+  Future<specs.Unit> createUnit(
     String name, 
     String description, 
     ({double latitude, double longitude}) topLeft, 
@@ -439,10 +461,10 @@ class Project
   {
     NetworkService networkService = NetworkService.getInstance();
     // Check to make sure no pre-existing unit has the same name.
-    Iterable<specs.UnitSpec> duplicateName = units.where(
+    Iterable<specs.Unit> duplicateName = units.where(
       (unit) => unit.name == name);
     if (duplicateName.isEmpty) {
-      specs.UnitSpec createdUnit = specs.UnitSpec(
+      specs.Unit createdUnit = specs.Unit(
         name, 
         description,
         DateTime.now(),
@@ -492,7 +514,7 @@ class Project
     NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing unit has the same name and only change the
     // name if not.
-    Iterable<specs.UnitSpec> duplicateName = units.where(
+    Iterable<specs.Unit> duplicateName = units.where(
       (unit) => unit.name == newName);
 
     if (duplicateName.isEmpty) {
@@ -557,7 +579,7 @@ class Project
     // Initialize updated unit with position fields in order to check for
     // overlap.
     int unitIndex = units.indexWhere((unit) => unit.id == id);
-    specs.UnitSpec updatedUnit = specs.UnitSpec(
+    specs.Unit updatedUnit = specs.Unit(
       "", 
       "", 
       DateTime.now(), 
@@ -935,7 +957,7 @@ class Project
 /* ================================ Utility ================================ */
 
 /// Checks if two units are overlapping and returns true if so, false if not.
-bool isOverlapping(specs.UnitSpec unit1, specs.UnitSpec unit2)
+bool isOverlapping(specs.Unit unit1, specs.Unit unit2)
 {
   // Determine the top latitude, bottom latitude, left longitude, and right 
   // longitude for each unit - top and left are given, bottom and right have to
@@ -1007,7 +1029,7 @@ bool isOverlapping(specs.UnitSpec unit1, specs.UnitSpec unit2)
 }
 
 /// Checks if a single lat/long point falls within a given unit.
-bool isWithinUnit(specs.UnitSpec unit, double latitude, double longitude)
+bool isWithinUnit(specs.Unit unit, double latitude, double longitude)
 {
   double top = unit.topLeftCoords.latitude;
   double left = unit.topLeftCoords.longitude;
@@ -1035,7 +1057,7 @@ bool isWithinUnit(specs.UnitSpec unit, double latitude, double longitude)
 /// 
 /// Returns true if all assigned data still falls within appropriate boundaries,
 /// false if not.
-bool checkAssignment(String fileContents, specs.UnitSpec unit) 
+bool checkAssignment(String fileContents, specs.Unit unit) 
 {
   List<List<String>> formattedData = [];
   List<String> fileLines = fileContents.split('\n');
