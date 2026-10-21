@@ -18,6 +18,14 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   String? projectName;
   /// Description of the created project.
   String? projectDescription;
+  /// UTM zone of the created project
+  int? utmZone;
+  /// Boolean tracking whether or not the project is in the southern or northern
+  /// hemisphere.
+  bool isSouthernHemisphere = false;
+
+  List<String> utmZones = [for (var i = 1; i <= 60; i++) "$i"];
+  List<String> hemispheres = ["Southern, Northern"];
 
   /// Fetches a list of all the user's projects.
   Future<List<api.Project>> fetchProjects() async
@@ -77,6 +85,46 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                       });
                     },
                   ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0),
+                    child: Text("Select UTM Zone:")
+                  ),
+                  DropdownButton(
+                    value: utmZones[0],
+                    icon: const Icon(Icons.keyboard_arrow_down),
+                    items:
+                        utmZones.map<DropdownMenuItem<String>>(
+                          (String value) {
+                          return DropdownMenuItem<String>
+                          (value: value, child: Text(value));
+                        }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        utmZone = int.parse(newValue!);
+                      });
+                    },
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0),
+                    child: Text("Select hemisphere:")
+                  ),
+                  DropdownButton(
+                    value: hemispheres[0],
+                    icon: const Icon(Icons.keyboard_arrow_down),
+                    items:
+                        hemispheres.map<DropdownMenuItem<String>>(
+                          (String value) {
+                          return DropdownMenuItem<String>
+                          (value: value, child: Text(value));
+                        }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        if (newValue == hemispheres[0]) {
+                          isSouthernHemisphere = true;
+                        }
+                      });
+                    },
+                  ),
                 ],
               ),
             ),
@@ -92,7 +140,9 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                   await api.ProjectController.getInstance();
                 api.Project newProject = await projectController.createProject(
                   projectName!, 
-                  projectDescription!
+                  projectDescription!,
+                  utmZone!,
+                  isSouthernHemisphere
                 );
                 if (context.mounted)
                 {
@@ -152,7 +202,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
             Center(child:Text("No projects created so far!"))
             :
             ListView.builder(
-              itemCount: 1, 
+              itemCount: snapshot.data!.length, 
               itemBuilder: (BuildContext context, int index) {
                 return Card(
                   elevation: 50,

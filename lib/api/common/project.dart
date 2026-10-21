@@ -46,6 +46,11 @@ class Project
   final String name;
   /// User-given description of the project.
   String description;
+  /// UTM zone of the project site.
+  int utmZone;
+  /// Boolean that tracks whether or not the project is in the Southern 
+  /// Hemisphere.
+  bool isSouthernHemisphere;
   /// Time the project was created.
   final DateTime createdAt;
   /// Most recent time the project was updated.
@@ -65,7 +70,8 @@ class Project
   /// List of batch jobs for training models.
   final List<jobs.TrainingJob> models = [];
 
-  Project(this.name, this.description, this.createdAt);
+  Project(this.name, this.description, this.createdAt, this.utmZone, 
+    this.isSouthernHemisphere);
 
   /// Changes the description of a project and uploads the modified project to
   /// the database.

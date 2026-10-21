@@ -42,7 +42,7 @@ class _ProjectSettingsState extends State<ProjectSettings>
                 if (context.mounted)
                 {
                   Navigator.push(context, MaterialPageRoute<void>(
-                    builder: (context) => ProjectsPage(),
+                    builder: (context) => UserProjectsPage(),
                     ),
                   );
                 }
