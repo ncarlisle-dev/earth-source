@@ -40,7 +40,9 @@ class ProjectException implements Exception
 /// from a given site.
 class Project 
 {
-  /// Id of the project.
+  // TODO: turn these fields private and expose getters only
+
+  /// ID of the project.
   final String id;
   /// User-given name of the project.
   String name;
@@ -89,17 +91,37 @@ class Project
     required this.lastUpdated,
   });
 
+  /// Changes the name of a project and uploads the modified project to the 
+  /// database.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the update fails.
+  Future<void> setName(String name) async
+  {
+    NetworkService networkService = await NetworkService.getInstance();
+    name = name;
+    try {
+      lastUpdated = await networkService.setProjectMetadata(id, name: name);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+  }
+
+
   /// Changes the description of a project and uploads the modified project to
   /// the database.
   /// 
-  /// Throws a [network.ApiNetworkException] if the project cannot be modified.
-  Future<void> changeDescription(String newDescription) async
+  /// Throws a [network.ApiNetworkException] if the update fails.
+  Future<void> setDescription(String newDescription) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    final networkService = await NetworkService.getInstance();
     description = newDescription;
     lastUpdated = DateTime.now();
     try {
-      await networkService.uploadProject(this);
+      await networkService.setProjectMetadata(id, description: newDescription);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -112,39 +134,22 @@ class Project
   /// Adds a file containing pXRF data to the project after validating the
   /// file's contents.
   /// 
-  /// Throws a [ProjectException] if the file cannot be validated and a
-  /// [network.ApiNetworkException] if the file cannot successfully be uploaded
-  /// or the project cannot be modified.
+  /// Throws a [ProjectException] if the file is invalid and a
+  /// [network.ApiNetworkException] if the update fails.
   Future<void> addPxrfData(String fileName, String fileContents) async 
   {
-    NetworkService networkService = NetworkService.getInstance();
-    int numPoints = validateDataFile(false, fileContents);
-    if (numPoints == 0) {
-      // TODO: Describe specifically what the issue is to the user. I wasn't 
-      // sure how to implement this elegantly - it didn't seem best to throw an
-      // exception within the validateDataFile function itself, and I couldn't
-      // work out a good way to pass the source of the error back here - so I 
-      // am leaving it for now.
-      throw ProjectException(
-        "Given data is not correctly formatted - either fields are missing or "
-        "no data is present."
-      );
-    }
-    // Setting size to 0 for the time being since that seems like something the
-    // backend would handle.
-    specs.DataSpec pxrfFile = specs.DataSpec(
-      fileName, 
-      id!, 
-      DateTime.now(), 
-      numPoints, 
-      0
-    );
-    pxrfData.add(pxrfFile);
-    lastUpdated = DateTime.now();
-    String filePath = "";
+    validateDataFile(false, fileContents);
+
+    final networkService = await NetworkService.getInstance();
+    final specs.PxrfDataSpec createdSpec;
+
     try {
-      await networkService.writeFile(filePath, fileContents);
-      await networkService.uploadProject(this);
+      createdSpec = await networkService.addPxrfData(
+        id,
+        fileContents,
+        fileName,
+        description
+      );
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -152,6 +157,9 @@ class Project
         error.statusCode
       );
     }
+
+    pxrfData.add(createdSpec);
+    lastUpdated = createdSpec.createdAt;
   }
 
   /// Fetches a pXRF data file from the database.
@@ -160,7 +168,7 @@ class Project
   /// successfully be fetched.
   Future<String?> getPxrfData(String fileId) async 
   {
-    NetworkService networkService = NetworkService.getInstance();
+    final networkService = NetworkService.getInstance();
     String filePath = "";
     String? fileContents;
     try {
@@ -182,7 +190,7 @@ class Project
   /// sunccessfully be removed.
   Future<void> removePxrfData(String fileId) async 
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     int fileIndex = pxrfData.indexWhere(
       (file) => file.id == fileId);
 
@@ -219,7 +227,7 @@ class Project
   /// or the project cannot be modified.
   Future<void> addTrainingData(String fileName, String fileContents) async 
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     int numPoints = validateDataFile(true, fileContents);
     if (numPoints == 0) {
       // TODO: Describe specifically what the issue is to the user. I wasn't 
@@ -259,7 +267,7 @@ class Project
   /// successfully be fetched.
   Future<String?> getTrainingData(String fileId) async 
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     /// TODO: As with layer image, change this to the appropriate filepath.
     String filePath = "";
     String? fileContents;
@@ -283,7 +291,7 @@ class Project
   /// sunccessfully be removed.
   Future<void> removeTrainingData(String fileId) async 
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     int fileIndex = trainingData.indexWhere(
       (file) => file.id == fileId);
     trainingData.removeAt(fileIndex);
@@ -315,7 +323,7 @@ class Project
   ) 
     async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing layer has the same name and only make a new 
     // layer if not
     Iterable<specs.Layer> duplicateName = layers.where(
@@ -364,7 +372,7 @@ class Project
   /// a pre-existing layer.
   Future<void> setLayerName(String id, String newName) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing layer has the same name and only change the
     // name if not
     Iterable<specs.Layer> duplicateName = layers.where(
@@ -399,7 +407,7 @@ class Project
   /// after modification.
   Future<void> setLayerDescription(String id, String description) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     int layerIndex = layers.indexWhere((layer) => layer.id == id);
     layers[layerIndex].description = description;
     layers[layerIndex].lastUpdated = DateTime.now();
@@ -423,7 +431,7 @@ class Project
   /// after modification or the layer cannot be successfully deleted.
   Future<void> deleteLayer(String id) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     int layerIndex = layers.indexWhere((layer) => layer.id == id);
     layers.removeAt(layerIndex);
     lastUpdated = DateTime.now();
@@ -459,7 +467,7 @@ class Project
     double pointInterval
   ) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     // Check to make sure no pre-existing unit has the same name.
     Iterable<specs.Unit> duplicateName = units.where(
       (unit) => unit.name == name);
@@ -511,7 +519,7 @@ class Project
   /// a pre-existing unit.
   Future<void> setUnitName(String id, String newName) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing unit has the same name and only change the
     // name if not.
     Iterable<specs.Unit> duplicateName = units.where(
@@ -548,7 +556,7 @@ class Project
   /// after modification.
   Future<void> setUnitDescription(String id, String description) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     int unitIndex = units.indexWhere((unit) => unit.id == id);
     units[unitIndex].description = description;
     units[unitIndex].lastUpdated = DateTime.now();
@@ -575,7 +583,7 @@ class Project
   Future<void> repositionUnit(String id, ({double latitude, double longitude})
    topLeft, double width, double height, double pointInterval) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     // Initialize updated unit with position fields in order to check for
     // overlap.
     int unitIndex = units.indexWhere((unit) => unit.id == id);
@@ -642,7 +650,7 @@ class Project
   /// after modification.
   Future<void> deleteUnit(String id) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     int unitIndex = units.indexWhere((unit) => unit.id == id);
     units.removeAt(unitIndex);
     lastUpdated = DateTime.now();
@@ -666,7 +674,7 @@ class Project
   Future<void> assignData(String layerId, String unitId, String fileName) 
   async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
 
     // Ensure provided data fits within the given unit.
     int unitIndex = units.indexWhere((unit) => unit.id == unitId);
@@ -711,7 +719,7 @@ class Project
     String? modelId
   ) async 
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
 
     // Find all data files corresponding to the given layer for filepath 
     // creation.
@@ -764,7 +772,7 @@ class Project
   /// project cannot be uploaded after modification.
   Future<jobs.TrainingJob> runTrainingJob(String name, String fileName) async 
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     jobs.TrainingJob trainingJob = jobs.TrainingJob();
     trainingJob.name = name;
     // TODO: Use file name to construct proper filepath.
@@ -801,7 +809,7 @@ class Project
   /// a pre-existing job.
   Future<void> setJobName(String id, String newName) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     // Check if a pre-existing layer has the same name and only change the
     // name if not
     Iterable<jobs.PredictionJob> duplicateName = predictions.where(
@@ -835,7 +843,7 @@ class Project
   /// after modification.
   Future<void> setJobDescription(String id, String description) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     
     int jobIndex = predictions.indexWhere((job) => job.id == id);
     predictions[jobIndex].description = description;
@@ -859,7 +867,7 @@ class Project
   /// after modification or the prediction job cannot be successfully deleted.
   Future<void> deleteJob(String id) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     int jobIndex = predictions.indexWhere((job) => job.id == id);
     predictions.removeAt(jobIndex);
     lastUpdated = DateTime.now();
@@ -900,7 +908,7 @@ class Project
   /// Throws a [network.ApiNetworkException] if the image fails to upload.
   Future<void> uploadLayerImage(String layerId, String imageContents) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     String filePath = "";
     try {
       networkService.writeFile(filePath, imageContents);
@@ -919,7 +927,7 @@ class Project
   /// Throws a [network.ApiNetworkException] if the image cannot be retrieved.
   Future<String?> getLayerImage(String layerId) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     String filePath = "";
     String? imageContents;
     try {
@@ -940,7 +948,7 @@ class Project
   /// Throws a [network.ApiNetworkException] if the image cannot be deleted.
   Future<void> removeLayerImage(String layerId) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    await NetworkService networkService = NetworkService.getInstance();
     String filePath = "";
     try {
       await networkService.deleteFile(filePath);

@@ -45,12 +45,12 @@ class ProjectController {
   /// new project fails.
   Future<Project> createProject(String name, String description) async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    NetworkService networkService = await NetworkService.getInstance();
     Project createdProject = 
       Project(name, description, DateTime.now());
     createdProject.lastUpdated = DateTime.now();
     try {
-      await networkService.uploadProject(createdProject);
+      await networkService.createProject(createdProject);
       userProjects.add(createdProject);
     }
     on network.ApiNetworkException catch (error) {

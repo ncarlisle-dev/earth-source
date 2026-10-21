@@ -113,7 +113,7 @@ class PredictionJob extends Job
 
     // Parse file contents into a 2D list of strings, then convert strings to 
     // doubles.
-    if (fileContents == "" || fileContents == null) return [];
+    if (fileContents == "") return [];
 
     List<List<String>> resultsAsString = [];
     List<String> fileLines = fileContents.split('\n');
