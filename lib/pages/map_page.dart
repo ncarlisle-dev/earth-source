@@ -106,9 +106,7 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) async {
-                      setState(() {
-                        layerName = value!;
-                      });
+                      layerName = value!;
                     },
                   ),
                   TextFormField(
@@ -122,9 +120,7 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) async {
-                      setState(() {
-                        layerDescription = value!;
-                      });
+                      layerDescription = value!;
                     },
                   ),
                   TextFormField(
@@ -258,7 +254,7 @@ class _MapPageState extends State<MapPage>
 
                 // Convert corner coordinates to lat/long.
                 List<latlong.LatLng> layerCorners = 
-                  visualizer.convertCoords(cornerCoords);
+                  visualizer.convertCoordsUTM(cornerCoords);
 
                 // Access project controller and add new layer to the project.
                 api.ProjectController projectController = 
@@ -296,6 +292,216 @@ class _MapPageState extends State<MapPage>
     );
   }
 
+  /// Displays a form filled in with the fields for the corresponding layer that
+  /// the user can choose to edit, registers which if any of the fields have 
+  /// been changed, and updates information for the layer accordingly.
+  void editLayer(api.LayerSpec layer)
+  {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    bool nameChanged = false;
+    bool descriptionChanged = false;
+    bool positioningChanged = false;
+
+    String layerName = layer.name;
+    String layerDescription = layer.description;
+    List<coord_converter.UTMCoordinates> cornerCoords = 
+      visualizer.convertCoordsLatLng(layer.cornerCoordinates);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          scrollable: true,
+          content: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    initialValue: layer.name,
+                    onSaved: (value) async {
+                      if (value != layer.name)
+                      {
+                        layerName = value!;
+                        nameChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    initialValue: layer.description,
+                    onSaved: (value) async {
+                      if (value != layer.description)
+                      {
+                        layerDescription = value!;
+                        descriptionChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-left X Coordinate:'
+                    ),
+                    initialValue: cornerCoords[0].x as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != cornerCoords[0].x)
+                      {
+                        cornerCoords[0].x = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-left Y Coordinate:'
+                    ),
+                    initialValue: cornerCoords[0].y as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != cornerCoords[0].y)
+                      {
+                        cornerCoords[0].y = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-left X Coordinate:'
+                    ),
+                    initialValue: cornerCoords[1].x as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != cornerCoords[1].x)
+                      {
+                        cornerCoords[1].x = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-left Y Coordinate:'
+                    ),
+                    initialValue: cornerCoords[1].y as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != cornerCoords[1].y)
+                      {
+                        cornerCoords[1].y = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-right X Coordinate:'
+                    ),
+                    initialValue: cornerCoords[2].x as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != cornerCoords[2].x)
+                      {
+                        cornerCoords[2].x = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-right Y Coordinate:'
+                    ),
+                    initialValue: cornerCoords[2].y as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != cornerCoords[2].y)
+                      {
+                        cornerCoords[2].y = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-right X Coordinate:'
+                    ),
+                    initialValue: cornerCoords[3].x as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != cornerCoords[3].x)
+                      {
+                        cornerCoords[3].x = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-right Y Coordinate:'
+                    ),
+                    initialValue: cornerCoords[3].y as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != cornerCoords[3].y)
+                      {
+                        cornerCoords[3].y = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              child: Text("Save Edits"),
+              onPressed: () async {
+                formKey.currentState!.save();
+
+                // Convert corner coordinates to lat/long.
+                List<latlong.LatLng> layerCorners = 
+                  visualizer.convertCoordsUTM(cornerCoords);
+
+                // Access appropriate project in the project controller.
+                api.ProjectController projectController = 
+                  await api.ProjectController.getInstance();
+                int projectIndex = projectController.userProjects.indexWhere(
+                  (project) => project.id == widget.project.id);
+                
+                // Check to see which, if any, of the fields has been changed
+                // by the user and make updates accordingly.
+                if (nameChanged) {
+                  projectController.userProjects[projectIndex].setLayerName(
+                    layer.id!, 
+                    layerName
+                  );
+                }
+                if (descriptionChanged) {
+                  projectController.userProjects[projectIndex].
+                    setLayerDescription(layer.id!, layerDescription);
+                }
+                if (positioningChanged) {
+                  projectController.userProjects[projectIndex].
+                    setLayerPositioning(layer.id!, layerCorners);
+                }
+
+                setState(() {
+                  updatedLayers = 
+                    projectController.userProjects[projectIndex].layers;
+                });
+
+                if (context.mounted)
+                {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+            ElevatedButton(
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ]
+        );
+      }
+    );
+  }
+
+  /// Deletes the given layer from the project and updates what is displayed.
   void deleteLayer(String layerId) async
   {
     showDialog(
@@ -337,6 +543,8 @@ class _MapPageState extends State<MapPage>
     );
   }
 
+  /// Displays a modal in which the user can create a unit, which results in the 
+  /// unit being added to the project controller.
   void addUnit()
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
@@ -376,9 +584,7 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) async {
-                      setState(() {
-                        unitName = value!;
-                      });
+                      unitName = value!;
                     },
                   ),
                   TextFormField(
@@ -392,9 +598,7 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) async {
-                      setState(() {
-                        unitDescription = value!;
-                      });
+                      unitDescription = value!;
                     },
                   ),
                   TextFormField(
@@ -436,9 +640,7 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) async {
-                      setState(() {
                         width = double.parse(value!);
-                      });
                     },
                   ),
                   TextFormField(
@@ -452,9 +654,7 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) async {
-                      setState(() {
-                        height = double.parse(value!);
-                      });
+                      height = double.parse(value!);
                     },
                   ),
                   TextFormField(
@@ -468,9 +668,7 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) async {
-                      setState(() {
-                        pointInterval = double.parse(value!);
-                      });
+                      pointInterval = double.parse(value!);
                     },
                   ),
                 ],
@@ -522,6 +720,190 @@ class _MapPageState extends State<MapPage>
     );
   }
 
+  /// Displays a form filled in with the fields for the corresponding unit that
+  /// the user can choose to edit, registers which if any of the fields have 
+  /// been changed, and updates information for the unit accordingly.
+  void editUnit(api.UnitSpec unit)
+  {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    bool nameChanged = false;
+    bool descriptionChanged = false;
+    bool positioningChanged = false;
+
+    String unitName = unit.name;
+    String unitDescription = unit.description;
+    coord_converter.UTMCoordinates topLeftUtm = 
+      coord_converter.UTMCoordinates.fromDD(coord_converter.DDCoordinates(
+        latitude: unit.topLeftCoords.latitude, 
+        longitude: unit.topLeftCoords.longitude
+      ));
+    double width = unit.width;
+    double height = unit.height;
+    double pointInterval = unit.pointInterval;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          scrollable: true,
+          content: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    initialValue: unit.name,
+                    onSaved: (value) async {
+                      if (value != unit.name)
+                      {
+                        unitName = value!;
+                        nameChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    initialValue: unit.description,
+                    onSaved: (value) async {
+                      if (value != unit.description)
+                      {
+                        unitDescription = value!;
+                        descriptionChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-left X Coordinate:'
+                    ),
+                    initialValue: topLeftUtm.x as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != topLeftUtm.x) 
+                      {
+                        topLeftUtm.x = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-left Y Coordinate:'
+                    ),
+                    initialValue: topLeftUtm.y as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != topLeftUtm.y) 
+                      {
+                        topLeftUtm.y = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Unit Width (m):",
+                    ),
+                    initialValue: unit.width as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != unit.width) 
+                      {
+                        width = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Unit Height (m):",
+                    ),
+                    initialValue: unit.height as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != unit.height) 
+                      {
+                        height = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Unit Point Interval (cm):",
+                    ),
+                    initialValue: unit.pointInterval as String,
+                    onSaved: (value) {
+                      if (double.parse(value!) != unit.pointInterval) 
+                      {
+                        pointInterval = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              child: Text("Submit Edits"),
+              // Access project controller and add new project before navigating
+              // to project dashboard.
+              onPressed: () async {
+                formKey.currentState!.save();
+                ({double latitude, double longitude}) topLeftCoords = (
+                  latitude: 
+                    coord_converter.DDCoordinates.fromUTM(topLeftUtm).latitude, 
+                  longitude: 
+                    coord_converter.DDCoordinates.fromUTM(topLeftUtm).longitude
+                );
+                api.ProjectController projectController = 
+                  await api.ProjectController.getInstance();
+                int projectIndex = projectController.userProjects.indexWhere(
+                  (project) => project.id == widget.project.id);
+                
+                // Check to see which, if any, of the fields has been changed
+                // by the user and make updates accordingly.
+                if (nameChanged) {
+                  projectController.userProjects[projectIndex].setUnitName(
+                    unit.id!, 
+                    unitName
+                  );
+                }
+                if (descriptionChanged) {
+                  projectController.userProjects[projectIndex].
+                    setUnitDescription(unit.id!, unitDescription);
+                }
+                if (positioningChanged) {
+                  projectController.userProjects[projectIndex].
+                    repositionUnit(
+                      unit.id!, 
+                      topLeftCoords, 
+                      width, 
+                      height, 
+                      pointInterval
+                    );
+                }
+
+                setState(() {
+                  updatedUnits = 
+                    projectController.userProjects[projectIndex].units;
+                });
+                if (context.mounted)
+                {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+            ElevatedButton(
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ]
+        );
+      }
+    );
+  }
+
+  /// Deletes the given unit from the project and updates what is displayed.
   void deleteUnit(String unitId) async
   {
     showDialog(
@@ -570,7 +952,6 @@ class _MapPageState extends State<MapPage>
 
     api.ProjectController projectController = 
       await api.ProjectController.getInstance();
-    
     int projectIndex = projectController.userProjects.indexWhere(
       (project) => project.id == widget.project.id);
 
@@ -677,7 +1058,7 @@ class _MapPageState extends State<MapPage>
                       Padding(
                         padding: EdgeInsets.all(20),
                         child: ElevatedButton(
-                          onPressed: () => "null",
+                          onPressed: () => editLayer(layers[index]),
                           child: Text("Edit Layer")
                         ),
                       ),
@@ -767,7 +1148,7 @@ class _MapPageState extends State<MapPage>
                       Padding(
                         padding: EdgeInsets.all(20),
                         child: ElevatedButton(
-                          onPressed: () => "null",
+                          onPressed: () => editUnit(units[index]),
                           child: Text("Edit Unit")
                         ),
                       ),
