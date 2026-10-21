@@ -8,7 +8,6 @@ import 'package:latlong2/latlong.dart' as latlong;
 import 'package:dzod/dzod.dart' as dzod;
 import 'package:convex_flutter/convex_flutter.dart' as convex;
 import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as path;
 
 typedef Coordinate = ({ double latitude, double longitude });
 
@@ -826,6 +825,34 @@ class NetworkService {
     );
 
     return handler.cancel;
+  }
+
+  Future<String> fetchPredictionJobResults(String projectId, String jobId) async
+  {
+    final client = _getClient();
+    final downloadUrl = await client.query(
+      "projects:getPredictionJobResultsUrl",
+      { 'projectId': projectId, 'jobId': jobId }
+    );
+
+    final http.Response response;
+    try {
+      response = await http.get(Uri.parse(downloadUrl));
+    } catch (e) {
+      throw common.ApiNetworkException(
+        'Prediction job output download failed: $e',
+        null
+      );
+    }
+
+    if (response.statusCode != 200) {
+      throw common.ApiNetworkException(
+        'Prediction job output download failed.',
+        response.statusCode
+      );
+    }
+
+    return response.body;
   }
 
   Future<common.TrainingJob> runTrainingJob(

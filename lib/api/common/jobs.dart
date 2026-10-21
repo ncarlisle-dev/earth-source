@@ -91,27 +91,17 @@ class PredictionJob extends Job
   /// Throws a [network.ApiNetworkException] if results file cannot be fetched.
   Future<List<List<double>>>? getResults() async
   {
-    List<List<double>> results = [];
-    NetworkService networkService = NetworkService.getInstance();
-    if (status != JobStatus.complete) return [];
-    // TODO: Construct filepath to where prediction file will actually be 
-    // stored on the backend using presumably job id or name.
-    String filePath = "";
-    String? fileContents = "";
-    try {
-      bool fileCreated = await networkService.fileExists(filePath);
-      if (!fileCreated) return [];
-    }
-    on network.ApiNetworkException catch (error) {
-      throw network.ApiNetworkException(
-        "Network service failed to check if predictions file was created due"
-        " to the following error: $error",
-        error.statusCode
-      );
-    }
+    final List<List<double>> results = [];
+    NetworkService networkService = await NetworkService.getInstance();
+    assert(status == JobStatus.complete, "Job isn't complete.");
+
+    final String fileContents;
 
     try {
-      fileContents = await networkService.fetchFile(filePath);
+      fileContents = await networkService.fetchPredictionJobResults(
+        projectId,
+        id,
+      );
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(

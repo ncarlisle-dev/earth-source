@@ -1422,6 +1422,35 @@ export const deletePredictionJob = zodMutation({
   },
 });
 
+export const getPredictionJobResultsUrl = zodQuery({
+  args: {
+    projectId: zid("projects"),
+    jobId: zid("jobs"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    const { job } = await assertProjectHasPredictionJob(
+      ctx,
+      project,
+      args.jobId
+    );
+
+    if (job.status !== 'complete')
+      throw new InvalidRequestError("Job isn't complete.");
+
+    if (job.outputStorageId === null)
+      throw new UnknownServerError("Job is complete but doesn't have an output storage ID.");
+
+    const url = await ctx.storage.getUrl(job.outputStorageId);
+
+    if (url === null)
+      throw new UnknownServerError("Job file couldn't be found.");
+    
+    return url;
+  },
+})
+
 /**
  * Helper mutation used by {@link runTrainingJob} that handles database
  * transactions for creating a training job. Returns a
@@ -1602,3 +1631,32 @@ export const deleteTrainingJob = zodMutation({
     return timestamp;
   },
 });
+
+export const getTrainingJobResultsUrl = zodQuery({
+  args: {
+    projectId: zid("projects"),
+    jobId: zid("jobs"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    const { job } = await assertProjectHasTrainingJob(
+      ctx,
+      project,
+      args.jobId
+    );
+
+    if (job.status !== 'complete')
+      throw new InvalidRequestError("Job isn't complete.");
+
+    if (job.outputStorageId === null)
+      throw new UnknownServerError("Job is complete but doesn't have an output storage ID.");
+
+    const url = await ctx.storage.getUrl(job.outputStorageId);
+
+    if (url === null)
+      throw new UnknownServerError("Job file couldn't be found.");
+    
+    return url;
+  },
+})
