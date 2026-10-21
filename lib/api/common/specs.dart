@@ -1,20 +1,21 @@
 import 'network.dart' as network;
 import 'package:latlong2/latlong.dart' as latlong;
 
-class ConnectionSpec {
+class ConnectionSpec
+{
+  String id;
   String ipAddress;
   int port;
   DateTime createdAt;
-  DateTime? lastUsed;
   network.ConnectionStatus status;
 
-  ConnectionSpec(
-    this.ipAddress,
-    this.port,
-    this.createdAt,
-    this.lastUsed,
-    this.status
-  );
+  ConnectionSpec({
+    required this.id,
+    required this.ipAddress,
+    required this.port,
+    required this.createdAt,
+    required this.status
+  });
 }
 
 /// A layer within an archaeological site, representing a stratum at which 
@@ -22,7 +23,7 @@ class ConnectionSpec {
 class LayerSpec
 {
   /// Id of the layer.
-  String? id;
+  String id;
   /// Given name of the layer.
   String name;
   /// Given description of the layer.
@@ -35,6 +36,7 @@ class LayerSpec
   final DateTime createdAt;
 
   LayerSpec(
+    this.id,
     this.name, 
     this.description, 
     this.lastUpdated, 
@@ -48,7 +50,7 @@ class LayerSpec
 class UnitSpec
 {
   /// Id of the unit.
-  String? id;
+  String id;
   /// Given name of the unit.
   String name; 
   /// Given description of the unit.
@@ -58,7 +60,7 @@ class UnitSpec
   /// Time the unit was created.
   DateTime createdAt;
   /// Coordinates of the top left corner of the unit.
-  ({double latitude, double longitude}) topLeftCoords;
+  latlong.LatLng topLeftCoords;
   /// Width of the unit.
   double width;
   /// Height of the unit.
@@ -67,6 +69,7 @@ class UnitSpec
   double pointInterval;
 
   UnitSpec(
+    this.id,
     this.name, 
     this.description, 
     this.lastUpdated, 
@@ -82,7 +85,7 @@ class UnitSpec
 class DataSpec 
 {
   /// Id of the data file.
-  String? id;
+  String id;
   /// Name of the data file.
   String fileName; 
   /// Id of the corresponding project.
@@ -95,6 +98,7 @@ class DataSpec
   int size;
 
   DataSpec(
+    this.id,
     this.fileName, 
     this.projectId, 
     this.createdAt, 

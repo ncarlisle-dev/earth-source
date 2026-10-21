@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 
 import { zid } from "convex-helpers/server/zod4";
 import * as z from "zod";
-import { zPxrfDataSpec, zTrainingDataSpec } from "./schema";
+import { zApiPxrfDataSpec, zApiTrainingDataSpec } from "./schema";
 import { ApiError } from "./errors";
 import { authenticateUser } from "./auth";
 
@@ -14,7 +14,7 @@ const http = httpRouter();
 /** Zod object defining the shape of arguments for uploading pXRF data. */
 const zUploadPxrfDataArgs = z.object({
   projectId: zid("projects"),
-  description: zPxrfDataSpec.shape.description,
+  description: zApiPxrfDataSpec.shape.description,
   file: z
     .file()
     .refine(
@@ -93,7 +93,7 @@ http.route({
 /** Zod object defining the shape of arguments for uploading training data. */
 const zUploadTrainingDataArgs = z.object({
   projectId: zid("projects"),
-  description: zTrainingDataSpec.shape.description,
+  description: zApiTrainingDataSpec.shape.description,
   file: z
     .file()
     .refine(

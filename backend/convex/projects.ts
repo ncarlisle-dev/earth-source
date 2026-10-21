@@ -23,9 +23,9 @@ import {
 } from "./errors";
 
 import {
+  zTimestamp,
+  Timestamp,
   zDbProject,
-  zLayer,
-  zUnit,
   zDbPxrfDataSpec,
   zDbTrainingDataSpec,
   zDbPredictionJob,
@@ -35,11 +35,11 @@ import {
   DbPxrfDataSpec,
   DbPredictionJob,
   DbTrainingJob,
-  Project,
-  Timestamp,
-  PredictionJob,
-  TrainingJob,
-  zTimestamp,
+  zApiLayer,
+  zApiUnit,
+  ApiPredictionJob,
+  ApiTrainingJob,
+  ApiProject,
 } from "./schema";
 
 
@@ -195,11 +195,11 @@ export const getProjectById = zodQuery({
   args: {
     id: zid("projects"),
   },
-  handler: async (ctx, args): Promise<Project> => {
+  handler: async (ctx, args): Promise<ApiProject> => {
     const userId = await authenticateUser(ctx);
     const dbProject = await getDbProject(ctx, args.id, userId);
 
-    const project: Project = {
+    const project: ApiProject = {
       id: dbProject._id,
       name: dbProject.name,
       description: dbProject.description,
@@ -383,7 +383,7 @@ export const configureProjectSite = zodAction({
     siteHeight: zDbProject.shape.height.optional(),
 
     newUnits: z.array(
-      zUnit.omit({
+      zApiUnit.omit({
         createdAt: true,
         lastUpdated: true,
         id: true
@@ -392,7 +392,7 @@ export const configureProjectSite = zodAction({
 
     unitUpdates: z.record(
       zid("units"),
-      zUnit.omit({
+      zApiUnit.omit({
         id: true,
         createdAt: true,
         lastUpdated: true,
@@ -402,7 +402,7 @@ export const configureProjectSite = zodAction({
     unitsToDelete: z.array(zid("units")).optional(),
 
     newLayers: z.array(
-      zLayer.omit({
+      zApiLayer.omit({
         createdAt: true,
         lastUpdated: true,
         id: true,
@@ -411,7 +411,7 @@ export const configureProjectSite = zodAction({
 
     layerUpdates: z.record(
       zid("layers"),
-      zLayer.omit({
+      zApiLayer.omit({
         createdAt: true,
         lastUpdated: true,
         id: true,
@@ -472,7 +472,7 @@ export const configureProjectSiteDb = zodInternalMutation({
     siteHeight: zDbProject.shape.height.optional(),
 
     newUnits: z.array(
-      zUnit.omit({
+      zApiUnit.omit({
         createdAt: true,
         lastUpdated: true,
         id: true
@@ -481,7 +481,7 @@ export const configureProjectSiteDb = zodInternalMutation({
 
     unitUpdates: z.record(
       zid("units"),
-      zUnit.omit({
+      zApiUnit.omit({
         id: true,
         createdAt: true,
         lastUpdated: true,
@@ -491,7 +491,7 @@ export const configureProjectSiteDb = zodInternalMutation({
     unitsToDelete: z.array(zid("units")).optional(),
 
     newLayers: z.array(
-      zLayer.omit({
+      zApiLayer.omit({
         createdAt: true,
         lastUpdated: true,
         id: true,
@@ -500,7 +500,7 @@ export const configureProjectSiteDb = zodInternalMutation({
 
     layerUpdates: z.record(
       zid("layers"),
-      zLayer.omit({
+      zApiLayer.omit({
         createdAt: true,
         lastUpdated: true,
         id: true,
@@ -1350,7 +1350,7 @@ export const getPredictionJob = zodQuery({
     projectId: zid("projects"),
     jobId: zid("jobs"),
   },
-  handler: async (ctx, args): Promise<PredictionJob> => {
+  handler: async (ctx, args): Promise<ApiPredictionJob> => {
     const userId = await authenticateUser(ctx);
     const project = await getDbProject(ctx, args.projectId, userId);
     const { job } = await assertProjectHasPredictionJob(
@@ -1542,7 +1542,7 @@ export const getTrainingJob = zodQuery({
     projectId: zid("projects"),
     jobId: zid("jobs"),
   },
-  handler: async (ctx, args): Promise<TrainingJob> => {
+  handler: async (ctx, args): Promise<ApiTrainingJob> => {
     const userId = await authenticateUser(ctx);
     const project = await getDbProject(ctx, args.projectId, userId);
     const { job } = await assertProjectHasTrainingJob(

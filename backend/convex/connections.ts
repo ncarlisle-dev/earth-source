@@ -6,7 +6,7 @@ import { zid } from "convex-helpers/server/zod4";
 
 /**
  * Given an IP address and port, creates a connection spec in the database.
- * Returns the generated spec's ID.
+ * Returns the generated spec.
  */
 export const createConnectionSpec = zodMutation({
   args: {
@@ -22,7 +22,7 @@ export const createConnectionSpec = zodMutation({
       port: args.port,
     });
 
-    return id;
+    return await ctx.db.get("connectionSpecs", id);
   },
 });
 
