@@ -3,6 +3,8 @@ import '../../api/api.dart' as api;
 import 'prediction_generation.dart';
 import 'prediction_view.dart';
 
+const possibleJobStatuses = api.JobStatus.values;
+
 /// A stateful widget for the project predictions page, which takes the id for 
 /// the current project as a required field.
 class PredictionsPage extends StatefulWidget 
@@ -19,14 +21,6 @@ class PredictionsPage extends StatefulWidget
 /// The mutable state of the project predictions page.
 class _PredictionsPageState extends State<PredictionsPage> 
 {
-  /// List of job status strings corresponding to the JobStatus enum.
-  static const List<String> jobStatusList = [
-    "Starting", 
-    "Running", 
-    "Complete", 
-    "Failed"
-  ];
-  
   /// Fetches a list of all prediction jobs corresponding to the current 
   /// project.
   Future<List<api.PredictionJob>> fetchPredictions() async
@@ -39,7 +33,8 @@ class _PredictionsPageState extends State<PredictionsPage>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) 
+  {
   
     return ListView(
       children: [
@@ -77,8 +72,10 @@ class _PredictionsPageState extends State<PredictionsPage>
               BuildContext ctx, 
               AsyncSnapshot<List<api.PredictionJob>> snapshot
             ) 
-            => snapshot.hasData
+            => !(snapshot.hasData)
             ?
+            Center(child:Text("Predictions could not be loaded."))
+            :
             ListView.builder(
               itemCount: 4, 
               itemBuilder: (BuildContext context, int index) {
@@ -100,7 +97,7 @@ class _PredictionsPageState extends State<PredictionsPage>
                           ),
                           Text(
                           "Status: "
-                          "${jobStatusList[snapshot.data![index].status.index]}"
+                          "${possibleJobStatuses[snapshot.data![index].status.index]}"
                           "\nDescription: ${snapshot.data![index].name!}\n"
                           "Date Created: ${snapshot.data![index].createdAt}",
                             style: TextStyle(
@@ -131,8 +128,6 @@ class _PredictionsPageState extends State<PredictionsPage>
                 );
               }
             )
-            :
-            Center(child:Text("Predictions could not be loaded."))
           ),
         ),
       ],
