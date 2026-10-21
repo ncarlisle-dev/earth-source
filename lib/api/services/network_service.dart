@@ -799,14 +799,14 @@ class NetworkService {
     return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
-  Future<void> watchPredictionJobStatus(
+  Future<void Function()> watchPredictionJobStatus(
     String projectId,
     String jobId,
     Function(common.JobStatus) callback
   ) async
   {
     final client = _getClient();
-    await client.subscribe(
+    final handler = await client.subscribe(
       name: "projects:getPredictionJobStatus",
       args: {
         'projectId': projectId,
@@ -816,11 +816,16 @@ class NetworkService {
         final status = parseNetworkResponse(response, api_types.zJobStatus);
         callback(status);
       },
-      onError: (message, response) {
-        final z
-        throw ApiNetworkException("", response);
-      }
+      onError: (message, value) {
+        throw common.ApiNetworkException(
+          "Error occurred while watching job status (last known value "
+            "${value != null ? "'$value'" : "unknown"}). Message:\n$message",
+          null
+        );
+      },
     );
+
+    return handler.cancel;
   }
 
   Future<common.TrainingJob> runTrainingJob(
@@ -905,6 +910,32 @@ class NetworkService {
     return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
-  Future<void> watchTrainingJobStatus() async
-    => throw UnimplementedError();
+  Future<void Function()> watchTrainingJobStatus(
+    String projectId,
+    String jobId,
+    Function(common.JobStatus) callback
+  ) async
+  {
+    final client = _getClient();
+    final handler = await client.subscribe(
+      name: "projects:getTrainingJobStatus",
+      args: {
+        'projectId': projectId,
+        'jobId':     jobId,
+      },
+      onUpdate: (response) {
+        final status = parseNetworkResponse(response, api_types.zJobStatus);
+        callback(status);
+      },
+      onError: (message, value) {
+        throw common.ApiNetworkException(
+          "Error occurred while watching job status (last known value "
+            "${value != null ? "'$value'" : "unknown"}). Message:\n$message",
+          null
+        );
+      },
+    );
+
+    return handler.cancel;
+  }
 }

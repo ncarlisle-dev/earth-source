@@ -37,6 +37,10 @@ final _zCoordinate = _z.object({
   'longitude': _zLongitude
 });
 
+final zJobStatus = _z
+  .enum_(common.JobStatus.values as List<String>)
+  .transform((val) => val as common.JobStatus);
+
 /* ================================== User ================================== */
 
 class ApiUser
@@ -307,7 +311,7 @@ final _zApiJob = _z.object({
   'description': _z.string(),
   'createdAt':   zTimestamp,
   'lastUpdated': zTimestamp,
-  'status':      _z.enum_(common.JobStatus.values as List<String>),
+  'status':      zJobStatus,
 });
 
 /* ============================= Prediction job ============================= */
