@@ -4,6 +4,10 @@ import 'package:coordinate_converter/coordinate_converter.dart' as
   coord_converter;
 import 'package:latlong2/latlong.dart' as latlong;
 import '../mapping/visualizer.dart' as visualizer;
+import 'package:file_picker/file_picker.dart' as file_picker;
+import 'dart:io' as io; 
+import 'dart:convert' as convert;
+import 'dart:typed_data' as typed_data;
 
 /// A stateful widget for the project site map page, which takes the current 
 /// project as a required field.
@@ -25,8 +29,28 @@ class _MapPageState extends State<MapPage>
   List<api.LayerSpec> updatedLayers = [];
   /// List containing updated units for the project.
   List<api.UnitSpec> updatedUnits = [];
+  /// String to store the encoded contents of an image file.
+  String? imageContents;
 
+  /// Loads an image from the local file system and encodes it as a base 64
+  /// string.
+  Future<void> loadImage() async {
+    file_picker.PlatformFile? image = await file_picker.FilePicker.pickFile(
+      type: file_picker.FileType.custom,
+      allowedExtensions: ['png', 'jpg', 'jpeg'],
+    );
 
+    if (image != null) {
+      final filePath = image.path!;
+      io.File imageFile = io.File(filePath);
+      typed_data.Uint8List bytes = await imageFile.readAsBytes();
+      imageContents = convert.base64.encode(bytes);
+    }
+  }
+
+  /// Displays a modal in which the user can create a layer and upload a 
+  /// corresponding image from their files, which results in a layer being
+  /// added to the project controller.
   void addLayer()
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
@@ -215,6 +239,13 @@ class _MapPageState extends State<MapPage>
                       cornerCoords[3].y = double.parse(value.toString());
                     },
                   ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: ElevatedButton(
+                      onPressed: loadImage,
+                      child: Text("Upload layer image:"),
+                    )
+                  ),
                 ],
               ),
             ),
@@ -222,20 +253,32 @@ class _MapPageState extends State<MapPage>
           actions: [
             ElevatedButton(
               child: Text("Create Layer"),
-              // Access project controller and add new project before navigating
-              // to project dashboard.
               onPressed: () async {
                 formKey.currentState!.save();
+
+                // Convert corner coordinates to lat/long.
                 List<latlong.LatLng> layerCorners = 
                   visualizer.convertCoords(cornerCoords);
-                /*api.ProjectController projectController = 
+
+                // Access project controller and add new layer to the project.
+                api.ProjectController projectController = 
                   await api.ProjectController.getInstance();
                 int projectIndex = projectController.userProjects.indexWhere(
                   (project) => project.id == widget.project.id);
+                api.LayerSpec createdLayer = await 
+                  projectController.userProjects[projectIndex].createLayer(
+                    layerName!, 
+                    layerDescription!, 
+                    layerCorners
+                  );
+
+                // Upload layer image encoded as a string to the database.
                 projectController.userProjects[projectIndex].
-                  createLayer(layerName!, layerDescription!, layerCorners);*/
+                  uploadLayerImage(createdLayer.id!, imageContents!);
+
                 setState(() {
-                  updatedLayers.add(api.LayerSpec(layerName!, layerDescription!, DateTime.now(), DateTime.now(), layerCorners));
+                  updatedLayers = 
+                    projectController.userProjects[projectIndex].layers;
                 });
                 if (context.mounted)
                 {
@@ -447,14 +490,21 @@ class _MapPageState extends State<MapPage>
                   longitude: 
                     coord_converter.DDCoordinates.fromUTM(topLeftUtm).longitude
                 );
-                /*api.ProjectController projectController = 
+                api.ProjectController projectController = 
                   await api.ProjectController.getInstance();
                 int projectIndex = projectController.userProjects.indexWhere(
                   (project) => project.id == widget.project.id);
-                projectController.userProjects[projectIndex].
-                  createLayer(layerName!, layerDescription!, layerCorners);*/
+                projectController.userProjects[projectIndex].createUnit(
+                  unitName!, 
+                  unitDescription!, 
+                  topLeftCoords, 
+                  width!,
+                  height!, 
+                  pointInterval!
+                );
                 setState(() {
-                  updatedUnits.add(api.UnitSpec(unitName!, unitDescription!, DateTime.now(), DateTime.now(), topLeftCoords, width!, height!, pointInterval!));
+                  updatedUnits = 
+                    projectController.userProjects[projectIndex].units;
                 });
                 if (context.mounted)
                 {
@@ -511,6 +561,23 @@ class _MapPageState extends State<MapPage>
         );
       }
     );
+  }
+
+  /// Fetches the image corresponding to a layer from the database for display.
+  Future<String> fetchImage(String layerId) async
+  {
+    String? loadedImage;
+
+    api.ProjectController projectController = 
+      await api.ProjectController.getInstance();
+    
+    int projectIndex = projectController.userProjects.indexWhere(
+      (project) => project.id == widget.project.id);
+
+    loadedImage = 
+      await projectController.userProjects[projectIndex].getLayerImage(layerId);
+
+    return loadedImage!;
   }
 
   @override
@@ -575,6 +642,21 @@ class _MapPageState extends State<MapPage>
                           color: Colors.indigo,
                           fontWeight: FontWeight.w500,
                         ),
+                      ),
+                      FutureBuilder(
+                        future: fetchImage(layers[index].id!),
+                        builder: (
+                          BuildContext ctx, 
+                          AsyncSnapshot<String> snapshot
+                        ) 
+                        => !(snapshot.hasData)
+                        ?
+                        Center(child: Text("Layer image cannot be uploaded."))
+                        :
+                        Image.memory(
+                          convert.base64Decode(snapshot.data!),
+                          height: 300
+                        )
                       ),
                       Text(
                         "Description: ${layers[index].description}",
