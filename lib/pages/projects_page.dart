@@ -147,8 +147,10 @@ class _UserProjectsPageState extends State<UserProjectsPage>
               BuildContext ctx, 
               AsyncSnapshot<List<api.Project>> snapshot
             ) 
-            => snapshot.hasData
+            => !(snapshot.hasData)
             ?
+            Center(child:Text("No projects created so far!"))
+            :
             ListView.builder(
               itemCount: 1, 
               itemBuilder: (BuildContext context, int index) {
@@ -219,8 +221,6 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                 );
               }
             )
-            :
-            Center(child:Text("No projects created so far!"))
           ),
         ),
       ],
