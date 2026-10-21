@@ -5,13 +5,6 @@ import 'predictions/predictions_page.dart';
 import 'data/data_page.dart';
 import 'map_page.dart';
 
-/// Note: I'm not sure whether it's best to pass the current project as a whole
-/// or the project id to each subsequent page following project creation/viewing
-/// - passing the whole project as a required field has the advantage of not
-/// having to keep going back to the project controller to find the project and
-/// load the necessary info, but there might be some drawback I'm missing. (Or
-/// just a better way of passing info between pages altogether.)
-
 /// A stateful widget for the project dashboard page, with a given project
 /// as a required field.
 class ProjectDashboard extends StatefulWidget 
@@ -119,10 +112,8 @@ class _ProjectDashboardState extends State<ProjectDashboard>
         Center(
           child:
             isDescriptionChanged
-            ?
-            Text(widget.project.description)
-            :
-            Text(projectDescription!)
+            ? Text(widget.project.description)
+            : Text(projectDescription!)
         ),
         Center(
             child: Text("Date Created: ${widget.project.createdAt}")
