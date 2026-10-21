@@ -25,7 +25,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   bool isSouthernHemisphere = false;
 
   List<String> utmZones = [for (var i = 1; i <= 60; i++) "$i"];
-  List<String> hemispheres = ["Southern, Northern"];
+  List<String> hemispheres = ["Southern", "Northern"];
 
   /// Fetches a list of all the user's projects.
   Future<List<api.Project>> fetchProjects() async
