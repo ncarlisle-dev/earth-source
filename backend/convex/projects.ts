@@ -1366,12 +1366,12 @@ export const setPredictionJobMetadata = zodMutation({
 });
 
 /** Query that fetches a project's {@link PredictionJob}. */
-export const getPredictionJob = zodQuery({
+export const getPredictionJobStatus = zodQuery({
   args: {
     projectId: zid("projects"),
     jobId: zid("jobs"),
   },
-  handler: async (ctx, args): Promise<ApiPredictionJob> => {
+  handler: async (ctx, args) => {
     const userId = await authenticateUser(ctx);
     const project = await getDbProject(ctx, args.projectId, userId);
     const { job } = await assertProjectHasPredictionJob(
@@ -1380,19 +1380,9 @@ export const getPredictionJob = zodQuery({
       args.jobId
     );
 
-    return {
-      id: job._id,
-      name: job.name,
-      description: job.description,
-      createdAt: job._creationTime,
-      lastUpdated: job.lastUpdated,
-      dataAssignments: job.dataAssignments,
-      status: job.status,
-      layerId: job.layerId,
-      modelId: job.modelId,
-    };
+    return job.status;
   }
-})
+});
 
 /** Mutation that deletes a prediction job and its associated files. */
 export const deletePredictionJob = zodMutation({
@@ -1432,15 +1422,9 @@ export const deletePredictionJob = zodMutation({
   },
 });
 
-/** The return type of {@link createDbPredictionJob}. */
-interface CreateDbTrainingJobResult {
-  jobId: Id<"jobs">;
-  timestamp: Timestamp;
-};
-
 /**
  * Helper mutation used by {@link runTrainingJob} that handles database
- * transactions for creating a training job. Returns a 
+ * transactions for creating a training job. Returns a
  * {@link CreateDbTrainingJobResult}.
  */
 export const createDbTrainingJob = zodInternalMutation({
@@ -1449,10 +1433,10 @@ export const createDbTrainingJob = zodInternalMutation({
     projectId: zid("projects"),
     name: zDbTrainingJob.shape.name,
     description: zDbTrainingJob.shape.description,
-    trainingDataSpecId: zDbTrainingJob.shape.trainingDataSpecId,
+    trainingDataSpecId: zid("dataSpecs"),
   },
-  handler: async (ctx, args): Promise<CreateDbTrainingJobResult> => {
-    const { trainingJobIds, dataAssignments } = await getDbProject(
+  handler: async (ctx, args): Promise<DbTrainingJob> => {
+    const { trainingJobIds } = await getDbProject(
       ctx,
       args.projectId,
       args.userId
@@ -1481,10 +1465,11 @@ export const createDbTrainingJob = zodInternalMutation({
       { trainingJobIds, lastUpdated: timestamp }
     );
 
-    return {
-      jobId,
-      timestamp,
-    };
+    const createdJob = await ctx.db.get("jobs", jobId);
+    if (createdJob === null)
+      throw new UnknownServerError("Couldn't fetch created training job.");
+
+    return createdJob as DbTrainingJob;
   }
 });
 
@@ -1498,30 +1483,35 @@ export const runTrainingJob = zodAction({
     projectId: zid("projects"),
     name: zDbTrainingJob.shape.name,
     description: zDbTrainingJob.shape.description,
-    trainingDataSpecId: zDbTrainingJob.shape.trainingDataSpecId,
+    trainingDataSpecId: zid("dataSpecs"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<ApiTrainingJob> => {
     const userId = await authenticateUser(ctx);
-    const dbUpdateResult = await ctx.runMutation(
+    const createdJob = await ctx.runMutation(
       internal.projects.createDbTrainingJob,
       {
         userId,
         ...args
       }
-    ) as CreateDbTrainingJobResult;
+    );
 
     // TODO: send HTTP request with job ID
 
     return {
-      id: dbUpdateResult.jobId,
-      timestamp: dbUpdateResult.timestamp,
+      id:                 createdJob._id,
+      name:               createdJob.name,
+      description:        createdJob.description,
+      trainingDataSpecId: createdJob.trainingDataSpecId,
+      status:             createdJob.status,
+      createdAt:          createdJob._creationTime,
+      lastUpdated:        createdJob.lastUpdated,
     };
   },
 });
 
 /**
  * Mutation that sets a training job's name and description. Returns the
- * update's timestamp.
+ * update timestamp.
  */
 export const setTrainingJobMetadata = zodMutation({
   args: {
@@ -1556,38 +1546,26 @@ export const setTrainingJobMetadata = zodMutation({
   },
 });
 
-
 /** Query that fetches a project's {@link TrainingJob}. */
-export const getTrainingJob = zodQuery({
+export const getTrainingJobStatus = zodQuery({
   args: {
     projectId: zid("projects"),
     jobId: zid("jobs"),
   },
-  handler: async (ctx, args): Promise<ApiTrainingJob> => {
+  handler: async (ctx, args) => {
     const userId = await authenticateUser(ctx);
     const project = await getDbProject(ctx, args.projectId, userId);
     const { job } = await assertProjectHasTrainingJob(
       ctx,
       project,
-      args.jobId
+      args.jobId,
     );
 
-    return {
-      id: job._id,
-      name: job.name,
-      description: job.description,
-      createdAt: job._creationTime,
-      lastUpdated: job.lastUpdated,
-      trainingDataSpecId: job.trainingDataSpecId,
-      status: job.status,
-    };
+    return job.status;
   }
 });
 
-/**
- * Mutation that deletes a training job and its associated files. Returns the
- * deletion timestamp.
- */
+/** Mutation that deletes a training job and its associated files. */
 export const deleteTrainingJob = zodMutation({
   args: {
     projectId: zid("projects"),
@@ -1602,7 +1580,7 @@ export const deleteTrainingJob = zodMutation({
       args.jobId
     );
 
-    if (job.status !== "complete")
+    if (job.status !== "complete" && job.status !== "failed")
       throw new InvalidRequestError(
         `Training job with ID '${args.jobId}' is still ongoing.`
       );
@@ -1617,7 +1595,7 @@ export const deleteTrainingJob = zodMutation({
       args.projectId,
       { 
         trainingJobIds: project.trainingJobIds.toSpliced(jobIndex, 1),
-        lastUpdated: timestamp
+        lastUpdated: timestamp,
       }
     );
 

@@ -47,7 +47,6 @@ dependencies:
   flutter_rust_bridge: 2.11.1 # necessary for convex_flutter
   convex_flutter: ^3.0.1
   dzod: ^0.3.0
-  path: ^1.9.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

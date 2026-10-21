@@ -48,6 +48,8 @@ abstract class Job
 /// An extension of the job class used specifically for model training.
 class TrainingJob extends Job 
 {
+  final String trainingDataSpecId;
+
   TrainingJob({
     required super.id,
     required super.name,
@@ -55,6 +57,7 @@ class TrainingJob extends Job
     required super.createdAt,
     required super.lastUpdated,
     required super.status,
+    required this.trainingDataSpecId,
   });
 }
 

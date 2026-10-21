@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert' as convert;
 
 import '../common/common.dart' as common;
@@ -108,6 +109,7 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       name:               job.name,
       description:        job.description,
       status:             job.status,
+      trainingDataSpecId: job.trainingDataSpecId,
       createdAt:          DateTime.fromMicrosecondsSinceEpoch(job.createdAt),
       lastUpdated:        DateTime.fromMicrosecondsSinceEpoch(job.lastUpdated),
     )).toList(),
@@ -767,12 +769,142 @@ class NetworkService {
 
     final client = _getClient();
 
-    final response = client.mutation(
+    final response = await client.mutation(
       name: "projects:setPredictionJobMetadata",
       args: {
-        '': ,
-        '': ,
+        'projectId':   projectId,
+        'jobId':       jobId,
+        'name':        name,
+        'description': description,
       },
     );
+
+    final timestamp = parseNetworkResponse(response, api_types.zTimestamp);
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
+
+  Future<DateTime> deletePredictionJob(String projectId, String jobId) async
+  {
+    final client = _getClient();
+
+    final response = await client.mutation(
+      name: "projects:deletePredictionJob",
+      args: {
+        'projectId': projectId,
+        'jobId':     jobId,
+      },
+    );
+
+    final timestamp = parseNetworkResponse(response, api_types.zTimestamp);
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
+  }
+
+  Future<void> watchPredictionJobStatus(
+    String projectId,
+    String jobId,
+    Function(common.JobStatus) callback
+  ) async
+  {
+    final client = _getClient();
+    await client.subscribe(
+      name: "projects:getPredictionJobStatus",
+      args: {
+        'projectId': projectId,
+        'jobId':     jobId,
+      },
+      onUpdate: (response) {
+        final status = parseNetworkResponse(response, api_types.zJobStatus);
+        callback(status);
+      },
+      onError: (message, response) {
+        final z
+        throw ApiNetworkException("", response);
+      }
+    );
+  }
+
+  Future<common.TrainingJob> runTrainingJob(
+    String projectId,
+    String name,
+    String description,
+    String trainingDataSpecId,
+  ) async
+  {
+    final client = _getClient();
+
+    final response = await client.action(
+      name: "projects:runTrainingJob",
+      args: {
+        'projectId':          projectId,
+        'name':               name,
+        'description':        description,
+        'trainingDataSpecId': trainingDataSpecId,
+      }
+    );
+
+    final createdJob = parseNetworkResponse(
+      response,
+      api_types.zApiTrainingJob
+    );
+
+    return common.TrainingJob(
+      id:                 createdJob.id,
+      name:               createdJob.name,
+      description:        createdJob.description,
+      trainingDataSpecId: createdJob.trainingDataSpecId,
+      status:             createdJob.status,
+      createdAt:          DateTime.fromMicrosecondsSinceEpoch(
+                            createdJob.createdAt
+                          ),
+      lastUpdated:        DateTime.fromMicrosecondsSinceEpoch(
+                            createdJob.lastUpdated
+                          ),
+    );
+  }
+
+  Future<DateTime> setTrainingJobMetadata(
+    String projectId,
+    String jobId,
+    {
+      String? name,
+      String? description,
+    }
+  ) async
+  {
+    assert(name != null || description != null, "No updates specified.");
+
+    final client = _getClient();
+
+    final response = await client.mutation(
+      name: "projects:setTrainingJobMetadata",
+      args: {
+        'projectId':   projectId,
+        'jobId':       jobId,
+        'name':        name,
+        'description': description,
+      },
+    );
+
+    final timestamp = parseNetworkResponse(response, api_types.zTimestamp);
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
+  }
+
+  Future<DateTime> deleteTrainingJob(String projectId, String jobId) async
+  {
+    final client = _getClient();
+
+    final response = await client.mutation(
+      name: "projects:deleteTrainingJob",
+      args: {
+        'projectId':   projectId,
+        'jobId':       jobId,
+      },
+    );
+
+    final timestamp = parseNetworkResponse(response, api_types.zTimestamp);
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
+  }
+
+  Future<void> watchTrainingJobStatus() async
+    => throw UnimplementedError();
 }
