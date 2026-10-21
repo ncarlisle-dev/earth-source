@@ -1,4 +1,5 @@
 import 'network.dart' as network;
+import 'package:latlong2/latlong.dart' as latlong;
 
 class ConnectionSpec {
   String ipAddress;
@@ -28,10 +29,18 @@ class LayerSpec
   String description;
   /// Time the layer was last updated.
   DateTime lastUpdated;
+  /// Coordinates of the four corner points of the layer image.
+  List<latlong.LatLng> cornerCoordinates;
   /// Time the layer was created.
   final DateTime createdAt;
 
-  LayerSpec(this.name, this.description, this.lastUpdated, this.createdAt);
+  LayerSpec(
+    this.name, 
+    this.description, 
+    this.lastUpdated, 
+    this.createdAt, 
+    this.cornerCoordinates
+  );
 }
 
 /// A unit within an archaeological site, defined by a top left coordinate and
