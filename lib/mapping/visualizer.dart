@@ -214,6 +214,21 @@ Future<List<MappedPoint>> _attachCoords(
   return mappedData;
 }
 
+/// Utility function - converts a list of UTM coordinates to a list of 
+/// latitudinal/longitudinal coordinates.
+List<latlong.LatLng> convertCoords(
+  List<coord_converter.UTMCoordinates> utmCoords
+)
+{
+  List<latlong.LatLng> latLngCoords = [];
+  for (var i = 0; i < utmCoords.length; i++) {
+    coord_converter.DDCoordinates ddCoords = 
+      coord_converter.DDCoordinates.fromUTM(utmCoords[i]);
+    latLngCoords.add(latlong.LatLng(ddCoords.latitude, ddCoords.longitude));
+  }
+  return latLngCoords;
+}
+
 /// A visualizer widget that displays either an image with no modifications if
 /// no data file is provided, or an image with a heatmap overlaid onto it.
 class Visualizer extends StatelessWidget

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
-import 'package:coordinate_converter/coordinate_converter.dart' as coord_converter;
+import 'package:coordinate_converter/coordinate_converter.dart' as 
+  coord_converter;
+import 'package:latlong2/latlong.dart' as latlong;
+import '../mapping/visualizer.dart' as visualizer;
 
 /// A stateful widget for the project site map page, which takes the current 
 /// project as a required field.
@@ -18,16 +21,44 @@ class MapPage extends StatefulWidget
 /// The mutable state of the site map page.
 class _MapPageState extends State<MapPage>
 {
+  /// List containing updated layers for the project.
   List<api.LayerSpec> updatedLayers = [];
+  /// List containing updated units for the project.
   List<api.UnitSpec> updatedUnits = [];
+
 
   void addLayer()
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
-    String layerName;
-    String layerDescription;
-    List<coord_converter.UTMCoordinates> cornerCoords;
+    String? layerName;
+    String? layerDescription;
+    List<coord_converter.UTMCoordinates> cornerCoords = [
+      coord_converter.UTMCoordinates(
+        x: 0, 
+        y: 0, 
+        zoneNumber: widget.project.utmZone, 
+        isSouthernHemisphere: widget.project.isSouthernHemisphere
+      ),
+      coord_converter.UTMCoordinates(
+        x: 0, 
+        y: 0, 
+        zoneNumber: widget.project.utmZone, 
+        isSouthernHemisphere: widget.project.isSouthernHemisphere
+      ), 
+      coord_converter.UTMCoordinates(
+        x: 0, 
+        y: 0, 
+        zoneNumber: widget.project.utmZone, 
+        isSouthernHemisphere: widget.project.isSouthernHemisphere
+      ), 
+      coord_converter.UTMCoordinates(
+        x: 0, 
+        y: 0, 
+        zoneNumber: widget.project.utmZone, 
+        isSouthernHemisphere: widget.project.isSouthernHemisphere
+      ), 
+    ];
 
     showDialog(
       context: context,
@@ -73,7 +104,9 @@ class _MapPageState extends State<MapPage>
                     },
                   ),
                   TextFormField(
-                    decoration: const InputDecoration(hintText: 'Top-left X Coordinate'),
+                    decoration: InputDecoration(
+                      labelText: 'Top-left X Coordinate:'
+                    ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter the top-left X Coordinate';
@@ -81,11 +114,13 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      utmCoords1.x = double.parse(value.toString());
+                      cornerCoords[0].x = double.parse(value.toString());
                     },
                   ),
                   TextFormField(
-                    decoration: const InputDecoration(hintText: 'Top-left Y Coordinate'),
+                    decoration: InputDecoration(
+                      labelText: 'Top-left Y Coordinate:'
+                    ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter the top-left Y Coordinate';
@@ -93,11 +128,13 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      utmCoords1.y = double.parse(value.toString());
+                      cornerCoords[0].y = double.parse(value.toString());
                     },
                   ),
                   TextFormField(
-                    decoration: const InputDecoration(hintText: 'Bottom-left X Coordinate'),
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-left X Coordinate:'
+                    ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter the bottom-left X Coordinate';
@@ -105,11 +142,13 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      utmCoords2.x = double.parse(value.toString());
+                      cornerCoords[1].x = double.parse(value.toString());
                     },
                   ),
                   TextFormField(
-                    decoration: const InputDecoration(hintText: 'Bottom-left Y Coordinate'),
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-left Y Coordinate:'
+                    ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter the bottom-left Y Coordinate';
@@ -117,31 +156,63 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      utmCoords2.y = double.parse(value.toString());
+                      cornerCoords[1].y = double.parse(value.toString());
                     },
                   ),
                   TextFormField(
-                    decoration: const InputDecoration(hintText: 'Bottom-right X Coordinate'),
+                    decoration: InputDecoration(
+                      labelText: 'Top-right X Coordinate:'
+                    ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter the bottom-left X Coordinate';
+                        return 'Please enter the top-right X Coordinate';
                       }
                       return null;
                     },
                     onSaved: (value) {
-                      utmCoords3.x = double.parse(value.toString());
+                      cornerCoords[2].x = double.parse(value.toString());
                     },
                   ),
                   TextFormField(
-                    decoration: const InputDecoration(hintText: 'Bottom-right Y Coordinate'),
+                    decoration: InputDecoration(
+                      labelText: 'Top-right Y Coordinate:'
+                    ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter the bottom-left Y Coordinate';
+                        return 'Please enter the top-right Y Coordinate';
                       }
                       return null;
                     },
                     onSaved: (value) {
-                      utmCoords3.y = double.parse(value.toString());
+                      cornerCoords[2].y = double.parse(value.toString());
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-right X Coordinate:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the bottom-right X Coordinate';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      cornerCoords[3].x = double.parse(value.toString());
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-right Y Coordinate:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the bottom-right Y Coordinate';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      cornerCoords[3].y = double.parse(value.toString());
                     },
                   ),
                 ],
@@ -150,25 +221,25 @@ class _MapPageState extends State<MapPage>
           ),
           actions: [
             ElevatedButton(
-              child: const Text("Create Layer"),
+              child: Text("Create Layer"),
               // Access project controller and add new project before navigating
               // to project dashboard.
               onPressed: () async {
                 formKey.currentState!.save();
-                //api.ProjectController projectController = 
-                //  await api.ProjectController.getInstance();
-                // api.Project newProject = await projectController.createProject(
-                //  projectName!, 
-                //  projectDescription!
-                //);
+                List<latlong.LatLng> layerCorners = 
+                  visualizer.convertCoords(cornerCoords);
+                /*api.ProjectController projectController = 
+                  await api.ProjectController.getInstance();
+                int projectIndex = projectController.userProjects.indexWhere(
+                  (project) => project.id == widget.project.id);
+                projectController.userProjects[projectIndex].
+                  createLayer(layerName!, layerDescription!, layerCorners);*/
+                setState(() {
+                  updatedLayers.add(api.LayerSpec(layerName!, layerDescription!, DateTime.now(), DateTime.now(), layerCorners));
+                });
                 if (context.mounted)
                 {
-                  Navigator.push(
-                    context, 
-                    MaterialPageRoute<void>(builder: 
-                      (context) => ProjectDashboard(project: newProject)
-                    )
-                  );
+                  Navigator.of(context).pop();
                 }
               },
             ),
@@ -206,6 +277,184 @@ class _MapPageState extends State<MapPage>
                 setState(() {
                   updatedLayers = 
                     projectController.userProjects[projectIndex].layers;
+                });
+                if (context.mounted)
+                {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+            ElevatedButton(
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ]
+        );
+      }
+    );
+  }
+
+  void addUnit()
+  {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    String? unitName;
+    String? unitDescription;
+    coord_converter.UTMCoordinates topLeftUtm = 
+      coord_converter.UTMCoordinates(
+        x: 0, 
+        y: 0, 
+        zoneNumber: widget.project.utmZone, 
+        isSouthernHemisphere: widget.project.isSouthernHemisphere
+    );
+    double? width;
+    double? height;
+    double? pointInterval;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          scrollable: true,
+          content: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter unit name:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a name for the unit.';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      setState(() {
+                        unitName = value!;
+                      });
+                    },
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter unit description:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a description for the unit.';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      setState(() {
+                        unitDescription = value!;
+                      });
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-left X Coordinate:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the top-left X Coordinate';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      topLeftUtm.x = double.parse(value.toString());
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-left Y Coordinate:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the top-left Y Coordinate';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      topLeftUtm.y = double.parse(value.toString());
+                    },
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter unit width in m:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a width for the unit.';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      setState(() {
+                        width = double.parse(value!);
+                      });
+                    },
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter unit height in m:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a height for the unit.';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      setState(() {
+                        height = double.parse(value!);
+                      });
+                    },
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter unit point interval in cm:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a point interval for the unit.';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      setState(() {
+                        pointInterval = double.parse(value!);
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              child: Text("Create Unit"),
+              // Access project controller and add new project before navigating
+              // to project dashboard.
+              onPressed: () async {
+                formKey.currentState!.save();
+                ({double latitude, double longitude}) topLeftCoords = (
+                  latitude: 
+                    coord_converter.DDCoordinates.fromUTM(topLeftUtm).latitude, 
+                  longitude: 
+                    coord_converter.DDCoordinates.fromUTM(topLeftUtm).longitude
+                );
+                /*api.ProjectController projectController = 
+                  await api.ProjectController.getInstance();
+                int projectIndex = projectController.userProjects.indexWhere(
+                  (project) => project.id == widget.project.id);
+                projectController.userProjects[projectIndex].
+                  createLayer(layerName!, layerDescription!, layerCorners);*/
+                setState(() {
+                  updatedUnits.add(api.UnitSpec(unitName!, unitDescription!, DateTime.now(), DateTime.now(), topLeftCoords, width!, height!, pointInterval!));
                 });
                 if (context.mounted)
                 {
@@ -304,12 +553,16 @@ class _MapPageState extends State<MapPage>
             child: Text("Add Layer"),
           )
         ),
+        layers.isEmpty 
+        ?
+        Center(child: Text("No layers created yet!"))
+        :
         ListView.builder(
+          shrinkWrap: true,
+          physics: ClampingScrollPhysics(),
           itemCount: layers.length, 
           itemBuilder: (BuildContext context, int index) {
             return Card(
-              elevation: 50,
-              shadowColor: Colors.black,
               child: SizedBox(
                 child: Padding(
                   padding: EdgeInsets.all(20.0),
@@ -332,21 +585,17 @@ class _MapPageState extends State<MapPage>
                         style: TextStyle(fontSize: 15)
                       ),
                       Text(
-                        "Last Updated: ${layers[index].lastUpdated}"
-                        ,
+                        "Created At: ${layers[index].createdAt}",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Last Updated: ${layers[index].lastUpdated}",
                         style: TextStyle(fontSize: 15)
                       ),
                       Padding(
                         padding: EdgeInsets.all(20),
                         child: ElevatedButton(
-                          onPressed: () => Navigator.push(
-                              context, 
-                              MaterialPageRoute<void>(builder: 
-                                (context) => ProjectDashboard(
-                                  project: snapshot.data![index]
-                                )
-                              )
-                            ),
+                          onPressed: () => "null",
                           child: Text("Edit Layer")
                         ),
                       ),
@@ -378,9 +627,81 @@ class _MapPageState extends State<MapPage>
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton(
-            onPressed: deletePrediction,
+            onPressed: addUnit,
             child: Text("Add Unit"),
           )
+        ),
+        units.isEmpty 
+        ?
+        Center(child: Text("No units created yet!"))
+        :
+        ListView.builder(
+          shrinkWrap: true,
+          physics: ClampingScrollPhysics(),
+          itemCount: units.length, 
+          itemBuilder: (BuildContext context, int index) {
+            return Card(
+              child: SizedBox(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        units[index].name,
+                        style: TextStyle(
+                          fontSize: 30,
+                          color: Colors.indigo,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        "Description: ${units[index].description}",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Top Left Coordinates: ${units[index].topLeftCoords}",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Width: ${units[index].width} m",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Height: ${units[index].height} m",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Point Interval: ${units[index].pointInterval} cm",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Created At: ${units[index].createdAt}",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Last Updated: ${units[index].lastUpdated}",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(20),
+                        child: ElevatedButton(
+                          onPressed: () => "null",
+                          child: Text("Edit Unit")
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(20),
+                        child: ElevatedButton(
+                          onPressed: () => deleteUnit(units[index].id!),
+                          child: Text("Delete Unit")
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
         ),
       ]
     );

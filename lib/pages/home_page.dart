@@ -6,6 +6,8 @@ import './languages_page.dart' as languages_page;
 import './projects_page.dart' as projects_page;
 import './settings_page.dart' as settings_page;
 import './connections_page.dart' as connections_page;
+import './map_page.dart';
+import '../api/api.dart' as api;
 
 /// A page containing the navigation bar for the app from which all other pages
 /// can be accessed.
@@ -68,7 +70,7 @@ class _HomePageState extends material.State<HomePage> {
         languages_page.LanguagesPage(),
         projects_page.UserProjectsPage(),
         help_page.HelpPage(),
-        about_page.AboutPage(),
+        MapPage(project: api.Project("", "", DateTime.now(), 17, true)),
         ///connections_page.ConnectionsPage(),
       ][currentPageIndex],
     );
