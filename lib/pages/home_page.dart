@@ -66,7 +66,7 @@ class _HomePageState extends material.State<HomePage> {
       body: <material.Widget>[
         settings_page.SettingsPage(),
         languages_page.LanguagesPage(),
-        projects_page.ProjectsPage(),
+        projects_page.UserProjectsPage(),
         help_page.HelpPage(),
         about_page.AboutPage(),
         ///connections_page.ConnectionsPage(),
