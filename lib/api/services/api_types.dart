@@ -316,7 +316,7 @@ class ApiPredictionJob extends _ApiJob
 {
   final String layerId;
   final String modelId;
-  final Map<String, Map<String, ApiPxrfDataSpec?>> dataAssignments;
+  final Map<String, String> dataAssignments;
 
   ApiPredictionJob({
     required super.id,
@@ -347,10 +347,8 @@ class ApiPredictionJob extends _ApiJob
 final zApiPredictionJob = _zApiJob.extend({
   'layerId':         zId,
   'modelId':         zId,
-  'dataAssignments': _z.record(
-    _z.record(zId.nullable()).keySchema(zId)
-  ).keySchema(zId),
-});
+  'dataAssignments': _z.record(zId.nullable()).keySchema(zId),
+}).transform(ApiPredictionJob.fromMap);
 
 /* ============================== Training job ============================== */
 
@@ -382,7 +380,7 @@ class ApiTrainingJob extends _ApiJob
 
 final zApiTrainingJob = _zApiJob.extend({
   'trainignDataSpecId': zId,
-});
+}).transform(ApiTrainingJob.fromMap);
 
 /* ================================ Project ================================ */
 
@@ -446,19 +444,21 @@ class ApiProject
 }
 
 final zApiProject = _z.object({
-  'id':              zId,
-  'name':            _z.string(),
-  'description':     _z.string(),
-  'width':           _zWidth,
-  'height':          _zHeight,
-  'topLeftCoords':   _zCoordinate,
-  'dataAssignments': _z.record(_z.record(zId)),
-  'layers':          _z.array(zApiLayer),
-  'units':           _z.array(zApiUnit),
-  'pxrfData':        _z.array(zApiPxrfDataSpec),
-  'trainingData':    _z.array(zApiTrainingDataSpec),
-  'predictions':     _z.array(zApiPredictionJob),
-  'models':          _z.array(zApiTrainingJob),
-  'lastUpdated':     zTimestamp,
-  'createdAt':       zTimestamp,
+  'id':               zId,
+  'name':             _z.string(),
+  'description':      _z.string(),
+  'width':            _zWidth,
+  'height':           _zHeight,
+  'topLeftCoords':    _zCoordinate,
+  'dataAssignments':  _z.record(
+                        _z.record(zId.nullable()).keySchema(zId)
+                      ).keySchema(zId),
+  'layers':           _z.array(zApiLayer),
+  'units':            _z.array(zApiUnit),
+  'pxrfData':         _z.array(zApiPxrfDataSpec),
+  'trainingData':     _z.array(zApiTrainingDataSpec),
+  'predictions':      _z.array(zApiPredictionJob),
+  'models':           _z.array(zApiTrainingJob),
+  'lastUpdated':      zTimestamp,
+  'createdAt':        zTimestamp,
 }).transform(ApiProject.fromMap);

@@ -216,6 +216,19 @@ export const zApiUser = zDbUser
 export type ApiUser = z.infer<typeof zApiUser>;
 
 
+/** Zod type defining a connection spec to be returned by the API. */
+export const zApiConnectionSpec = zDbConnectionSpec
+  .omit({
+    userId: true,
+  })
+  .extend({
+    id:        zid("connectionSpecs"),
+    createdAt: zTimestamp,
+  });
+/** A connection spec returned by the API, derived from {@link zDbConnectionSpec}. */
+export type ApiConnectionSpec = z.infer<typeof zApiConnectionSpec>;
+
+
 /** Zod type defining a layer to be returned by the API. */
 export const zApiLayer = zDbLayer
   .omit({

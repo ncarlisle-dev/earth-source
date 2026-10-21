@@ -287,7 +287,7 @@ class NetworkService {
     }
   ) async
   {
-    assert(name != null || description != null, "No updates found.");
+    assert(name != null || description != null, "No updates specified.");
 
     final client = _getClient();
     final response = await client.mutation(
@@ -435,12 +435,12 @@ class NetworkService {
     );
   }
 
-  Future<String> fetchPxrfData(String specId) async
+  Future<String> fetchPxrfData(String projectId, String specId) async
   {
     final client = _getClient();
     final downloadUrl = await client.query(
       "projects:getProjectPxrfDataUrl",
-      { 'id': specId }
+      { 'projectId': projectId, 'specId': specId }
     );
 
     final http.Response response;
@@ -467,6 +467,7 @@ class NetworkService {
     String description
   ) async
   {
+    // setup request
     final uri = Uri.parse(
       "${_getClient().config.deploymentUrl}/uploadPxrfData"
     );
@@ -483,12 +484,24 @@ class NetworkService {
       )
     );
 
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
+    // send request
+    final http.StreamedResponse streamedResponse;
+    final http.Response response;
 
+    try {
+      streamedResponse = await request.send();
+      response = await http.Response.fromStream(streamedResponse);
+    } catch (e) {
+      throw common.ApiNetworkException(
+        "Failed to send network request:\n$e",
+        null
+      );
+    }
+
+    // validate response and return
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw common.ApiNetworkException(
-        "Failed to upload pXRF data. Response body:\n${response.body}",
+        "Failed to add pXRF data. Response body:\n${response.body}",
         response.statusCode,
       );
     }
@@ -512,18 +525,254 @@ class NetworkService {
     );
   }
 
-  Future<String> deletePxrfData() async
+  Future<DateTime> deletePxrfData(String projectId, String specId) async
   {
+    final client = _getClient();
 
+    final response = await client.mutation(
+      name: "projects:deleteProjectPxrfData",
+      args: { "projectId": projectId, "specId": specId },
+    );
+
+    final timestamp = parseNetworkResponse(
+      response,
+      api_types.zTimestamp,
+    );
+
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
-  Future<void> trainModel(String filepath, common.TrainingJob job)
-    => throw UnimplementedError();
-  
-  Future<void> runModel(
-    String? modelId, 
-    common.PredictionJob job, 
-    List<String> filepaths
-  )
-    => throw UnimplementedError();
+  Future<DateTime> setPxrfDataSpecMetadata(
+    String projectId,
+    String specId,
+    {
+      String? fileName,
+      String? description,
+    }
+  ) async
+  {
+    assert(fileName != null || description != null, "No updates specified.");
+
+    final client = _getClient();
+
+    final response = await client.mutation(
+      name: "projects:setProjectPxrfDataMetadata",
+      args: {
+        'projectId': projectId,
+        'specId': specId,
+        'fileName': fileName,
+        'description': description,
+      },
+    );
+
+    final timestamp = parseNetworkResponse(
+      response,
+      api_types.zTimestamp,
+    );
+
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
+  }
+
+  Future<String> fetchTrainingData(String projectId, String specId) async
+  {
+    final client = _getClient();
+    final downloadUrl = await client.query(
+      "projects:getProjectTrainingDataUrl",
+      { 'projectId': projectId, 'specId': specId }
+    );
+
+    final http.Response response;
+    try {
+      response = await http.get(Uri.parse(downloadUrl));
+    } catch (e) {
+      throw common.ApiNetworkException('Training data download failed: $e', null);
+    }
+
+    if (response.statusCode != 200) {
+      throw common.ApiNetworkException(
+        'Training data download failed.',
+        response.statusCode
+      );
+    }
+
+    return response.body;
+  }
+
+  Future<common.TrainingDataSpec> addTrainingData(
+    String projectId,
+    String fileContents,
+    String filename,
+    String description
+  ) async
+  {
+    // setup request
+    final uri = Uri.parse(
+      "${_getClient().config.deploymentUrl}/uploadTrainingData"
+    );
+
+    var request = http.MultipartRequest('POST', uri);
+
+    request.fields['projectId'] = projectId;
+    request.fields['description'] = description;
+    request.files.add(
+      .fromString(
+        'file',
+        fileContents,
+        filename: filename,
+      )
+    );
+
+    // send request
+    final http.StreamedResponse streamedResponse;
+    final http.Response response;
+
+    try {
+      streamedResponse = await request.send();
+      response = await http.Response.fromStream(streamedResponse);
+    } catch (e) {
+      throw common.ApiNetworkException(
+        "Failed to send network request:\n$e",
+        null
+      );
+    }
+
+    // validate response and return
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw common.ApiNetworkException(
+        "Failed to add training data. Response body:\n${response.body}",
+        response.statusCode,
+      );
+    }
+
+    final apiTrainingDataSpec = parseNetworkResponse(
+      response.body,
+      api_types.zApiTrainingDataSpec
+    );
+
+    return common.TrainingDataSpec(
+      id:           apiTrainingDataSpec.id,
+      fileName:     apiTrainingDataSpec.fileName,
+      numPoints:    apiTrainingDataSpec.numPoints,
+      size:         apiTrainingDataSpec.size,
+      createdAt:    DateTime.fromMillisecondsSinceEpoch(
+                      apiTrainingDataSpec.createdAt
+                    ),
+      lastUpdated:  DateTime.fromMillisecondsSinceEpoch(
+                      apiTrainingDataSpec.lastUpdated
+                    ),
+    );
+  }
+
+  Future<DateTime> deleteTrainingData(String projectId, String specId) async
+  {
+    final client = _getClient();
+
+    final response = await client.mutation(
+      name: "projects:deleteProjectTrainingData",
+      args: { "projectId": projectId, "specId": specId },
+    );
+
+    final timestamp = parseNetworkResponse(
+      response,
+      api_types.zTimestamp,
+    );
+
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
+  }
+
+  Future<DateTime> setTrainingDataSpecMetadata(
+    String projectId,
+    String specId,
+    {
+      String? fileName,
+      String? description,
+    }
+  ) async
+  {
+    assert(fileName != null || description != null, "No updates specified.");
+
+    final client = _getClient();
+
+    final response = await client.mutation(
+      name: "projects:setProjectTrainingDataMetadata",
+      args: {
+        'projectId':   projectId,
+        'specId':      specId,
+        'fileName':    fileName,
+        'description': description,
+      },
+    );
+
+    final timestamp = parseNetworkResponse(
+      response,
+      api_types.zTimestamp,
+    );
+
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
+  }
+
+  Future<common.PredictionJob> runPredictionJob(
+    String projectId,
+    String name,
+    String description,
+    String layerId,
+    String modelId,
+  ) async
+  {
+    final client = _getClient();
+
+    final response = await client.action(
+      name: "projects:runPredictionJob",
+      args: {
+        'projectId':   projectId,
+        'name':        name,
+        'description': description,
+        'layerId':     layerId,
+        'modelId':     modelId,
+      }
+    );
+
+    final createdJob = parseNetworkResponse(
+      response,
+      api_types.zApiPredictionJob
+    );
+
+    return common.PredictionJob(
+      id:               createdJob.id,
+      name:             createdJob.name,
+      description:      createdJob.description,
+      layerId:          createdJob.layerId,
+      modelId:          createdJob.modelId,
+      dataAssignments:  createdJob.dataAssignments,
+      status:           createdJob.status,
+      createdAt:        DateTime.fromMicrosecondsSinceEpoch(
+                          createdJob.createdAt
+                        ),
+      lastUpdated:      DateTime.fromMicrosecondsSinceEpoch(
+                          createdJob.lastUpdated
+                        ),
+    );
+  }
+
+  Future<DateTime> setPredictionJobMetadata(
+    String projectId,
+    String jobId,
+    {
+      String? name,
+      String? description,
+    }
+  ) async
+  {
+    assert(name != null || description != null, "No updates specified.");
+
+    final client = _getClient();
+
+    final response = client.mutation(
+      name: "projects:setPredictionJobMetadata",
+      args: {
+        '': ,
+        '': ,
+      },
+    );
+  }
 }

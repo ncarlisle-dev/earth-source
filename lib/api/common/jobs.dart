@@ -33,9 +33,9 @@ abstract class Job
     required this.id,
     required this.createdAt,
     required this.lastUpdated,
-    this.name = "",
-    this.description = "",
-    this.status = .starting,
+    required this.name,
+    required this.description,
+    required this.status,
   });
 
   /// Sets a callback to be run every time the status of a given job changes
@@ -50,11 +50,11 @@ class TrainingJob extends Job
 {
   TrainingJob({
     required super.id,
+    required super.name,
+    required super.description,
     required super.createdAt,
     required super.lastUpdated,
-    super.name = "",
-    super.description = "",
-    super.status = .starting,
+    required super.status,
   });
 }
 
@@ -67,15 +67,17 @@ class PredictionJob extends Job
   /// Model id if a newly trained model is being used (defaults to base model if 
   /// empty).
   String modelId;
+  final Map<String, String> dataAssignments;
 
   PredictionJob({
     required super.id,
+    required super.name,
+    required super.description,
     required super.createdAt,
     required super.lastUpdated,
     required this.layerId,
     required this.modelId,
-    super.name = "",
-    super.description = "",
+    this.dataAssignments = const {},
     super.status = .starting,
   });
 

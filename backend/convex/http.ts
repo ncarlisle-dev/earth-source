@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 
 import { zid } from "convex-helpers/server/zod4";
 import * as z from "zod";
-import { zApiPxrfDataSpec, zApiTrainingDataSpec } from "./schema";
+import { ApiPxrfDataSpec, zApiPxrfDataSpec, zApiTrainingDataSpec } from "./schema";
 import { ApiError } from "./errors";
 import { authenticateUser } from "./auth";
 
@@ -66,7 +66,7 @@ http.route({
 
     // write to database and return
     try {
-      const createdSpec = await ctx.runMutation(
+      const apiSpec = await ctx.runMutation(
         internal.projects.finalizePxrfFileUpload,
         {
           projectId: args.projectId,
@@ -78,19 +78,6 @@ http.route({
           timestamp,
         }
       );
-
-      if (createdSpec === null)
-        return new Response(`Failed to fetch created spec.`, { status: 500 });
-
-      const apiSpec = {
-        id: createdSpec._id,
-        fileName: createdSpec.fileName,
-        description: createdSpec.description,
-        numPoints: createdSpec.numPoints,
-        size: createdSpec.size,
-        createdAt: createdSpec._creationTime,
-        lastUpdated: createdSpec._creationTime,
-      };
 
       return Response.json(apiSpec, { status: 201 });
     } catch (e) {

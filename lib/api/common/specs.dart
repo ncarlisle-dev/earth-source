@@ -37,11 +37,11 @@ class Layer
 
   Layer({
     required this.id,
+    required this.name,
+    required this.description,
     required this.createdAt, 
     required this.lastUpdated,
     required this.cornerCoordinates,
-    this.name        = "", 
-    this.description = "", 
   });
 }
 
@@ -70,14 +70,14 @@ class Unit
 
   Unit({
     required this.id,
+    required this.name,
+    required this.description,
     required this.topLeftCoords,
     required this.width, 
     required this.height, 
     required this.pointInterval,
     required this.createdAt, 
     required this.lastUpdated, 
-    this.name        = "", 
-    this.description = "", 
   });
 }
 

@@ -1,6 +1,6 @@
 import { QueryCtx, MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 
 import * as z from "zod";
 import { zid } from "convex-helpers/server/zod4";
@@ -40,6 +40,7 @@ import {
   ApiPredictionJob,
   ApiTrainingJob,
   ApiProject,
+  ApiPxrfDataSpec,
 } from "./schema";
 
 
@@ -108,7 +109,7 @@ export const createProject = zodMutation({
     width: zDbProject.shape.width,
     height: zDbProject.shape.height,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<ApiProject> => {
     const userId = await authenticateUser(ctx);
     const timestamp = Date.now();
 
@@ -129,9 +130,12 @@ export const createProject = zodMutation({
       trainingJobIds: [],
     });
 
-    return await ctx.db.get("projects", projectId);
+    return await ctx.runQuery(
+      api.projects.getProjectById,
+      { id: projectId },
+    );
   }
-})
+});
 
 /** Mutation that deletes a project given its ID. */
 export const deleteProject = zodMutation({
@@ -172,20 +176,20 @@ export const getUserProjectSpecs = zodQuery({
       .collect();
     
     return projects.map((dbProject) => ({
-      id: dbProject._id,
-      name: dbProject.name,
-      description: dbProject.description,
-      topLeft: dbProject.topLeftCoords,
-      width: dbProject.width,
-      height: dbProject.height,
-      lastUpdated: dbProject.lastUpdated,
-      createdAt: dbProject._creationTime,
-      numLayers: dbProject.layerIds.length,
-      numUnits: dbProject.unitIds.length,
-      numPxrfData: dbProject.pxrfDataSpecIds.length,
+      id:              dbProject._id,
+      name:            dbProject.name,
+      description:     dbProject.description,
+      topLeft:         dbProject.topLeftCoords,
+      width:           dbProject.width,
+      height:          dbProject.height,
+      lastUpdated:     dbProject.lastUpdated,
+      createdAt:       dbProject._creationTime,
+      numLayers:       dbProject.layerIds.length,
+      numUnits:        dbProject.unitIds.length,
+      numPxrfData:     dbProject.pxrfDataSpecIds.length,
       numTrainingData: dbProject.trainingDataSpecIds.length,
-      numPredictions: dbProject.predictionJobIds.length,
-      numModels: dbProject.trainingJobIds.length,
+      numPredictions:  dbProject.predictionJobIds.length,
+      numModels:       dbProject.trainingJobIds.length,
     }));
   },
 });
@@ -859,7 +863,22 @@ export const finalizePxrfFileUpload = zodInternalMutation({
       { pxrfDataSpecIds, lastUpdated: args.timestamp }
     );
 
-    return await ctx.db.get("dataSpecs", specId);
+    const dbSpec = await ctx.db.get("dataSpecs", specId);
+
+    if (dbSpec === null)
+      throw new UnknownServerError("Couldn't get created pXRF data spec.");
+
+    const apiSpec: ApiPxrfDataSpec = {
+      id:          dbSpec._id,
+      fileName:    dbSpec.fileName,
+      description: dbSpec.description,
+      numPoints:   dbSpec.numPoints,
+      size:        dbSpec.size,
+      createdAt:   dbSpec._creationTime,
+      lastUpdated: dbSpec.lastUpdated,
+    };
+
+    return apiSpec;
   }
 });
 
@@ -1216,12 +1235,6 @@ async function assertProjectHasTrainingJob(
   return { job, jobIndex };
 }
 
-/** The return type of {@link createDbPredictionJob}. */
-interface CreateDbPredictionJobResult {
-  jobId: Id<"jobs">;
-  timestamp: Timestamp;
-};
-
 /**
  * Helper mutation used by {@link runPredictionJob} that handles database
  * transactions for creating a prediction job. Returns a
@@ -1236,7 +1249,7 @@ export const createDbPredictionJob = zodInternalMutation({
     layerId: zDbPredictionJob.shape.layerId,
     modelId: zDbPredictionJob.shape.modelId,
   },
-  handler: async (ctx, args): Promise<CreateDbPredictionJobResult> => {
+  handler: async (ctx, args): Promise<DbPredictionJob> => {
     const { predictionJobIds, dataAssignments } = await getDbProject(
       ctx,
       args.projectId,
@@ -1268,10 +1281,11 @@ export const createDbPredictionJob = zodInternalMutation({
       { predictionJobIds, lastUpdated: timestamp }
     );
 
-    return {
-      jobId,
-      timestamp,
-    };
+    const createdJob = await ctx.db.get("jobs", jobId);
+    if (createdJob === null)
+      throw new UnknownServerError("Couldn't fetch created prediction job.");
+
+    return createdJob as DbPredictionJob;
   }
 });
 
@@ -1288,21 +1302,28 @@ export const runPredictionJob = zodAction({
     layerId: zDbPredictionJob.shape.layerId,
     modelId: zDbPredictionJob.shape.modelId,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<ApiPredictionJob> => {
     const userId = await authenticateUser(ctx);
-    const dbUpdateResult = await ctx.runMutation(
+    const createdJob = await ctx.runMutation(
       internal.projects.createDbPredictionJob,
       {
         userId,
         ...args
       }
-    ) as CreateDbPredictionJobResult;
+    );
 
     // TODO: send HTTP request with job ID
 
     return {
-      id: dbUpdateResult.jobId,
-      timestamp: dbUpdateResult.timestamp,
+      id:              createdJob._id,
+      name:            createdJob.name,
+      description:     createdJob.description,
+      layerId:         createdJob.layerId,
+      modelId:         createdJob.modelId,
+      dataAssignments: createdJob.dataAssignments,
+      status:          createdJob.status,
+      createdAt:       createdJob._creationTime,
+      lastUpdated:     createdJob.lastUpdated,
     };
   },
 });

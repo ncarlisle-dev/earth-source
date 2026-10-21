@@ -73,20 +73,20 @@ class Project
 
   Project({
     required this.id,
-    required this.createdAt,
-    required this.lastUpdated,
+    required this.name,
+    required this.description,
     required this.topLeftCoords,
     required this.width,
     required this.height,
-    this.name            = "",
-    this.description     = "",
-    this.layers          = const [],
-    this.units           = const [],
-    this.pxrfData        = const [],
-    this.trainingData    = const [],
-    this.dataAssignments = const {},
-    this.predictions     = const [],
-    this.models          = const [],
+    required this.layers,
+    required this.units,
+    required this.pxrfData,
+    required this.trainingData,
+    required this.dataAssignments,
+    required this.predictions,
+    required this.models,
+    required this.createdAt,
+    required this.lastUpdated,
   });
 
   /// Changes the description of a project and uploads the modified project to
