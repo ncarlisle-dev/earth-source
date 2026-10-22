@@ -214,6 +214,38 @@ Future<List<MappedPoint>> _attachCoords(
   return mappedData;
 }
 
+/// Utility function - converts a list of UTM coordinates to a list of 
+/// latitudinal/longitudinal coordinates.
+List<latlong.LatLng> convertCoordsUTM(
+  List<coord_converter.UTMCoordinates> utmCoords
+)
+{
+  List<latlong.LatLng> latLngCoords = [];
+  for (var i = 0; i < utmCoords.length; i++) {
+    coord_converter.DDCoordinates ddCoords = 
+      coord_converter.DDCoordinates.fromUTM(utmCoords[i]);
+    latLngCoords.add(latlong.LatLng(ddCoords.latitude, ddCoords.longitude));
+  }
+  return latLngCoords;
+}
+
+/// Utility function - converts a list of latitudinal/longitudal coordinates to 
+/// a list of UTM coordinates.
+List<coord_converter.UTMCoordinates> convertCoordsLatLng(
+  List<latlong.LatLng> latLongCoords
+)
+{
+  List<coord_converter.UTMCoordinates> utmCoords = [];
+  for (var i = 0; i < utmCoords.length; i++) {
+    coord_converter.DDCoordinates ddCoords = coord_converter.DDCoordinates(
+      latitude: latLongCoords[i].latitude, 
+      longitude: latLongCoords[i].longitude
+    );
+    utmCoords.add(coord_converter.UTMCoordinates.fromDD(ddCoords));
+  }
+  return utmCoords;
+}
+
 /// A visualizer widget that displays either an image with no modifications if
 /// no data file is provided, or an image with a heatmap overlaid onto it.
 class Visualizer extends StatelessWidget
