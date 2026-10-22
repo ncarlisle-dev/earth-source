@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:archaeo_sight_2/api/common/common.dart';
+
 import '../services/network_service.dart';
 import 'network.dart' as network;
 import 'specs.dart' as specs;
@@ -7,8 +9,7 @@ import 'jobs.dart' as jobs;
 import 'package:flutter_map_math/flutter_geo_math.dart' as map_math;
 import 'package:latlong2/latlong.dart' as latlong;
 
-/// TODO: Change filepath in functions involving file upload, retrieval, or
-/// deletion to accurately reflect where it will be stored in the database.
+typedef Coordinate = ({ double latitude, double longitude });
 
 const List<String> requiredPxrfFields = 
 [
@@ -48,12 +49,8 @@ class Project
   String name;
   /// User-given description of the project.
   String description;
-  /// Location of the top-left corner of the project site.
-  ({ double latitude, double longitude }) topLeftCoords;
-  /// Width of the project site.
-  double width;
-  /// Height of the project site.
-  double height;
+  /// Location of the corners of the project site.
+  List<latlong.LatLng> corners;
   /// List of layers the project contains.
   final List<specs.Layer> layers;
   /// List of units the project contains.
@@ -77,9 +74,7 @@ class Project
     required this.id,
     required this.name,
     required this.description,
-    required this.topLeftCoords,
-    required this.width,
-    required this.height,
+    required this.corners,
     required this.layers,
     required this.units,
     required this.pxrfData,
@@ -98,7 +93,6 @@ class Project
   Future<void> setName(String name) async
   {
     NetworkService networkService = await NetworkService.getInstance();
-    name = name;
     try {
       lastUpdated = await networkService.setProjectMetadata(id, name: name);
     }
@@ -108,6 +102,8 @@ class Project
         error.statusCode
       );
     }
+
+    name = name;
   }
 
 
@@ -118,10 +114,9 @@ class Project
   Future<void> setDescription(String newDescription) async
   {
     final networkService = await NetworkService.getInstance();
-    description = newDescription;
-    lastUpdated = DateTime.now();
+
     try {
-      await networkService.setProjectMetadata(id, description: newDescription);
+      lastUpdated = await networkService.setProjectMetadata(id, description: newDescription);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -129,14 +124,19 @@ class Project
         error.statusCode
       );
     }
+
+    description = newDescription;
   }
 
   /// Adds a file containing pXRF data to the project after validating the
   /// file's contents.
   /// 
-  /// Throws a [ProjectException] if the file is invalid and a
-  /// [network.ApiNetworkException] if the update fails.
-  Future<void> addPxrfData(String fileName, String fileContents) async 
+  /// Throws a [network.ApiNetworkException] if the upload fails.
+  Future<PxrfDataSpec> addPxrfData(
+    String fileContents,
+    String fileName,
+    String description,
+  ) async
   {
     validateDataFile(false, fileContents);
 
@@ -160,20 +160,20 @@ class Project
 
     pxrfData.add(createdSpec);
     lastUpdated = createdSpec.createdAt;
+    return createdSpec;
   }
 
   /// Fetches a pXRF data file from the database.
   /// 
   /// Throws a [network.ApiNetworkException] if the training data could not
   /// successfully be fetched.
-  Future<String?> getPxrfData(String fileId) async 
+  Future<String> getPxrfData(String specId) async 
   {
-    final networkService = NetworkService.getInstance();
-    String filePath = "";
-    String? fileContents;
+    final networkService = await NetworkService.getInstance();
+    final String fileContents;
+
     try {
-      fileContents = await networkService.fetchFile(filePath);
-      return fileContents;
+      fileContents = await networkService.fetchPxrfData(id, specId);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -181,6 +181,8 @@ class Project
         error.statusCode
       );
     }
+
+    return fileContents;
   }
 
   /// Removes a pxrf data spec from the project alongside any corresponding data
@@ -188,28 +190,17 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the pXRF data could not
   /// sunccessfully be removed.
-  Future<void> removePxrfData(String fileId) async 
+  Future<void> removePxrfData(String id) async 
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    int fileIndex = pxrfData.indexWhere(
-      (file) => file.id == fileId);
-
-    dataAssignments.forEach((layerName, layerAssignments) {
-      layerAssignments.forEach((unitName, fileName) {
-        if (pxrfData[fileIndex].fileName == fileName) 
-        {
-          dataAssignments.remove(layerName);
-        }
-      });
-    });
-
-    pxrfData.removeAt(fileIndex);
-    lastUpdated = DateTime.now();
+    final networkService = await NetworkService.getInstance();
+    final specIndex = pxrfData.indexWhere((spec) => spec.id == id);
+    assert(
+      specIndex >= 0,
+      "Project doesn't have pXRF data spec with ID '$id'."
+    );
 
     try {
-        String filePath = "";
-        await networkService.deleteFile(filePath);
-        await networkService.uploadProject(this);
+      lastUpdated = await networkService.deletePxrfData(id, id);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -217,41 +208,40 @@ class Project
         error.statusCode
       );
     }
+
+    dataAssignments.forEach((layerId, layerAssignments) {
+      layerAssignments.forEach((unitId, specId) {
+        if (pxrfData[specIndex].id == specId) {
+          dataAssignments[layerId]![unitId] = null;
+        }
+      });
+    });
+
+    pxrfData.removeAt(specIndex);
   }
 
   /// Adds a file containing training data to the project after validating the
   /// file's contents.
   /// 
-  /// Throws a [ProjectException] if the file cannot be validated and a
-  /// [network.ApiNetworkException] if the file cannot successfully be uploaded
-  /// or the project cannot be modified.
-  Future<void> addTrainingData(String fileName, String fileContents) async 
+  /// Throws a [network.ApiNetworkException] if the upload fails.
+  Future<TrainingDataSpec> addTrainingData(
+    String fileContents,
+    String fileName,
+    String description,
+  ) async
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    int numPoints = validateDataFile(true, fileContents);
-    if (numPoints == 0) {
-      // TODO: Describe specifically what the issue is to the user. I wasn't 
-      // sure how to implement this elegantly - it didn't seem best to throw an
-      // exception within the validateDataFile function itself - so I am leaving
-      // this for now.
-      throw ProjectException(
-        "Given data is not correctly formatted - either fields are missing or "
-        "no data is present."
-      );
-    }
-    specs.DataSpec trainFile = specs.DataSpec(
-      fileName, 
-      id!, 
-      DateTime.now(), 
-      numPoints, 
-      0
-    );
-    trainingData.add(trainFile);
-    lastUpdated = DateTime.now();
-    String filePath = "";
+    final networkService = await NetworkService.getInstance();
+    validateDataFile(true, fileContents);
+
+    final TrainingDataSpec createdSpec;
+
     try {
-      await networkService.writeFile(filePath, fileContents);
-      await networkService.uploadProject(this);
+      createdSpec = await networkService.addTrainingData(
+        id,
+        fileContents,
+        fileName,
+        description
+      );
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -259,21 +249,22 @@ class Project
         error.statusCode
       );
     }
+
+    trainingData.add(createdSpec);
+    lastUpdated = createdSpec.createdAt;
+    return createdSpec;
   }
 
   /// Fetches a training data file from the database.
   /// 
-  /// Throws a [network.ApiNetworkException] if the training data could not
-  /// successfully be fetched.
-  Future<String?> getTrainingData(String fileId) async 
+  /// Throws a [network.ApiNetworkException] if the network request fails.
+  Future<String> getTrainingData(String specId) async 
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    /// TODO: As with layer image, change this to the appropriate filepath.
-    String filePath = "";
-    String? fileContents;
+    final networkService = await NetworkService.getInstance();
+    final String fileContents;
+
     try {
-      fileContents = await networkService.fetchFile(filePath);
-      return fileContents;
+      fileContents = await networkService.fetchTrainingData(id, specId);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -282,6 +273,8 @@ class Project
         error.statusCode
       );
     }
+
+    return fileContents;
   }
 
   /// Removes a training data spec from the project and deletes the 
@@ -289,18 +282,18 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the training data could not
   /// sunccessfully be removed.
-  Future<void> removeTrainingData(String fileId) async 
+  Future<void> removeTrainingData(String specId) async 
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    int fileIndex = trainingData.indexWhere(
-      (file) => file.id == fileId);
-    trainingData.removeAt(fileIndex);
-    lastUpdated = DateTime.now();
+    final networkService = await NetworkService.getInstance();
+    final int specIndex = trainingData.indexWhere((spec) => spec.id == specId);
+
+    assert(
+      specIndex >= 0,
+      "Project doesn't have training data spec with ID '$specId'."
+    );
 
     try {
-        String filePath = "";
-        await networkService.deleteFile(filePath);
-        await networkService.uploadProject(this);
+      lastUpdated = await networkService.deleteTrainingData(id, specId);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -308,61 +301,49 @@ class Project
         error.statusCode
       );
     }
+
+    trainingData.removeAt(specIndex);
   }
 
   /// Creates a new layer at the current time using the given name and 
   /// description and adds it to the project.
   /// 
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
-  /// after modification and a [ProjectException] if given layer name matches
-  /// a pre-existing layer.
+  /// after modification.
   Future<specs.Layer> createLayer(
     String name, 
     String description, 
-    List<latlong.LatLng> cornerCoordinates
-  ) 
-    async
+    List<Coordinate> corners
+  ) async
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    // Check if a pre-existing layer has the same name and only make a new 
-    // layer if not
-    Iterable<specs.Layer> duplicateName = layers.where(
-      (layer) => layer.name == name);
+    assert(corners.length == 4, "corners doesn't have four elements.");
 
-    if (duplicateName.isEmpty) {
-      specs.Layer createdLayer = specs.Layer(
-        name, 
-        description, 
-        DateTime.now(), 
-        DateTime.now(),
-        cornerCoordinates
-      );
-      layers.add(createdLayer);
-      lastUpdated = DateTime.now();
+    final networkService = await NetworkService.getInstance();
+    final Layer createdLayer;
 
-      try {
-        // Filepath to the directory where the layer's corresponding image will
-        // be stored - leaving this empty for now since the database isn't set
-        // up, but I'm assuming the directory will be labelled with the layer's
-        // name
-        String layerFilePath = "";
-        await networkService.uploadProject(this);
-        await networkService.createDirectory(layerFilePath);
-        return createdLayer;
-      }
-      on network.ApiNetworkException catch (error) {
-        throw network.ApiNetworkException(
-          "Layer creation failed with the following error:\n$error", 
-          error.statusCode
+    try {
+      final (:createdLayers, :timestamp, createdUnits: _) =
+        await networkService.configureProjectSite(
+          id,
+          newLayers: [(
+            name: name,
+            description: description,
+            corners: corners,
+          )],
         );
-      }
-      
+
+      createdLayer = createdLayers[0];
+      lastUpdated = timestamp;
     }
-    else {
-      throw ProjectException(
-        "Layer cannot have the same name as a pre-existing layer."
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Layer creation failed with the following error:\n$error", 
+        error.statusCode
       );
     }
+
+    layers.add(createdLayer);
+    return createdLayer;
   }
 
   /// Changes the name of a pre-existing layer.
@@ -370,51 +351,42 @@ class Project
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if new layer name matches
   /// a pre-existing layer.
-  Future<void> setLayerName(String id, String newName) async
-  {
-    await NetworkService networkService = NetworkService.getInstance();
-    // Check if a pre-existing layer has the same name and only change the
-    // name if not
-    Iterable<specs.Layer> duplicateName = layers.where(
-      (layer) => layer.name == newName);
-
-    if (duplicateName.isEmpty) {
-      int layerIndex = layers.indexWhere((layer) => layer.id == id);
-      layers[layerIndex].name = newName;
-      layers[layerIndex].lastUpdated = DateTime.now();
-      lastUpdated = DateTime.now();
-
-      try {
-        await networkService.uploadProject(this);
-      }
-      on network.ApiNetworkException catch (error) {
-        throw network.ApiNetworkException(
-          "Project failed to update with the following error:\n$error", 
-          error.statusCode
-        );
-      }
+  Future<void> updateLayer(
+    String id,
+    {
+      String?           name,
+      String?           description,
+      List<Coordinate>? corners,
     }
-    else {
-      throw ProjectException(
-        "Layer cannot have the same name as a pre-existing layer."
-      );
-    }
-  }
-
-  /// Changes the description of a pre-existing layer.
-  /// 
-  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
-  /// after modification.
-  Future<void> setLayerDescription(String id, String description) async
+  ) async
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    int layerIndex = layers.indexWhere((layer) => layer.id == id);
-    layers[layerIndex].description = description;
-    layers[layerIndex].lastUpdated = DateTime.now();
-    lastUpdated = DateTime.now();
+    // validate arguments
+    assert(
+      name != null || description != null || corners != null,
+      "No updates specified."
+    );
+
+    final layerIndex = layers.indexWhere((layer) => layer.id == id);
+    assert(layerIndex >= 0, "Layer with ID '$id' not found.");
+
+    // make network request
+    final networkService = await NetworkService.getInstance();
+    final DateTime updateTimestamp;
 
     try {
-        await networkService.uploadProject(this);
+      final (createdLayers: _, createdUnits: _, :timestamp) = 
+        await networkService.configureProjectSite(
+          this.id,
+          layerUpdates: {
+            id: (
+              name: name,
+              description: description,
+              corners: corners,
+            )
+          }
+        );
+
+      updateTimestamp = timestamp;
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -422,6 +394,18 @@ class Project
         error.statusCode
       );
     }
+
+    // set local fields
+    if (name != null) layers[layerIndex].name = name;
+    if (description != null) layers[layerIndex].description = description;
+    if (corners != null) {
+      layers[layerIndex].corners = corners
+      .map(convertCoordRecordToObj)
+      .toList();
+    }
+
+    layers[layerIndex].lastUpdated = updateTimestamp;
+    lastUpdated = updateTimestamp;
   }
 
   /// Deletes a layer from the project and deletes the corresponding directory
@@ -431,17 +415,19 @@ class Project
   /// after modification or the layer cannot be successfully deleted.
   Future<void> deleteLayer(String id) async
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    int layerIndex = layers.indexWhere((layer) => layer.id == id);
-    layers.removeAt(layerIndex);
-    lastUpdated = DateTime.now();
+    final int layerIndex = layers.indexWhere((layer) => layer.id == id);
+    assert(layerIndex >= 0, "Layer with ID '$id' not found.");
+
+    final networkService = await NetworkService.getInstance();
 
     try {
-        String imageFilePath = "";
-        String layerFilePath = "";
-        await networkService.deleteFile(imageFilePath);
-        await networkService.deleteDirectory(layerFilePath);
-        await networkService.uploadProject(this);
+      final (createdLayers: _, createdUnits: _, :timestamp) = 
+        await networkService.configureProjectSite(
+          this.id,
+          layersToDelete: [id],
+        );
+      
+      lastUpdated = timestamp;
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -449,6 +435,9 @@ class Project
         error.statusCode
       );
     }
+
+    dataAssignments.remove(id);
+    layers.removeAt(layerIndex);
   }
 
   /// Creates a new unit and initializes its fields with the given parameters, 
@@ -459,57 +448,61 @@ class Project
   /// exists with the same name or the current unit overlaps with a pre-existing
   /// unit.
   Future<specs.Unit> createUnit(
-    String name, 
-    String description, 
-    ({double latitude, double longitude}) topLeft, 
-    double width, 
-    double height, 
-    double pointInterval
+    String           name, 
+    String           description, 
+    List<Coordinate> corners, 
+    double           pointInterval
   ) async
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    // Check to make sure no pre-existing unit has the same name.
-    Iterable<specs.Unit> duplicateName = units.where(
-      (unit) => unit.name == name);
-    if (duplicateName.isEmpty) {
-      specs.Unit createdUnit = specs.Unit(
-        name, 
-        description,
-        DateTime.now(),
-        DateTime.now(), 
-        topLeft, 
-        width, 
-        height, 
-        pointInterval, 
-      );
+    assert(corners.length == 4, "corners doesn't have four elements.");
 
-      // Check to make sure there is no overlap between the new unit and any
-      // pre-existing unit.
-      for (var i = 0; i < units.length; i++) {
-        if (isOverlapping(createdUnit, units[i])) {
-          throw ProjectException(
-            "Created unit overlaps with unit ${units[i].name}."
-          );
-        }
-      }
-
-      // If all checks pass, attempt to add unit.
-      units.add(createdUnit);
-      lastUpdated = DateTime.now();
-      try {
-        await networkService.uploadProject(this);
-      }
-      on network.ApiNetworkException catch (error) {
-        throw network.ApiNetworkException(
-          "Project failed to update with the following error:\n$error", 
-          error.statusCode
+    // Check to make sure there is no overlap between the new unit and any
+    // pre-existing units.
+    for (final unit in units) {
+      if (
+        isOverlapping(
+          corners.map(convertCoordRecordToObj).toList(),
+          unit.corners
+        )
+      ) {
+        throw ProjectException(
+          "Created unit overlaps with unit '${unit.name}."
         );
       }
-      return createdUnit;
     }
-    throw ProjectException(
-      "Unit cannot have the same name as a pre-existing unit."
-    );
+
+    // If all checks pass, attempt to add unit.
+    final networkService = await NetworkService.getInstance();
+
+    final Unit createdUnit;
+    final DateTime updateTimestamp;
+
+    try {
+      final (createdLayers: _, :createdUnits, :timestamp) = 
+        await networkService.configureProjectSite(
+          id,
+          newUnits: [(
+            name:          name,
+            description:   description,
+            pointInterval: pointInterval,
+            corners:       corners,
+          )],
+        );
+      
+      createdUnit = createdUnits[0];
+      updateTimestamp = timestamp;
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+
+    units.add(createdUnit);
+    lastUpdated = updateTimestamp;
+
+    return createdUnit;
   }
 
   /// Changes the name of a pre-existing unit.
@@ -517,53 +510,59 @@ class Project
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if new unit name matches
   /// a pre-existing unit.
-  Future<void> setUnitName(String id, String newName) async
+  Future<void> updateUnit(
+    String id,
+    {
+      String?           name,
+      String?           description,
+      List<Coordinate>? corners,
+      double?           pointInterval,
+    }
+  ) async
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    // Check if a pre-existing unit has the same name and only change the
-    // name if not.
-    Iterable<specs.Unit> duplicateName = units.where(
-      (unit) => unit.name == newName);
+    // validate arguments
+    assert(
+      name != null 
+        || description != null
+        || corners != null
+        || pointInterval != null,
+      "No updates specified."
+    );
 
-    if (duplicateName.isEmpty) {
-      int unitIndex = units.indexWhere((unit) => unit.id == id);
-      units[unitIndex].name = newName;
-      units[unitIndex].lastUpdated = DateTime.now();
-      lastUpdated = DateTime.now();
+    final unitIndex = units.indexWhere((unit) => unit.id == id);
+    assert(unitIndex >= 0, "Unit with ID '$id' not found.");
 
-      try {
-        await networkService.uploadProject(this);
-      }
-      // TODO: Rename file in the backend - renameFile() function needs to be
-      // implemented in our network service
-      on network.ApiNetworkException catch (error) {
-        throw network.ApiNetworkException(
-          "Project failed to update with the following error:\n$error", 
-          error.statusCode
-        );
+    final cornerObjs = corners?.map(convertCoordRecordToObj).toList();
+
+    if (cornerObjs != null) {
+      for (final unit in units) {
+        if (isOverlapping(cornerObjs,unit.corners)) {
+          throw ProjectException(
+            "Modified unit overlaps with unit '${unit.name}."
+          );
+        }
       }
     }
-    else {
-      throw ProjectException(
-        "Unit cannot have the same name as a pre-existing unit."
-      );
-    }
-  }
-  
-  /// Changes the description of a pre-existing unit.
-  /// 
-  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
-  /// after modification.
-  Future<void> setUnitDescription(String id, String description) async
-  {
-    await NetworkService networkService = NetworkService.getInstance();
-    int unitIndex = units.indexWhere((unit) => unit.id == id);
-    units[unitIndex].description = description;
-    units[unitIndex].lastUpdated = DateTime.now();
-    lastUpdated = DateTime.now();
+
+    // make network request
+    final networkService = await NetworkService.getInstance();
+    final DateTime updateTimestamp;
 
     try {
-      await networkService.uploadProject(this);
+      final (createdLayers: _, createdUnits: _, :timestamp) = 
+        await networkService.configureProjectSite(
+          this.id,
+          unitUpdates: {
+            id: (
+              name:          name,
+              description:   description,
+              corners:       corners,
+              pointInterval: pointInterval,
+            )
+          }
+        );
+
+      updateTimestamp = timestamp;
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -571,77 +570,31 @@ class Project
         error.statusCode
       );
     }
-  }
-
-  /// Attempts to reposition a unit after checking that its new position doesn't
-  /// overlap with any pre-existing units, and discards any data assignments
-  /// that no longer fits the unit's new positioning.
-  /// 
-  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
-  /// after modification and a [ProjectException] if repositioning would incur
-  /// overlap with another unit.
-  Future<void> repositionUnit(String id, ({double latitude, double longitude})
-   topLeft, double width, double height, double pointInterval) async
-  {
-    await NetworkService networkService = NetworkService.getInstance();
-    // Initialize updated unit with position fields in order to check for
-    // overlap.
-    int unitIndex = units.indexWhere((unit) => unit.id == id);
-    specs.Unit updatedUnit = specs.Unit(
-      "", 
-      "", 
-      DateTime.now(), 
-      DateTime.now(),
-      topLeft,
-      width,
-      height,
-      pointInterval
-    );
-
-    // Check to make sure there is no overlap between the repositioned unit and 
-    /// any pre-existing unit.
-    for (var i = 0; i < units.length; i++) {
-      if (isOverlapping(updatedUnit, units[i])) {
-        throw ProjectException(
-          "Created unit overlaps with unit ${units[i].name}."
-        );
-      }
-    }
-
-    // If no overlap is present, change position of unit.
-    units[unitIndex].topLeftCoords = topLeft;
-    units[unitIndex].width = width;
-    units[unitIndex].height = height;
-    units[unitIndex].pointInterval = pointInterval;
-    units[unitIndex].lastUpdated = DateTime.now();
 
     // Check that data assigned to the unit still falls within its bounds and
     // remove assignments that do not.
-    dataAssignments.forEach((layerName, layerAssignments) {
-       layerAssignments.forEach((unitName, fileName) {
-        if (unitName == units[unitIndex].name) 
-        {
-          Future<String?> fileContents = getPxrfData(fileName);
-          fileContents.then((value) {
-            if (!checkAssignment(value!, units[unitIndex])) {
-              dataAssignments.remove(layerName);
-            }
-          });
+    if (cornerObjs != null) {
+      dataAssignments.forEach((layerId, layerAssignments) async {
+        final specId = layerAssignments[id];
+        if (specId == null) return;
+
+        final specIndex = pxrfData.indexWhere((spec) => spec.id == specId);
+        assert(specIndex >= 0, "Spec with ID '$specId' not found.");
+
+        if (!checkAssignment(pxrfData[specIndex], cornerObjs)) {
+          dataAssignments[layerId]![id] = null;
         }
       });
-    });
-
-    lastUpdated = DateTime.now();
-
-    try {
-      await networkService.uploadProject(this);
     }
-    on network.ApiNetworkException catch (error) {
-      throw network.ApiNetworkException(
-        "Project failed to update with the following error:\n$error", 
-        error.statusCode
-      );
-    }
+
+    // set local fields
+    if (name != null)          units[unitIndex].name = name;
+    if (description != null)   units[unitIndex].description = description;
+    if (cornerObjs != null)    units[unitIndex].corners = cornerObjs;
+    if (pointInterval != null) units[unitIndex].pointInterval = pointInterval;
+
+    units[unitIndex].lastUpdated = updateTimestamp;
+    lastUpdated = updateTimestamp;
   }
 
   /// Deletes a unit from the project.
@@ -650,20 +603,32 @@ class Project
   /// after modification.
   Future<void> deleteUnit(String id) async
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    int unitIndex = units.indexWhere((unit) => unit.id == id);
-    units.removeAt(unitIndex);
-    lastUpdated = DateTime.now();
+    final int unitIndex = units.indexWhere((unit) => unit.id == id);
+    assert(unitIndex >= 0, "Unit with ID '$id' not found.");
+
+    final networkService = await NetworkService.getInstance();
 
     try {
-      await networkService.uploadProject(this);
+      final (createdLayers: _, createdUnits: _, :timestamp) = 
+        await networkService.configureProjectSite(
+          this.id,
+          unitsToDelete: [id],
+        );
+      
+      lastUpdated = timestamp;
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
-        "Project failed to update with the following error:\n$error", 
+        "Unit failed to delete with the following error:\n$error", 
         error.statusCode
       );
     }
+
+    for (final layerId in dataAssignments.keys) {
+      dataAssignments[layerId]!.remove(id);
+    }
+
+    units.removeAt(unitIndex);
   }
 
   /// Assigns a layer and unit to a file after first confirming that the given
@@ -671,31 +636,35 @@ class Project
   /// 
   /// Throws a [ProjectException] if data does not fit within the unit and a
   /// [network.ApiNetworkException] if the project fails to upload.
-  Future<void> assignData(String layerId, String unitId, String fileName) 
-  async
+  Future<void> assignData(String layerId, String unitId, String specId) async
   {
-    await NetworkService networkService = NetworkService.getInstance();
+    // validate args
+    final int layerIndex = layers.indexWhere((layer) => layer.id == layerId);
+    final int unitIndex = units.indexWhere((unit) => unit.id == unitId);
+    final int specIndex = pxrfData.indexWhere((spec) => spec.id == specId);
+
+    assert(layerIndex >= 0, "Layer with ID '$layerId' not found.");
+    assert(unitIndex >= 0, "Unit with ID '$unitId' not found.");
+    assert(specIndex >= 0, "pXRF data spec with ID '$specIndex' not found.");
 
     // Ensure provided data fits within the given unit.
-    int unitIndex = units.indexWhere((unit) => unit.id == unitId);
-    Future<String?> fileContents = getPxrfData(fileName);
-    fileContents.then((value) {
-      if (!checkAssignment(value!, units[unitIndex])) {
-        throw ProjectException(
-          "Data from the file $fileName cannot be assigned to unit "
-          "${units[unitIndex].name}."
-        );
-      }
-    });
+    if (!checkAssignment(pxrfData[specIndex], units[unitIndex].corners)) {
+      throw ProjectException(
+        "Data from pXRF data spec with ID '$specId' cannot be assigned to unit "
+        "with ID '$unitId'."
+      );
+    }
 
-    int layerIndex = layers.indexWhere((layer) => layer.id == layerId);
-    final layerUnitMap = <String, String>{units[unitIndex].name: fileName};
-    dataAssignments[layers[layerIndex].name] = layerUnitMap;
-
-    lastUpdated = DateTime.now();
+    // make updates
+    final networkService = await NetworkService.getInstance();
 
     try {
-      await networkService.uploadProject(this);
+      lastUpdated = await networkService.assignProjectPxrfData(
+        id,
+        layerId,
+        unitId,
+        specId
+      );
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -703,6 +672,8 @@ class Project
         error.statusCode
       );
     }
+
+    dataAssignments[layerId]![unitId] = specId;
   }
 
   /// Sends the data files assigned to the layer passed by name as a parameter 
@@ -715,34 +686,41 @@ class Project
   /// a [network.ApiNetworkException] if either the job fails to run or the 
   /// project cannot be uploaded after modification.
   Future<jobs.PredictionJob> runPredictionJob(
-    String layerId, 
+    String  name,
+    String  description,
+    String  layerId,
     String? modelId
   ) async 
   {
-    await NetworkService networkService = NetworkService.getInstance();
+    // validate args
+    final layerIndex = layers.indexWhere((layer) => layer.id == layerId);
+    assert(layerIndex >= 0, "Layer with ID '$layerId' not found.");
 
-    // Find all data files corresponding to the given layer for filepath 
-    // creation.
-    int layerIndex = layers.indexWhere((layer) => layer.id == layerId);
-    List<String> filePaths = [];
-    dataAssignments.forEach((layerName, layerAssignments) {
-       layerAssignments.forEach((unitName, fileName) {
-        if (layerName == layerName) filePaths.add(layerName);
-      });
-    });
+    final modelIndex = modelId == null
+      ? null
+      : models.indexWhere((job) => job.id == modelId);
+    assert(
+      modelIndex == null || modelIndex >= 0,
+      "Model with ID '$modelId' not found."
+    );
 
-    if (filePaths.isEmpty) {
-      throw ProjectException("No data files correspond to the given layer.");
-    }
-    for (var i = 0; i < filePaths.length; i++) {
-      // TODO: Use file names to create actual file paths to where the files 
-      //will be located on the backend.
-    }
+    assert(
+      !dataAssignments[layerId]!.values.every((id) => id == null),
+      "Project has no data assignments on layer with ID '$layerId'."
+    );
 
-    jobs.PredictionJob predictionJob = jobs.PredictionJob(layers[layerIndex]);
+    // run update
+    final networkService = await NetworkService.getInstance();
+    final jobs.PredictionJob predictionJob;
 
     try {
-      await networkService.runModel(modelId, predictionJob, filePaths);
+      predictionJob = await networkService.runPredictionJob(
+        id,
+        name,
+        description,
+        layerId,
+        modelId
+      );
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -751,18 +729,10 @@ class Project
       );
     }
 
+    // update local copy
     predictions.add(predictionJob);
-    lastUpdated = DateTime.now();
-    try {
-      await networkService.uploadProject(this);
-      return predictionJob;
-    }
-    on network.ApiNetworkException catch (error) {
-      throw network.ApiNetworkException(
-        "Project failed to update with the following error:\n$error", 
-        error.statusCode
-      );
-    }
+    lastUpdated = predictionJob.createdAt;
+    return predictionJob;
   }
 
   /// Runs a training job using a given file as training data for the new model 
@@ -770,36 +740,39 @@ class Project
   /// 
   /// Throws a [network.ApiNetworkException] if the job fails to run or the 
   /// project cannot be uploaded after modification.
-  Future<jobs.TrainingJob> runTrainingJob(String name, String fileName) async 
+  Future<jobs.TrainingJob> runTrainingJob(
+    String name,
+    String description,
+    String specId,
+  ) async 
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    jobs.TrainingJob trainingJob = jobs.TrainingJob();
-    trainingJob.name = name;
-    // TODO: Use file name to construct proper filepath.
-    String filepath = "";
+   // validate args
+    final specIndex = trainingData.indexWhere((spec) => spec.id == specId);
+    assert(specIndex >= 0, "Training data spec with ID '$specId' not found.");
+
+    // run update
+    final networkService = await NetworkService.getInstance();
+    final jobs.TrainingJob trainingJob;
 
     try {
-      await networkService.trainModel(filepath, trainingJob);
+      trainingJob = await networkService.runTrainingJob(
+        id,
+        name,
+        description,
+        specId
+      );
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
-        "Training job failed to run with the following error:\n$error", 
+        "Prediction job failed to run with the following error:\n$error", 
         error.statusCode
       );
     }
 
+    // update local copy
     models.add(trainingJob);
-    lastUpdated = DateTime.now();
-    try {
-      await networkService.uploadProject(this);
-      return trainingJob;
-    }
-    on network.ApiNetworkException catch (error) {
-      throw network.ApiNetworkException(
-        "Project failed to update with the following error:\n$error", 
-        error.statusCode
-      );
-    }
+    lastUpdated = trainingJob.createdAt;
+    return trainingJob;
   }
 
   /// Changes the name of a prediction job.
@@ -807,50 +780,31 @@ class Project
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification and a [ProjectException] if new job name matches
   /// a pre-existing job.
-  Future<void> setJobName(String id, String newName) async
-  {
-    await NetworkService networkService = NetworkService.getInstance();
-    // Check if a pre-existing layer has the same name and only change the
-    // name if not
-    Iterable<jobs.PredictionJob> duplicateName = predictions.where(
-      (job) => job.name == newName);
-
-    if (duplicateName.isEmpty) {
-      int jobIndex = predictions.indexWhere((job) => job.id == id);
-      predictions[jobIndex].name = newName;
-      lastUpdated = DateTime.now();
-
-      try {
-        await networkService.uploadProject(this);
-      }
-      on network.ApiNetworkException catch (error) {
-        throw network.ApiNetworkException(
-          "Project failed to update with the following error:\n$error", 
-          error.statusCode
-        );
-      }
+  Future<void> setPredictionJobMetadata(
+    String id,
+    {
+      String? name,
+      String? description
     }
-    else {
-      throw ProjectException(
-        "Prediction cannot have the same name as a pre-existing prediction."
-      );
-    }
-  }
-
-  /// Changes the description of a prediction job.
-  /// 
-  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
-  /// after modification.
-  Future<void> setJobDescription(String id, String description) async
+  ) async
   {
-    await NetworkService networkService = NetworkService.getInstance();
+    // validate args
+    assert(name != null || description != null, "No updates specified.");
+
+    final jobIndex = predictions.indexWhere((job) => job.id == id);
+    assert(jobIndex >= 0, "Job with ID '$id' not found.");
     
-    int jobIndex = predictions.indexWhere((job) => job.id == id);
-    predictions[jobIndex].description = description;
-    lastUpdated = DateTime.now();
+    // run update
+    final networkService = await NetworkService.getInstance();
 
+    final DateTime timestamp;
     try {
-      await networkService.uploadProject(this);
+      timestamp = await networkService.setPredictionJobMetadata(
+        this.id,
+        id,
+        name: name,
+        description: description
+      );
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -858,29 +812,79 @@ class Project
         error.statusCode
       );
     }
+
+    if (name != null) predictions[jobIndex].name = name;
+    if (description != null) predictions[jobIndex].description = description;
+
+    predictions[jobIndex].lastUpdated = timestamp;
+    lastUpdated = timestamp;
   }
+
+
+  /// Changes the name of a prediction job.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
+  /// after modification and a [ProjectException] if new job name matches
+  /// a pre-existing job.
+  Future<void> setTrainingJobMetadata(
+    String id,
+    {
+      String? name,
+      String? description
+    }
+  ) async
+  {
+    // validate args
+    assert(name != null || description != null, "No updates specified.");
+
+    final jobIndex = models.indexWhere((job) => job.id == id);
+    assert(jobIndex >= 0, "Job with ID '$id' not found.");
+    
+    // run update
+    final networkService = await NetworkService.getInstance();
+
+    final DateTime timestamp;
+    try {
+      timestamp = await networkService.setTrainingJobMetadata(
+        this.id,
+        id,
+        name: name,
+        description: description
+      );
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+
+    if (name != null) models[jobIndex].name = name;
+    if (description != null) models[jobIndex].description = description;
+
+    models[jobIndex].lastUpdated = timestamp;
+    lastUpdated = timestamp;
+  }
+
 
   /// Deletes a prediction job from the project and deletes the corresponding 
   /// data file if it exists.
   /// 
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification or the prediction job cannot be successfully deleted.
-  Future<void> deleteJob(String id) async
+  Future<void> deletePredictionJob(String id) async
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    int jobIndex = predictions.indexWhere((job) => job.id == id);
-    predictions.removeAt(jobIndex);
-    lastUpdated = DateTime.now();
+    final jobIndex = predictions.indexWhere((job) => job.id == id);
+    assert(jobIndex >= 0, "Prediction job with ID '$id' not found.");
+    assert(
+      predictions[jobIndex].status == .complete
+      || predictions[jobIndex].status == .failed
+    );
 
-    bool fileCreated = false;
+    final networkService = await NetworkService.getInstance();
 
-    // TODO: Construct filepath to where prediction file will actually be 
-    // stored on the backend using presumably job id.
-    String filePath = "";
-
-    // Check if the job has completed and a file has been created.
     try {
-      fileCreated = await networkService.fileExists(filePath);
+      lastUpdated = await networkService.deletePredictionJob(this.id, id);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -890,16 +894,7 @@ class Project
       );
     }
 
-    try {
-        if (fileCreated) await networkService.deleteFile(filePath);
-        await networkService.uploadProject(this);
-    }
-    on network.ApiNetworkException catch (error) {
-      throw network.ApiNetworkException(
-        "Prediction job failed to delete with the following error:\n$error", 
-        error.statusCode
-      );
-    }
+    predictions.removeAt(jobIndex);
   }
 
   /// Uploads an image corresponding to a layer to the appropriate location in
@@ -921,6 +916,56 @@ class Project
     }
   }
 
+  /// Deletes a training job from the project and deletes the corresponding 
+  /// data file if it exists.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
+  /// after modification or the training job cannot be successfully deleted.
+  Future<void> deleteTrainingJob(String id) async
+  {
+    final jobIndex = models.indexWhere((job) => job.id == id);
+    assert(jobIndex >= 0, "Training job with ID '$id' not found.");
+    assert(
+      models[jobIndex].status == .complete
+      || models[jobIndex].status == .failed
+    );
+
+    final networkService = await NetworkService.getInstance();
+
+    try {
+      lastUpdated = await networkService.deleteTrainingJob(this.id, id);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Network service failed to check if models file was created due"
+        " to the following error: $error",
+        error.statusCode
+      );
+    }
+
+    models.removeAt(jobIndex);
+  }
+
+  /// Uploads an image corresponding to a layer to the appropriate location in
+  /// the database.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the image fails to upload.
+  Future<void> uploadLayerImage(String layerId, String imageContents) async
+  {
+    final networkService = await NetworkService.getInstance();
+    // TODO: write a thing
+
+    try {
+      networkService.writeFile(filePath, imageContents);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Layer image failed to upload with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+  }
+
   /// Fetches an image corresponding to a layer from the appropriate location in
   /// the database.
   /// 
@@ -930,6 +975,9 @@ class Project
     await NetworkService networkService = NetworkService.getInstance();
     String filePath = "";
     String? imageContents;
+
+    // TODO: write a thing
+
     try {
       imageContents = await networkService.fetchFile(filePath);
       return imageContents;
@@ -948,6 +996,8 @@ class Project
   /// Throws a [network.ApiNetworkException] if the image cannot be deleted.
   Future<void> removeLayerImage(String layerId) async
   {
+    // TODO: write a thing
+
     await NetworkService networkService = NetworkService.getInstance();
     String filePath = "";
     try {
@@ -965,8 +1015,11 @@ class Project
 /* ================================ Utility ================================ */
 
 /// Checks if two units are overlapping and returns true if so, false if not.
-bool isOverlapping(specs.Unit unit1, specs.Unit unit2)
+bool isOverlapping(List<latlong.LatLng> corners1, List<latlong.LatLng> corners2)
 {
+  assert(corners1.length == 4, "corners1 doesn't have four points.");
+  assert(corners2.length == 4, "corners2 doesn't have four points.");
+
   // Determine the top latitude, bottom latitude, left longitude, and right 
   // longitude for each unit - top and left are given, bottom and right have to
   // be calculated.
@@ -1036,9 +1089,15 @@ bool isOverlapping(specs.Unit unit1, specs.Unit unit2)
   return false;
 }
 
-/// Checks if a single lat/long point falls within a given unit.
-bool isWithinUnit(specs.Unit unit, double latitude, double longitude)
+/// Checks if a single lat/long point falls within a given set of corners.
+bool isWithinUnit(
+  List<latlong.LatLng> corners,
+  double latitude,
+  double longitude
+)
 {
+  assert(corners.length == 4, "corners doesn't have four elements.");
+
   double top = unit.topLeftCoords.latitude;
   double left = unit.topLeftCoords.longitude;
   double bottom = map_math.FlutterMapMath.destinationPoint(
@@ -1059,35 +1118,21 @@ bool isWithinUnit(specs.Unit unit, double latitude, double longitude)
   return false;
 }
 
-/// Checks if all the data within a pXRF file falls within the bounds of the
-/// appropriate unit (using isWithinUnit above). Unimplemented at the moment
-/// as the CSV data functions have not yet been implemented.
+/// Checks if all the data within the inputted [pxrfDataSpec] falls within the 
+/// bounds of the inputted [corners].
 /// 
-/// Returns true if all assigned data still falls within appropriate boundaries,
+/// [corners] must have four elements.
+/// 
+/// Returns true if all assigned data falls within appropriate boundaries,
 /// false if not.
-bool checkAssignment(String fileContents, specs.Unit unit) 
+bool checkAssignment(PxrfDataSpec pxrfDataSpec, List<latlong.LatLng> corners) 
 {
-  List<List<String>> formattedData = [];
-  List<String> fileLines = fileContents.split('\n');
-  for (var i = 0; i < fileLines.length; i++) {
-    formattedData.add(fileLines[i].split(','));
-  }
+  assert(corners.length == 4, "corners doesn't have four elements.");
 
-  int latIndex = formattedData[0].indexWhere((field) => field == "Latitude");
-  int longIndex = formattedData[0].indexWhere((field) => field == "Longitude");
+  // TODO: compare the expected number of points to the number of points in the
+  //       data spec.
 
-  // Extract the coordinates for each data point and check if they fall within
-  // the unit.
-  for (var i = 1; i < fileLines.length; i++) {
-    double latitude = double.parse(formattedData[i][latIndex]);
-    double longitude = double.parse(formattedData[i][longIndex]);
-    if (!isWithinUnit(unit, latitude, longitude))
-    {
-      return false;
-    }
-  }
-
-  return true;
+  return false;
 }
 
 /// Checks to make sure all required fields are present in the data file (the

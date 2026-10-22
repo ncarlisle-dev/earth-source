@@ -395,12 +395,12 @@ class _PredictionViewState extends State<PredictionView> {
               visualizer.Visualizer(
                 predictionData: snapshot.data!.$2 as List<List<double>>, 
                 imageFilePath: snapshot.data!.$1,
-                cornerCoordinates: widget.predictionJob.layer.cornerCoordinates,
+                corners: widget.predictionJob.layer.corners,
                 threshold: 0.5
               )
               :
               visualizer.TextDisplay(
-                cornerCoordinates: widget.predictionJob.layer.cornerCoordinates, 
+                corners: widget.predictionJob.layer.corners, 
                 predictionData: snapshot.data!.$2 as List<List<double>>, 
                 threshold: 0.5
               )

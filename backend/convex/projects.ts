@@ -41,6 +41,10 @@ import {
   ApiTrainingJob,
   ApiProject,
   ApiPxrfDataSpec,
+  ApiLayer,
+  ApiUnit,
+  DbLayer,
+  DbUnit,
 } from "./schema";
 
 
@@ -98,36 +102,32 @@ async function validateUpdates(updates: Record<string, any>) {
 /* ======================== Create/delete endpoints ======================== */
 
 /**
- * Mutation that creates a project given its name, description, top left
- * coordinates, width, and height. Returns the created project's ID.
+ * Mutation that creates a project given its name, description, and corner 
+ * points. Returns the created project.
  */
 export const createProject = zodMutation({
   args: {
-    name: zDbProject.shape.name,
+    name:        zDbProject.shape.name,
     description: zDbProject.shape.description,
-    topLeftCoords: zDbProject.shape.topLeftCoords,
-    width: zDbProject.shape.width,
-    height: zDbProject.shape.height,
+    corners:     zDbProject.shape.corners,
   },
   handler: async (ctx, args): Promise<ApiProject> => {
     const userId = await authenticateUser(ctx);
     const timestamp = Date.now();
 
     const projectId = await ctx.db.insert("projects", {
-      userId,
-      name: args.name,
-      description: args.description,
-      lastUpdated: timestamp,
-      topLeftCoords: args.topLeftCoords,
-      width: args.width,
-      height: args.height,
-      layerIds: [],
-      unitIds: [],
-      pxrfDataSpecIds: [],
+      userId:              userId,
+      name:                args.name,
+      description:         args.description,
+      lastUpdated:         timestamp,
+      corners:             args.corners,
+      dataAssignments:     {}, 
+      layerIds:            [],
+      unitIds:             [],
+      pxrfDataSpecIds:     [],
       trainingDataSpecIds: [],
-      dataAssignments: {}, 
-      predictionJobIds: [],
-      trainingJobIds: [],
+      predictionJobIds:    [],
+      trainingJobIds:      [],
     });
 
     return await ctx.runQuery(
@@ -179,9 +179,7 @@ export const getUserProjectSpecs = zodQuery({
       id:              dbProject._id,
       name:            dbProject.name,
       description:     dbProject.description,
-      topLeft:         dbProject.topLeftCoords,
-      width:           dbProject.width,
-      height:          dbProject.height,
+      corners:         dbProject.corners,
       lastUpdated:     dbProject.lastUpdated,
       createdAt:       dbProject._creationTime,
       numLayers:       dbProject.layerIds.length,
@@ -204,21 +202,19 @@ export const getProjectById = zodQuery({
     const dbProject = await getDbProject(ctx, args.id, userId);
 
     const project: ApiProject = {
-      id: dbProject._id,
-      name: dbProject.name,
-      description: dbProject.description,
-      topLeftCoords: dbProject.topLeftCoords,
-      width: dbProject.width,
-      height: dbProject.height,
-      lastUpdated: dbProject.lastUpdated,
-      createdAt: dbProject._creationTime,
-      layers: [],
-      units: [],
-      pxrfData: [],
-      trainingData: [],
+      id:              dbProject._id,
+      name:            dbProject.name,
+      description:     dbProject.description,
+      corners:         dbProject.corners,
+      lastUpdated:     dbProject.lastUpdated,
+      createdAt:       dbProject._creationTime,
       dataAssignments: dbProject.dataAssignments,
-      predictions: [],
-      models: [],
+      layers:          [],
+      units:           [],
+      pxrfData:        [],
+      trainingData:    [],
+      predictions:     [],
+      models:          [],
     };
 
     // fetch layers
@@ -228,10 +224,11 @@ export const getProjectById = zodQuery({
       .collect();
     
     project.layers = layers.map(dbLayer => ({
-      id: dbLayer._id,
-      name: dbLayer.name,
+      id:          dbLayer._id,
+      name:        dbLayer.name,
       description: dbLayer.description,
-      createdAt: dbLayer._creationTime,
+      corners:     dbLayer.corners,
+      createdAt:   dbLayer._creationTime,
       lastUpdated: dbLayer.lastUpdated,
     }))
 
@@ -242,14 +239,12 @@ export const getProjectById = zodQuery({
       .collect();
     
     project.units = units.map(dbUnit => ({
-      id: dbUnit._id,
-      name: dbUnit.name,
-      description: dbUnit.description,
-      createdAt: dbUnit._creationTime,
-      lastUpdated: dbUnit.lastUpdated,
-      topLeftCoords: dbUnit.topLeftCoords,
-      width: dbUnit.width,
-      height: dbUnit.height,
+      id:            dbUnit._id,
+      name:          dbUnit.name,
+      description:   dbUnit.description,
+      createdAt:     dbUnit._creationTime,
+      lastUpdated:   dbUnit.lastUpdated,
+      corners:       dbUnit.corners,
       pointInterval: dbUnit.pointInterval,
     }));
 
@@ -373,18 +368,15 @@ export const setProjectMetadata = zodMutation({
 })
 
 /**
- * Action that updates a project's location, width, height, units, and
- * layers given its ID. Deletes any jobs and files associated with deleted
- * layers. Returns the created units' IDs, created layers' IDs, and the update
- * timestamp.
+ * Action that updates a project's location, units, and layers. Deletes any
+ * jobs and files associated with deleted layers. Returns the created units' 
+ * IDs, created layers' IDs, and the update timestamp.
  */
 export const configureProjectSite = zodAction({
   args: {
     projectId: zid("projects"),
 
-    siteTopLeftCoords: zDbProject.shape.topLeftCoords.optional(),
-    siteWidth: zDbProject.shape.width.optional(),
-    siteHeight: zDbProject.shape.height.optional(),
+    siteCorners: zDbProject.shape.corners.optional(),
 
     newUnits: z.array(
       zApiUnit.omit({
@@ -448,17 +440,17 @@ export const configureProjectSite = zodAction({
     await Promise.all(deleteFilePromises);
 
     return {
-      createdUnitIds: dbUpdateResult.createdUnitIds,
-      createdLayerIds: dbUpdateResult.createdLayerIds,
-      timestamp: dbUpdateResult.timestamp,
+      createdUnits:  dbUpdateResult.createdUnits,
+      createdLayers: dbUpdateResult.createdLayers,
+      timestamp:     dbUpdateResult.timestamp,
     };
   }
 });
 
 /** The return type of {@link configureProjectSiteDb}. */
 interface ConfigureProjectSiteDbResult {
-  createdLayerIds: Id<"layers">[];
-  createdUnitIds: Id<"units">[];
+  createdLayers: ApiLayer[];
+  createdUnits: ApiUnit[];
   storageIdsToDelete: Id<"_storage">[];
   timestamp: Timestamp;
 }
@@ -471,9 +463,7 @@ export const configureProjectSiteDb = zodInternalMutation({
     userId: zid("users"),
     projectId: zid("projects"),
 
-    siteTopLeftCoords: zDbProject.shape.topLeftCoords.optional(),
-    siteWidth: zDbProject.shape.width.optional(),
-    siteHeight: zDbProject.shape.height.optional(),
+    siteCorners: zDbProject.shape.corners.optional(),
 
     newUnits: z.array(
       zApiUnit.omit({
@@ -573,7 +563,7 @@ export const configureProjectSiteDb = zodInternalMutation({
     // TODO: find a different way of storing predictions to make this 
     //       check unnecessary
 
-    if (args.siteWidth !== undefined || args.siteHeight !== undefined) {
+    if (args.siteCorners !== undefined) {
       const incompleteJob = await ctx.db
         .query("jobs")
         .withIndex(
@@ -744,9 +734,7 @@ export const configureProjectSiteDb = zodInternalMutation({
       "projects",
       args.projectId,
       {
-        topLeftCoords: args.siteTopLeftCoords,
-        width: args.siteWidth,
-        height: args.siteHeight,
+        corners: args.siteCorners,
         dataAssignments,
         layerIds: newLayerIds,
         predictionJobIds: newPredictionIds,
@@ -755,6 +743,24 @@ export const configureProjectSiteDb = zodInternalMutation({
       }
     );
 
+    // get the created layers and units
+
+    const createdDbLayerPromises: Promise<DbLayer>[] = createdLayerIds.map(async (id) => {
+      const dbLayer = await ctx.db.get("layers", id)
+      if (dbLayer === null)
+        throw new UnknownServerError("Couldn't get created layer.");
+
+      return dbLayer;
+    });
+
+    const createdDbUnitPromises: Promise<DbUnit>[] = createdUnitIds.map(async (id) => {
+      const dbUnit = await ctx.db.get("units", id)
+      if (dbUnit === null)
+        throw new UnknownServerError("Couldn't get created unit.");
+
+      return dbUnit;
+    });
+
     // wait for any remaining updates to finish
     await Promise.all(patchLayerPromises);
     await Promise.all(deleteLayerPromises);
@@ -762,10 +768,28 @@ export const configureProjectSiteDb = zodInternalMutation({
     await Promise.all(patchUnitPromises);
     await Promise.all(deleteUnitPromises);
 
+    const createdDbLayers = await Promise.all(createdDbLayerPromises)
+    const createdDbUnits = await Promise.all(createdDbUnitPromises)
+
     // return
     return {
-      createdLayerIds,
-      createdUnitIds,
+      createdLayers: createdDbLayers.map(dbLayer => ({
+        id:          dbLayer._id,
+        name:        dbLayer.name,
+        description: dbLayer.description,
+        corners:     dbLayer.corners,
+        createdAt:   dbLayer._creationTime,
+        lastUpdated: dbLayer.lastUpdated,
+      })),
+      createdUnits: createdDbUnits.map(dbUnit => ({
+        id:            dbUnit._id,
+        name:          dbUnit.name,
+        description:   dbUnit.description,
+        corners:       dbUnit.corners,
+        pointInterval: dbUnit.pointInterval,
+        createdAt:     dbUnit._creationTime,
+        lastUpdated:   dbUnit.lastUpdated,
+      })),
       storageIdsToDelete: predictionJobsToDelete
         .map(job => job.outputStorageId)
         .filter(id => id !== undefined) as Id<"_storage">[],

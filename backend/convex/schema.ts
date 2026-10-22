@@ -26,11 +26,6 @@ const zCoordinate = z.object({
   longitude: zLongitude
 });
 
-/** Zod type defining a valid width value. Must be a number > 0 and <= 360. */
-const zWidth = z.number().gt(0).lte(360);
-/** Zod type defining a valid height value. Must be a number > 0 and <= 180. */
-const zHeight= z.number().gt(0).lte(180);
-
 /**
  * Zod type defining a valid timestamp. Must be an integer >= 0. Represents
  * milliseconds since epoch.
@@ -72,9 +67,7 @@ export const zDbUnit = z.object({
   name:          z.string(),
   description:   z.string(),
   lastUpdated:   zTimestamp,
-  topLeftCoords: zCoordinate,
-  width:         zWidth,
-  height:        zHeight,
+  corners:       zCoordinate.array().length(4),
   pointInterval: z.number().gt(0),
 });
 /** A unit in the database derived from {@link zDbUnit}. */
@@ -86,6 +79,7 @@ export const zDbLayer = z.object({
   projectId:   zid("projects"),
   name:        z.string(),
   description: z.string(),
+  corners:     zCoordinate.array().length(4),
   lastUpdated: zTimestamp,
 });
 /** A layer in the database, derived from {@link zDbLayer}. */
@@ -152,7 +146,7 @@ const zDbBaseJob = z.object({
 export const zDbPredictionJob = zDbBaseJob.extend({
   kind:            z.literal("prediction"),
   layerId:         zid("layers"),
-  modelId:         zid("jobs"),
+  modelId:         zid("jobs").nullable(),
   dataAssignments: z.record(zid("units"), zid("dataSpecs").nullable()),
 });
 /** A prediction job in the database, dervied from {@link zDbPredictionJob}. */
@@ -186,9 +180,7 @@ export const zDbProject = z.object({
   name:                z.string(),
   description:         z.string(),
   lastUpdated:         zTimestamp,
-  topLeftCoords:       zCoordinate,
-  width:               zWidth,
-  height:              zHeight,
+  corners:             zCoordinate.array().length(4),
   layerIds:            z.array(zid("layers")),
   unitIds:             z.array(zid("units")),
   pxrfDataSpecIds:     z.array(zid("dataSpecs")),
@@ -335,9 +327,7 @@ export const zApiProject = zDbProject
     name:            true,
     description:     true,
     lastUpdated:     true,
-    width:           true,
-    height:          true,
-    topLeftCoords:   true,
+    corners:         true,
     dataAssignments: true,
   })
   .extend({

@@ -30,7 +30,7 @@ class MappedPoint
 /// if invalid or if no data file is provided.
 Future<List<map.Polygon>> _validateData(
   List<List<double>> predictionData, 
-  List<latlong.LatLng> cornerCoordinates,
+  List<latlong.LatLng> corners,
   double threshold
 ) async
 {
@@ -55,17 +55,17 @@ Future<List<map.Polygon>> _validateData(
       // (i.e. longitude) between points in the grid by evenly spacing them over
       // the distance between corner coordinates.
       double heightInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
-        cornerCoordinates[0].latitude, 
-        cornerCoordinates[0].longitude, 
-        cornerCoordinates[1].latitude, 
-        cornerCoordinates[1].longitude, 
+        corners[0].latitude, 
+        corners[0].longitude, 
+        corners[1].latitude, 
+        corners[1].longitude, 
         ""
       );
       double widthInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
-        cornerCoordinates[0].latitude, 
-        cornerCoordinates[0].longitude, 
-        cornerCoordinates[2].latitude, 
-        cornerCoordinates[2].longitude, 
+        corners[0].latitude, 
+        corners[0].longitude, 
+        corners[2].latitude, 
+        corners[2].longitude, 
         ""
       );
 
@@ -91,26 +91,26 @@ Future<List<map.Polygon>> _validateData(
             // Use these distances to calculate latitude and longitude for each
             // of the four corner points of the polygon.
             double left = flutter_geo_math.FlutterMapMath.destinationPoint(
-              cornerCoordinates[0].latitude, 
-              cornerCoordinates[0].longitude, 
+              corners[0].latitude, 
+              corners[0].longitude, 
               width1, 
               90
             ).longitude;
             double right = flutter_geo_math.FlutterMapMath.destinationPoint(
-              cornerCoordinates[0].latitude, 
-              cornerCoordinates[0].longitude, 
+              corners[0].latitude, 
+              corners[0].longitude, 
               width2, 
               90
             ).longitude;
             double top = flutter_geo_math.FlutterMapMath.destinationPoint(
-              cornerCoordinates[0].latitude, 
-              cornerCoordinates[0].longitude, 
+              corners[0].latitude, 
+              corners[0].longitude, 
               height1, 
               180
             ).latitude;
             double bottom = flutter_geo_math.FlutterMapMath.destinationPoint(
-              cornerCoordinates[0].latitude, 
-              cornerCoordinates[0].longitude, 
+              corners[0].latitude, 
+              corners[0].longitude, 
               height2, 
               180
             ).latitude;
@@ -139,7 +139,7 @@ Future<List<map.Polygon>> _validateData(
 /// rectangle) and returns a list of geolocated data points.
 Future<List<MappedPoint>> _attachCoords(
   List<List<double>> predictionData, 
-  List<latlong.LatLng> cornerCoordinates,
+  List<latlong.LatLng> corners,
   double threshold
 ) async
 {
@@ -149,17 +149,17 @@ Future<List<MappedPoint>> _attachCoords(
   // (i.e. longitude) between points in the grid by evenly spacing them over
   // the distance between corner coordinates.
   double heightInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
-    cornerCoordinates[0].latitude, 
-    cornerCoordinates[0].longitude, 
-    cornerCoordinates[1].latitude, 
-    cornerCoordinates[1].longitude, 
+    corners[0].latitude, 
+    corners[0].longitude, 
+    corners[1].latitude, 
+    corners[1].longitude, 
     ""
   );
   double widthInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
-    cornerCoordinates[0].latitude, 
-    cornerCoordinates[0].longitude, 
-    cornerCoordinates[2].latitude, 
-    cornerCoordinates[2].longitude, 
+    corners[0].latitude, 
+    corners[0].longitude, 
+    corners[2].latitude, 
+    corners[2].longitude, 
     ""
   );
 
@@ -177,14 +177,14 @@ Future<List<MappedPoint>> _attachCoords(
       // Use these distances to calculate latitude and longitude for each
       // of the four corner points of the polygon.
       double longitude = flutter_geo_math.FlutterMapMath.destinationPoint(
-        cornerCoordinates[0].latitude, 
-        cornerCoordinates[0].longitude, 
+        corners[0].latitude, 
+        corners[0].longitude, 
         width, 
         90
       ).longitude;
       double latitude = flutter_geo_math.FlutterMapMath.destinationPoint(
-        cornerCoordinates[0].latitude, 
-        cornerCoordinates[0].longitude, 
+        corners[0].latitude, 
+        corners[0].longitude, 
         height, 
         180
       ).latitude;
@@ -223,7 +223,7 @@ class Visualizer extends StatelessWidget
   /// Filepath to the image to be displayed.
   final String imageFilePath;
   /// List of decimal coordinates for the four corners of the image.
-  final List<latlong.LatLng> cornerCoordinates;
+  final List<latlong.LatLng> corners;
   /// Threshold for the minimum value at which prediction points are displayed
   /// on the map, set by the user in the prediction page UI.
   final double threshold;
@@ -232,7 +232,7 @@ class Visualizer extends StatelessWidget
     super.key, 
     required this.imageFilePath, 
     required this.predictionData, 
-    required this.cornerCoordinates,
+    required this.corners,
     required this.threshold
   });
 
@@ -249,10 +249,10 @@ class Visualizer extends StatelessWidget
             mapController: mapController,
             options: map.MapOptions(
               initialCenter: latlong.LatLng(
-                (cornerCoordinates[0].latitude + 
-                cornerCoordinates[1].latitude) / 2, 
-                (cornerCoordinates[0].longitude + 
-                cornerCoordinates[2].longitude) / 2
+                (corners[0].latitude + 
+                corners[1].latitude) / 2, 
+                (corners[0].longitude + 
+                corners[2].longitude) / 2
               ),
               initialZoom: 22.0,
             ),
@@ -278,16 +278,16 @@ class Visualizer extends StatelessWidget
                 overlayImages: [
                   map.RotatedOverlayImage(
                     topLeftCorner: latlong.LatLng(
-                      cornerCoordinates[0].latitude, 
-                      cornerCoordinates[0].longitude
+                      corners[0].latitude, 
+                      corners[0].longitude
                     ),
                     bottomLeftCorner: latlong.LatLng(
-                      cornerCoordinates[1].latitude, 
-                      cornerCoordinates[1].longitude
+                      corners[1].latitude, 
+                      corners[1].longitude
                     ),
                     bottomRightCorner: latlong.LatLng(
-                      cornerCoordinates[3].latitude, 
-                      cornerCoordinates[3].longitude
+                      corners[3].latitude, 
+                      corners[3].longitude
                     ),
                     imageProvider: FileImage(image),
                   )
@@ -296,7 +296,7 @@ class Visualizer extends StatelessWidget
               FutureBuilder(
                 future: _validateData(
                   predictionData, 
-                  cornerCoordinates, 
+                  corners, 
                   threshold
                 ),
                 builder: (
@@ -315,16 +315,16 @@ class Visualizer extends StatelessWidget
                 overlayImages: [
                   map.RotatedOverlayImage(
                     topLeftCorner: latlong.LatLng(
-                      cornerCoordinates[0].latitude, 
-                      cornerCoordinates[0].longitude
+                      corners[0].latitude, 
+                      corners[0].longitude
                     ),
                     bottomLeftCorner: latlong.LatLng(
-                      cornerCoordinates[1].latitude, 
-                      cornerCoordinates[1].longitude
+                      corners[1].latitude, 
+                      corners[1].longitude
                     ),
                     bottomRightCorner: latlong.LatLng(
-                      cornerCoordinates[3].latitude, 
-                      cornerCoordinates[3].longitude
+                      corners[3].latitude, 
+                      corners[3].longitude
                     ),
                     imageProvider: FileImage(image),
                     opacity: 0.5,
@@ -352,7 +352,7 @@ class TextDisplay extends StatelessWidget
   /// 2D list of data representing the prediction points to be displayed.
   final List<List<double>> predictionData;
   /// List of decimal coordinates for the four corners of the image.
-  final List<latlong.LatLng> cornerCoordinates;
+  final List<latlong.LatLng> corners;
   /// Threshold for the minimum value at which prediction points are displayed
   /// on the map, set by the user in the prediction page UI.
   final double threshold;
@@ -360,7 +360,7 @@ class TextDisplay extends StatelessWidget
   const TextDisplay({
     super.key,  
     required this.predictionData, 
-    required this.cornerCoordinates,
+    required this.corners,
     required this.threshold
   });
 
@@ -368,7 +368,7 @@ class TextDisplay extends StatelessWidget
   Widget build(BuildContext context)
   {
     return FutureBuilder(
-      future: _attachCoords(predictionData, cornerCoordinates, threshold), 
+      future: _attachCoords(predictionData, corners, threshold), 
       builder: (BuildContext ctx, AsyncSnapshot<List> snapshot) 
         => snapshot.hasData
       ?

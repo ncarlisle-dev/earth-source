@@ -69,7 +69,7 @@ class PredictionJob extends Job
   final String layerId;
   /// Model id if a newly trained model is being used (defaults to base model if 
   /// empty).
-  String modelId;
+  final String? modelId;
   final Map<String, String> dataAssignments;
 
   PredictionJob({

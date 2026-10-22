@@ -9,7 +9,8 @@ import 'package:dzod/dzod.dart' as dzod;
 import 'package:convex_flutter/convex_flutter.dart' as convex;
 import 'package:http/http.dart' as http;
 
-typedef Coordinate = ({ double latitude, double longitude });
+// TODO: add extra utility functions for converting between API types and 
+// frontend types (i.e. ApiLayer => Layer).
 
 /// Object given by [dzod] to access types.
 final _z = dzod.z;
@@ -31,45 +32,48 @@ T parseNetworkResponse<T>(String response, dzod.Schema<T> schema)
   return data;
 }
 
+Map<String, double> convertCoordRecordToMap(common.Coordinate coord)
+  => {
+    'latitude':  coord.latitude,
+    'longitude': coord.longitude,
+  };
+
+latlong.LatLng convertCoordRecordToObj(common.Coordinate coord)
+  => latlong.LatLng(coord.latitude, coord.longitude);
+
 common.Project convertApiProject(api_types.ApiProject apiProject)
 {
   return common.Project(
-    id:              apiProject.id,
-    name:            apiProject.name,
-    description:     apiProject.description,
-    topLeftCoords:   apiProject.topLeftCoords,
-    width:           apiProject.width,
-    height:          apiProject.height,
-    dataAssignments: apiProject.dataAssignments,
-    createdAt:       DateTime.fromMicrosecondsSinceEpoch(apiProject.createdAt),
-    lastUpdated:     DateTime.fromMicrosecondsSinceEpoch(
-                       apiProject.lastUpdated
-                     ),
+    id:               apiProject.id,
+    name:             apiProject.name,
+    description:      apiProject.description,
+    corners:          apiProject.corners.map((corner) => latlong.LatLng(
+                        corner.latitude,
+                        corner.longitude,
+                      )).toList(),
+    dataAssignments:  apiProject.dataAssignments,
+    createdAt:        DateTime.fromMicrosecondsSinceEpoch(apiProject.createdAt),
+    lastUpdated:      DateTime.fromMicrosecondsSinceEpoch(
+                        apiProject.lastUpdated
+                      ),
 
     layers: apiProject.layers.map((layer) => common.Layer(
-      id:                 layer.id,
-      name:               layer.name,
-      description:        layer.description,
-      cornerCoordinates:  [],
-      createdAt:          DateTime.fromMicrosecondsSinceEpoch(layer.createdAt),
-      lastUpdated:        DateTime.fromMicrosecondsSinceEpoch(
-                            layer.lastUpdated
-                          ),
+      id:            layer.id,
+      name:          layer.name,
+      description:   layer.description,
+      corners:       layer.corners.map(convertCoordRecordToObj).toList(),
+      createdAt:     DateTime.fromMicrosecondsSinceEpoch(layer.createdAt),
+      lastUpdated:   DateTime.fromMicrosecondsSinceEpoch(layer.lastUpdated),
     )).toList(),
 
     units: apiProject.units.map((unit) => common.Unit(
-      id:                 unit.id,
-      name:               unit.name,
-      description:        unit.description,
-      topLeftCoords:      latlong.LatLng(
-                            unit.topLeftCoords.latitude,
-                            unit.topLeftCoords.longitude
-                          ),
-      width:              unit.width, 
-      height:             unit.height,
-      pointInterval:      unit.pointInterval,
-      createdAt:          DateTime.fromMicrosecondsSinceEpoch(unit.createdAt),
-      lastUpdated:        DateTime.fromMicrosecondsSinceEpoch(unit.lastUpdated),
+      id:            unit.id,
+      name:          unit.name,
+      description:   unit.description,
+      corners:       unit.corners.map(convertCoordRecordToObj).toList(),
+      pointInterval: unit.pointInterval,
+      createdAt:     DateTime.fromMicrosecondsSinceEpoch(unit.createdAt),
+      lastUpdated:   DateTime.fromMicrosecondsSinceEpoch(unit.lastUpdated),
     )).toList(),
 
     pxrfData: apiProject.pxrfData.map((spec) => common.PxrfDataSpec(
@@ -248,22 +252,18 @@ class NetworkService {
   }
 
   Future<common.Project> createProject(
-    String name,
-    String description,
-    Coordinate topLeftCoords,
-    double width,
-    double height,
+    String                  name,
+    String                  description,
+    List<common.Coordinate> corners,
   ) async
   {
     final client = _getClient();
     final response = await client.mutation(
       name: "projects:createProject",
       args: {
-        'name':          name,
-        'description':   description,
-        'topLeftCoords': topLeftCoords,
-        'width':         width,
-        'height':        height,
+        'name':        name,
+        'description': description,
+        'corners':     corners.map(convertCoordRecordToMap).toList(),
       },
     );
     
@@ -306,50 +306,45 @@ class NetworkService {
   }
 
   Future<({
-    List<String> createdUnitIds,
-    List<String> createdLayerIds,
-    DateTime timestamp,
+    List<common.Unit>  createdUnits,
+    List<common.Layer> createdLayers,
+    DateTime           timestamp,
   })> configureProjectSite(
     String id,
     {
-      Coordinate? siteTopLeftCoords,
-
-      double? siteWidth,
-      double? siteHeight,
+      List<common.Coordinate>? siteCorners,
 
       List<({
-        String name,
-        String description,
-        Coordinate topLeftCoords,
-        double width,
-        double height,
-        double pointInterval
+        String                  name,
+        String                  description,
+        double                  pointInterval,
+        List<common.Coordinate> corners,
       })> newUnits = const [],
 
       Map<
         String,
         ({
-          String? name,
-          String? description,
-          Coordinate? topLeftCoords,
-          double? width,
-          double? height,
-          double? pointInterval
+          String?                  name,
+          String?                  description,
+          double?                  pointInterval,
+          List<common.Coordinate>? corners,
         })
       > unitUpdates = const {},
 
       List<String> unitsToDelete = const [],
 
       List<({
-        String name,
-        String description,
+        String                  name,
+        String                  description,
+        List<common.Coordinate> corners,
       })> newLayers = const [],
 
       Map<
         String,
         ({
-          String? name,
-          String? description,
+          String?                  name,
+          String?                  description,
+          List<common.Coordinate>? corners,
         })
       > layerUpdates = const {},
 
@@ -357,10 +352,11 @@ class NetworkService {
     }
   ) async
   {
+    // check params
+    // TODO: assert no duplicate IDs
+
     assert(
-      siteTopLeftCoords != null
-        || siteWidth != null
-        || siteHeight != null
+      siteCorners != null
         || newUnits.isNotEmpty
         || unitUpdates.isNotEmpty
         || unitsToDelete.isNotEmpty
@@ -370,69 +366,95 @@ class NetworkService {
       "No updates specified."
     );
 
+    // send request
     final client = _getClient();
     final response = await client.mutation(
       name: "projects:configureProjectSite",
       args: {
-        'id':                 id,
-        'siteTopLeftCoords':  siteTopLeftCoords == null
-                                ? null
-                                : { 
-                                  'latitude':  siteTopLeftCoords.latitude,
-                                  'longitude': siteTopLeftCoords.longitude,
-                                },
-        'siteWidth':          siteWidth,
-        'siteHeight':         siteHeight,
-        'newUnits':           newUnits.map((unit) => {
-                                'name':          unit.name,
-                                'description':   unit.description,
-                                'topLeftCoords': unit.topLeftCoords,
-                                'width':         unit.width,
-                                'height':        unit.height,
-                                'pointInterval': unit.pointInterval,
-                              }).toList(),
-        'unitUpdates':        unitUpdates.map((unitId, updates) => MapEntry(
-                                unitId, 
-                                {
-                                  'name':          updates.name,
-                                  'description':   updates.description,
-                                  'topLeftCoords': updates.topLeftCoords,
-                                  'width':         updates.width,
-                                  'height':        updates.height,
-                                  'pointInterval': updates.pointInterval,
-                                }
-                              )),
-        'unitsToDelete':      unitsToDelete,
-        'newLayers':          newLayers.map((layer) => {
-                                'name':        layer.name,
-                                'description': layer.description,
-                              }).toList(),
-        'layerUpdates':       layerUpdates.map((layerId, updates) => MapEntry(
-                                layerId,
-                                {
-                                  'name':        updates.name,
-                                  'description': updates.description,
-                                }
-                              )),
-        'layersToDelete':     layersToDelete,
+        'id':             id,
+        'siteCorners':    siteCorners?.map((corner) => {
+                            'latitude':  corner.latitude,
+                            'longitude': corner.longitude,
+                          }).toList(),
+        'newUnits':       newUnits.map((unit) => {
+                            'name':          unit.name,
+                            'description':   unit.description,
+                            'corners':       unit.corners
+                                              .map(convertCoordRecordToMap)
+                                              .toList(),
+                            'pointInterval': unit.pointInterval,
+                          }).toList(),
+        'unitUpdates':    unitUpdates.map((unitId, updates) => MapEntry(
+                            unitId, 
+                            {
+                              'name':           updates.name,
+                              'description':    updates.description,
+                              'corners':        updates.corners
+                                                  ?.map(convertCoordRecordToMap)
+                                                  .toList(),
+                              'pointInterval':  updates.pointInterval,
+                            }
+                          )),
+        'unitsToDelete':  unitsToDelete,
+        'newLayers':      newLayers.map((layer) => {
+                            'name':         layer.name,
+                            'description':  layer.description,
+                            'corners':      layer.corners
+                                              .map(convertCoordRecordToMap)
+                                              .toList(),
+                          }).toList(),
+        'layerUpdates':   layerUpdates.map((layerId, updates) => MapEntry(
+                            layerId,
+                            {
+                              'name':         updates.name,
+                              'description':  updates.description,
+                              'corners':      updates.corners
+                                                ?.map(convertCoordRecordToMap)
+                                                .toList(),
+                            }
+                          )),
+        'layersToDelete': layersToDelete,
       },
     );
 
+    // parse response
     final zExpectedConfigurationResult = _z
       .object({
-        'createdUnitIds': _z.array(api_types.zId),
-        'createdLayerIds': _z.array(api_types.zId),
-        'timestamp': api_types.zTimestamp,
+        'createdUnits':  _z.array(api_types.zApiUnit),
+        'createdLayers': _z.array(api_types.zApiLayer),
+        'timestamp':     api_types.zTimestamp,
       })
       .transform((map) => (
-        createdUnitIds: map['createdUnitIds'] as List<String>,
-        createdLayerIds: map['createdLayerIds'] as List<String>,
+        createdUnits: map['createdUnits'] as List<api_types.ApiUnit>,
+        createdLayers: map['createdLayers'] as List<api_types.ApiLayer>,
         timestamp: DateTime.fromMillisecondsSinceEpoch(map['createdLayerIds']),
       ));
 
-    return parseNetworkResponse(
+    final configResult = parseNetworkResponse(
       response,
       zExpectedConfigurationResult
+    );
+
+    // return results
+    return (
+      createdUnits: configResult.createdUnits.map((unit) => common.Unit(
+        id:            unit.id,
+        name:          unit.name,
+        description:   unit.description,
+        corners:       unit.corners.map(convertCoordRecordToObj).toList(),
+        pointInterval: unit.pointInterval,
+        createdAt:     DateTime.fromMicrosecondsSinceEpoch(unit.createdAt),
+        lastUpdated:   DateTime.fromMicrosecondsSinceEpoch(unit.lastUpdated),
+      )).toList(),
+      createdLayers: configResult.createdLayers.map((layer) => common.Layer(
+        id:            layer.id,
+        name:          layer.name,
+        description:   layer.description,
+        corners:       layer.corners.map(convertCoordRecordToObj).toList(),
+        createdAt:     DateTime.fromMicrosecondsSinceEpoch(layer.createdAt),
+        lastUpdated:   DateTime.fromMicrosecondsSinceEpoch(layer.lastUpdated),
+      )).toList(),
+      timestamp:     configResult.timestamp,
     );
   }
 
@@ -533,6 +555,33 @@ class NetworkService {
     final response = await client.mutation(
       name: "projects:deleteProjectPxrfData",
       args: { "projectId": projectId, "specId": specId },
+    );
+
+    final timestamp = parseNetworkResponse(
+      response,
+      api_types.zTimestamp,
+    );
+
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
+  }
+
+  Future<DateTime> assignProjectPxrfData(
+    String projectId,
+    String layerId,
+    String unitId,
+    String specId
+  ) async
+  {
+    final client = _getClient();
+
+    final response = await client.mutation(
+      name: "projects:assignProjectPxrfData",
+      args: {
+        "projectId": projectId,
+        "layerId":   layerId,
+        "unitId":    unitId,
+        "specId":    specId
+      },
     );
 
     final timestamp = parseNetworkResponse(
@@ -673,11 +722,7 @@ class NetworkService {
       args: { "projectId": projectId, "specId": specId },
     );
 
-    final timestamp = parseNetworkResponse(
-      response,
-      api_types.zTimestamp,
-    );
-
+    final timestamp = parseNetworkResponse(response, api_types.zTimestamp);
     return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
@@ -713,11 +758,11 @@ class NetworkService {
   }
 
   Future<common.PredictionJob> runPredictionJob(
-    String projectId,
-    String name,
-    String description,
-    String layerId,
-    String modelId,
+    String  projectId,
+    String  name,
+    String  description,
+    String  layerId,
+    String? modelId,
   ) async
   {
     final client = _getClient();

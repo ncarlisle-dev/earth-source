@@ -29,7 +29,7 @@ class Layer
   /// Given description of the layer.
   String description;
   /// Coordinates of the four corner points of the layer image.
-  final List<latlong.LatLng> cornerCoordinates;
+  List<latlong.LatLng> corners;
   /// Time the layer was created.
   final DateTime createdAt;
   /// Time the layer was last updated.
@@ -41,12 +41,11 @@ class Layer
     required this.description,
     required this.createdAt, 
     required this.lastUpdated,
-    required this.cornerCoordinates,
+    required this.corners,
   });
 }
 
-/// A unit within an archaeological site, defined by a top left coordinate and
-/// a given width and height.
+/// A unit within an archaeological site, defined by four corners.
 class Unit
 {
   /// Id of the unit.
@@ -55,12 +54,8 @@ class Unit
   String name; 
   /// Given description of the unit.
   String description;
-  /// Coordinates of the top left corner of the unit.
-  latlong.LatLng topLeftCoords;
-  /// Width of the unit.
-  double width;
-  /// Height of the unit.
-  double height;
+  /// Coordinates of the corners of the unit.
+  List<latlong.LatLng> corners;
   /// Interval between sampling points within the unit.
   double pointInterval;
   /// Time the unit was created.
@@ -72,9 +67,7 @@ class Unit
     required this.id,
     required this.name,
     required this.description,
-    required this.topLeftCoords,
-    required this.width, 
-    required this.height, 
+    required this.corners,
     required this.pointInterval,
     required this.createdAt, 
     required this.lastUpdated, 

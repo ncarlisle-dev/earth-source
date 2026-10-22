@@ -17,11 +17,6 @@ final zId = _z.string().uuid();
 /// milliseconds since epoch.
 final zTimestamp = _z.integer().min(0).transform((val) => val.toInt());
 
-/// Zard type defining a valid width value. Must be a number > 0 and <= 360.
-final _zWidth = _z.number().max(360).gt(0);
-/// Zard type defining a valid height value. Must be a number > 0 and <= 180.
-final _zHeight = _z.number().max(180).gt(0);
-
 /// Zard type defining a latitude value. Must be a number between -90 and 90,
 /// inclusive.
 final _zLatitude = _z.number().min(-90).max(90);
@@ -104,27 +99,33 @@ final zApiConnectionSpec = _z.object({
 
 class ApiLayer
 {
-  final String id;
-  final String name;
-  final String description;
-  final int    createdAt;
-  final int    lastUpdated;
+  final String                  id;
+  final String                  name;
+  final String                  description;
+  final List<common.Coordinate> corners;
+  final int                     createdAt;
+  final int                     lastUpdated;
 
   ApiLayer({
     required this.id,
     required this.name,
     required this.description,
+    required this.corners,
     required this.createdAt,
     required this.lastUpdated,
   });
 
   factory ApiLayer.fromMap(Map<String, dynamic> map)
     => ApiLayer(
-        id:          map['id'],
-        name:        map['name'],
-        description: map['description'],
-        createdAt:   map['createdAt'],
-        lastUpdated: map['lastUpdated'],
+        id:           map['id'],
+        name:         map['name'],
+        description:  map['description'],
+        corners:      map['corners'].map((corner) => (
+                        latitude:  corner['latitude'],
+                        longitude: corner['longitude'],
+                      )),
+        createdAt:    map['createdAt'],
+        lastUpdated:  map['lastUpdated'],
       );
 }
 
@@ -132,6 +133,7 @@ final zApiLayer = _z.object({
   'id':          zId,
   'createdAt':   zTimestamp,
   'lastUpdated': zTimestamp,
+  'corners':     _z.array(_zCoordinate).length(4),
   'name':        _z.string(),
   'description': _z.string(),
 }).transform(ApiLayer.fromMap);
@@ -140,23 +142,19 @@ final zApiLayer = _z.object({
 
 class ApiUnit
 {
-  final String                                  id;
-  final String                                  name;
-  final String                                  description;
-  final ({ double latitude, double longitude }) topLeftCoords;
-  final double                                  width;
-  final double                                  height;
-  final double                                  pointInterval;
-  final int                                     createdAt;
-  final int                                     lastUpdated;
+  final String                  id;
+  final String                  name;
+  final String                  description;
+  final List<common.Coordinate> corners;
+  final double                  pointInterval;
+  final int                     createdAt;
+  final int                     lastUpdated;
 
   ApiUnit({
     required this.id,
     required this.name,
     required this.description,
-    required this.topLeftCoords,
-    required this.width,
-    required this.height,
+    required this.corners,
     required this.pointInterval,
     required this.createdAt,
     required this.lastUpdated,
@@ -164,18 +162,16 @@ class ApiUnit
 
   factory ApiUnit.fromMap(Map<String, dynamic> map)
     => ApiUnit(
-        id:            map['id'],
-        name:          map['name'],
-        description:   map['description'],
-        width:         map['width'],
-        height:        map['height'],
-        pointInterval: map['pointInterval'],
-        createdAt:     map['createdAt'],
-        lastUpdated:   map['lastUpdated'],
-        topLeftCoords: (
-          latitude:    map['topLeftCoords']['latitude'],
-          longitude:   map['topLeftCoords']['longitude'],
-        ),
+        id:             map['id'],
+        name:           map['name'],
+        description:    map['description'],
+        pointInterval:  map['pointInterval'],
+        corners:        map['corners'].map((coord) => (
+                          latitude: coord['latitude'],
+                          longitude: coord['longitude'],
+                        )),
+        createdAt:      map['createdAt'],
+        lastUpdated:    map['lastUpdated'],
       );
 }
 
@@ -183,12 +179,10 @@ final zApiUnit = _z.object({
   'id':            zId,
   'name':          _z.string(),
   'description':   _z.string(),
-  'width':         _zWidth,
-  'height':        _zHeight,
   'pointInterval': _z.number().min(0),
   'createdAt':     zTimestamp,
   'lastUpdated':   zTimestamp,
-  'topLeftCoords': _zCoordinate,
+  'corners':       _z.array(_zCoordinate).length(4),
 }).transform(ApiUnit.fromMap);
 
 /* ============================ Data spec (base) ============================ */
@@ -318,8 +312,8 @@ final _zApiJob = _z.object({
 
 class ApiPredictionJob extends _ApiJob
 {
-  final String layerId;
-  final String modelId;
+  final String              layerId;
+  final String?             modelId;
   final Map<String, String> dataAssignments;
 
   ApiPredictionJob({
@@ -350,7 +344,7 @@ class ApiPredictionJob extends _ApiJob
 
 final zApiPredictionJob = _zApiJob.extend({
   'layerId':         zId,
-  'modelId':         zId,
+  'modelId':         zId.nullable(),
   'dataAssignments': _z.record(zId.nullable()).keySchema(zId),
 }).transform(ApiPredictionJob.fromMap);
 
@@ -390,29 +384,25 @@ final zApiTrainingJob = _zApiJob.extend({
 
 class ApiProject
 {
-  final String                                  id;
-  final String                                  name;
-  final String                                  description;
-  final double                                  width;
-  final double                                  height;
-  final ({ double latitude, double longitude }) topLeftCoords;
-  final Map<String, Map<String, String>>        dataAssignments;
-  final List<ApiLayer>                          layers;
-  final List<ApiUnit>                           units;
-  final List<ApiPxrfDataSpec>                   pxrfData;
-  final List<ApiTrainingDataSpec>               trainingData;
-  final List<ApiPredictionJob>                  predictions;
-  final List<ApiTrainingJob>                    models;
-  final int                                     lastUpdated;
-  final int                                     createdAt;
+  final String                           id;
+  final String                           name;
+  final String                           description;
+  final List<common.Coordinate>          corners;
+  final Map<String, Map<String, String>> dataAssignments;
+  final List<ApiLayer>                   layers;
+  final List<ApiUnit>                    units;
+  final List<ApiPxrfDataSpec>            pxrfData;
+  final List<ApiTrainingDataSpec>        trainingData;
+  final List<ApiPredictionJob>           predictions;
+  final List<ApiTrainingJob>             models;
+  final int                              lastUpdated;
+  final int                              createdAt;
   
   ApiProject({
     required this.id,
     required this.name,
     required this.description,
-    required this.width,
-    required this.height,
-    required this.topLeftCoords,
+    required this.corners,
     required this.dataAssignments,
     required this.layers,
     required this.units,
@@ -426,24 +416,22 @@ class ApiProject
 
   factory ApiProject.fromMap(Map<String, dynamic> map)
     => ApiProject(
-      id:              map['id'],
-      name:            map['name'],
-      description:     map['description'],
-      width:           map['width'],
-      height:          map['height'],
-      topLeftCoords:   (
-        latitude:      map['topLeftCoords']['latitude'],
-        longitude:     map['topLeftCoords']['longitude'],
-      ),
-      dataAssignments: map['dataAssignments'],
-      layers:          map['layers'],
-      units:           map['units'],
-      pxrfData:        map['pxrfData'],
-      trainingData:    map['trainingData'],
-      predictions:     map['predictions'],
-      models:          map['models'],
-      lastUpdated:     map['lastUpdated'],
-      createdAt:       map['createdAt'],
+      id:               map['id'],
+      name:             map['name'],
+      description:      map['description'],
+      corners:          map['corners'].map((coord) => (
+                          latitude:  coord['latitude'],
+                          longitude: coord['longitude'],
+                        )),
+      dataAssignments:  map['dataAssignments'],
+      layers:           map['layers'],
+      units:            map['units'],
+      pxrfData:         map['pxrfData'],
+      trainingData:     map['trainingData'],
+      predictions:      map['predictions'],
+      models:           map['models'],
+      lastUpdated:      map['lastUpdated'],
+      createdAt:        map['createdAt'],
     );
 }
 
@@ -451,9 +439,7 @@ final zApiProject = _z.object({
   'id':               zId,
   'name':             _z.string(),
   'description':      _z.string(),
-  'width':            _zWidth,
-  'height':           _zHeight,
-  'topLeftCoords':    _zCoordinate,
+  'corners':          _z.array(_zCoordinate).length(4),
   'dataAssignments':  _z.record(
                         _z.record(zId.nullable()).keySchema(zId)
                       ).keySchema(zId),
