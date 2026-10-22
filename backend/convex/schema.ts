@@ -76,11 +76,17 @@ export type DbUnit = z.infer<typeof zDbUnit> & DbFields<"units">;
 
 /** Zod type defining a layer in the database. */
 export const zDbLayer = z.object({
-  projectId:   zid("projects"),
-  name:        z.string(),
-  description: z.string(),
-  corners:     zCoordinate.array().length(4),
-  lastUpdated: zTimestamp,
+  projectId:      zid("projects"),
+  name:           z.string(),
+  description:    z.string(),
+  corners:        zCoordinate.array().length(4),
+  image:          z.object({
+                    name:       z.string(),
+                    size:       z.int().gte(0),
+                    storageId:  zid("_storage"),
+                    uploadedAt: zTimestamp,
+                  }).nullable(),
+  lastUpdated:    zTimestamp,
 });
 /** A layer in the database, derived from {@link zDbLayer}. */
 export type DbLayer = z.infer<typeof zDbLayer> & DbFields<"layers">;
@@ -225,10 +231,14 @@ export type ApiConnectionSpec = z.infer<typeof zApiConnectionSpec>;
 export const zApiLayer = zDbLayer
   .omit({
     projectId: true,
+    image: true,
   })
   .extend({
-    id:        zid("layers"),
-    createdAt: zTimestamp,
+    id:         zid("layers"),
+    createdAt:  zTimestamp,
+    image:      zDbLayer.shape.image.unwrap().omit({
+                  storageId: true,
+                }).nullable(),
   });
 /** A layer as returned by the API. Derived from {@link zApiLayer}. */
 export type ApiLayer = z.infer<typeof zApiLayer>;

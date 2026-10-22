@@ -97,6 +97,15 @@ final zApiConnectionSpec = _z.object({
 
 /* ================================= Layer ================================= */
 
+typedef ApiLayerImage = ({ String name, int size, DateTime uploadedAt, });
+
+ApiLayerImage _convertApiLayerImageMapToRecord(Map<String, dynamic> map)
+  => (
+    name:       map['name'],
+    size:       map['size'],
+    uploadedAt: DateTime.fromMillisecondsSinceEpoch(map['uploadedAt']),
+  );
+
 class ApiLayer
 {
   final String                  id;
@@ -105,12 +114,14 @@ class ApiLayer
   final List<common.Coordinate> corners;
   final int                     createdAt;
   final int                     lastUpdated;
+  final ApiLayerImage?          image;
 
   ApiLayer({
     required this.id,
     required this.name,
     required this.description,
     required this.corners,
+    required this.image,
     required this.createdAt,
     required this.lastUpdated,
   });
@@ -124,18 +135,28 @@ class ApiLayer
                         latitude:  corner['latitude'],
                         longitude: corner['longitude'],
                       )),
+        image:        map['image'] == null
+                      ? null
+                      : _convertApiLayerImageMapToRecord(map['image']),
         createdAt:    map['createdAt'],
         lastUpdated:  map['lastUpdated'],
       );
 }
 
+final zApiImage = _z.object({
+  'name':       _z.string(),
+  'size':       _z.integer().min(0),
+  'uploadedAt': zTimestamp,
+}).transform(_convertApiLayerImageMapToRecord);
+
 final zApiLayer = _z.object({
-  'id':          zId,
-  'createdAt':   zTimestamp,
-  'lastUpdated': zTimestamp,
-  'corners':     _z.array(_zCoordinate).length(4),
-  'name':        _z.string(),
-  'description': _z.string(),
+  'id':           zId,
+  'corners':      _z.array(_zCoordinate).length(4),
+  'name':         _z.string(),
+  'description':  _z.string(),
+  'image':        zApiImage.nullable(),
+  'createdAt':    zTimestamp,
+  'lastUpdated':  zTimestamp,
 }).transform(ApiLayer.fromMap);
 
 /* ================================= Unit ================================= */

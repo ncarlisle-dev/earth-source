@@ -30,6 +30,8 @@ class Layer
   String description;
   /// Coordinates of the four corner points of the layer image.
   List<latlong.LatLng> corners;
+  /// The layer's image.
+  ({ String name, int size, DateTime uploadedAt })? image;
   /// Time the layer was created.
   final DateTime createdAt;
   /// Time the layer was last updated.
@@ -39,9 +41,10 @@ class Layer
     required this.id,
     required this.name,
     required this.description,
-    required this.createdAt, 
-    required this.lastUpdated,
     required this.corners,
+    required this.image,
+    required this.createdAt,
+    required this.lastUpdated,
   });
 }
 

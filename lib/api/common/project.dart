@@ -897,25 +897,6 @@ class Project
     predictions.removeAt(jobIndex);
   }
 
-  /// Uploads an image corresponding to a layer to the appropriate location in
-  /// the database.
-  /// 
-  /// Throws a [network.ApiNetworkException] if the image fails to upload.
-  Future<void> uploadLayerImage(String layerId, String imageContents) async
-  {
-    await NetworkService networkService = NetworkService.getInstance();
-    String filePath = "";
-    try {
-      networkService.writeFile(filePath, imageContents);
-    }
-    on network.ApiNetworkException catch (error) {
-      throw network.ApiNetworkException(
-        "Layer image failed to upload with the following error:\n$error", 
-        error.statusCode
-      );
-    }
-  }
-
   /// Deletes a training job from the project and deletes the corresponding 
   /// data file if it exists.
   /// 
@@ -950,13 +931,27 @@ class Project
   /// the database.
   /// 
   /// Throws a [network.ApiNetworkException] if the image fails to upload.
-  Future<void> uploadLayerImage(String layerId, String imageContents) async
+  Future<void> uploadLayerImage(
+    String id,
+    String imageContents,
+    String filename,
+  ) async
   {
+    final layerIndex = layers.indexWhere((layer) => layer.id == id);
+    assert(layerIndex >= 0, "Layer with ID '$id' not found.");
+
     final networkService = await NetworkService.getInstance();
-    // TODO: write a thing
+    final DateTime timestamp;
 
     try {
-      networkService.writeFile(filePath, imageContents);
+      layers[layerIndex].image = await networkService.uploadLayerImage(
+        this.id,
+        id,
+        imageContents,
+        filename
+      );
+
+      timestamp = layers[layerIndex].image!.uploadedAt;
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -964,23 +959,26 @@ class Project
         error.statusCode
       );
     }
+
+    layers[layerIndex].lastUpdated = timestamp;
+    lastUpdated = timestamp;
   }
 
   /// Fetches an image corresponding to a layer from the appropriate location in
   /// the database.
   /// 
   /// Throws a [network.ApiNetworkException] if the image cannot be retrieved.
-  Future<String?> getLayerImage(String layerId) async
+  Future<String> getLayerImage(String id) async
   {
-    await NetworkService networkService = NetworkService.getInstance();
-    String filePath = "";
-    String? imageContents;
+    assert(
+      layers.indexWhere((layer) => layer.id == id) >= 0,
+      "Layer with ID '$id' not found."
+    );
 
-    // TODO: write a thing
+    final networkService = await NetworkService.getInstance();
 
     try {
-      imageContents = await networkService.fetchFile(filePath);
-      return imageContents;
+      return await networkService.fetchLayerImage(this.id, id);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -994,14 +992,16 @@ class Project
   /// the database.
   /// 
   /// Throws a [network.ApiNetworkException] if the image cannot be deleted.
-  Future<void> removeLayerImage(String layerId) async
+  Future<void> removeLayerImage(String id) async
   {
-    // TODO: write a thing
+    final layerIndex = layers.indexWhere((layer) => layer.id == id);
+    assert(layerIndex >= 0, "Layer with ID '$id' not found.");
 
-    await NetworkService networkService = NetworkService.getInstance();
-    String filePath = "";
+    final networkService = await NetworkService.getInstance();
+    final DateTime timestamp;
+
     try {
-      await networkService.deleteFile(filePath);
+      timestamp = await networkService.deleteLayerImage(this.id, id);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -1009,6 +1009,10 @@ class Project
         error.statusCode
       );
     }
+
+    layers[layerIndex].image = null;
+    layers[layerIndex].lastUpdated = timestamp;
+    lastUpdated = timestamp;
   }
 }
 

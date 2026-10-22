@@ -169,5 +169,84 @@ http.route({
   }),
 });
 
+/** Zod object defining the shape of arguments for uploading pXRF data. */
+const zUploadLayerImageArgs = z.object({
+  projectId: zid("projects"),
+  layerId: zid("layers"),
+  file: z
+    .file()
+    .refine(
+      (file) => file.size > 0,
+      { message: "File must be non-empty." }
+    )
+    .refine(
+      (file) => {
+        // TODO: add image format validation, size limits, etc.
+        return true;
+      },
+      { message: "File must be a valid image." }
+    ),
+});
+
+
+/**
+ * POST endpoint that adds pXRF data to a project. Returns the resulting data
+ * spec's ID and the update timestamp.
+ */
+http.route({
+  path: "/uploadLayerImage",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    // get args
+    const formData = Object.fromEntries(await request.formData());
+    const { success, error, data: args } = zUploadLayerImageArgs.safeParse(formData);
+    if (!success)
+      return new Response(
+        `Invalid argument(s) given:\n${error}`,
+        { status: 400, }
+      );
+    
+    // authenticate user and verify the project may be referenced
+    try {
+      const userId = await authenticateUser(ctx);
+      await ctx.runQuery(
+        internal.projects.getDbProjectQuery,
+        { userId, projectId: args.projectId, }
+      );
+    } catch (e) {
+      return e instanceof ApiError
+        ? new Response(e.data.message, { status: e.data.code, })
+        : new Response(`Unknown error occurred:\n${e}`, { status: 500, });
+    }
+    
+    // put into storage
+    const storageId = await ctx.storage.store(args.file);
+    const timestamp = Date.now();
+
+    // write to database and return
+    try {
+      const apiImage = await ctx.runMutation(
+        internal.projects.finalizeProjectLayerImageUpload,
+        {
+          projectId: args.projectId,
+          layerId: args.layerId,
+          storageId,
+          filename: args.file.name,
+          fileSize: args.file.size,
+          timestamp,
+        }
+      );
+
+      return Response.json(apiImage, { status: 201 });
+    } catch (e) {
+      await ctx.storage.delete(storageId);
+
+      return e instanceof ApiError
+        ? new Response(e.data.message, { status: e.data.code })
+        : new Response(`Unknown error occurred:\n${e}`, { status: 500 });
+    }
+  }),
+});
+
 // Export the HTTP router for Convex to deploy.
 export default http;

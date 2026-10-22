@@ -45,6 +45,7 @@ import {
   ApiUnit,
   DbLayer,
   DbUnit,
+  zDbLayer,
 } from "./schema";
 
 
@@ -223,14 +224,24 @@ export const getProjectById = zodQuery({
       .withIndex("by_projectId", (q) => q.eq("projectId", args.id))
       .collect();
     
-    project.layers = layers.map(dbLayer => ({
-      id:          dbLayer._id,
-      name:        dbLayer.name,
-      description: dbLayer.description,
-      corners:     dbLayer.corners,
-      createdAt:   dbLayer._creationTime,
-      lastUpdated: dbLayer.lastUpdated,
-    }))
+    project.layers = layers.map(dbLayer => {
+      let apiImage: ApiLayer["image"] | null = null;
+
+      if (dbLayer.image !== null) {
+        const { storageId: storageId, ...extractedFields } = dbLayer.image ?? { storageId: "" };
+        apiImage = extractedFields;
+      }
+
+      return {
+        id:            dbLayer._id,
+        name:          dbLayer.name,
+        description:   dbLayer.description,
+        corners:       dbLayer.corners,
+        image:         apiImage,
+        createdAt:     dbLayer._creationTime,
+        lastUpdated:   dbLayer.lastUpdated,
+      }
+    });
 
     // fetch units
     const units = await ctx.db
@@ -488,6 +499,7 @@ export const configureProjectSiteDb = zodInternalMutation({
       zApiLayer.omit({
         createdAt: true,
         lastUpdated: true,
+        image: true,
         id: true,
       })
     ).optional(),
@@ -498,6 +510,7 @@ export const configureProjectSiteDb = zodInternalMutation({
         createdAt: true,
         lastUpdated: true,
         id: true,
+        image: true,
       }).partial(),
     ).optional(),
 
@@ -628,9 +641,10 @@ export const configureProjectSiteDb = zodInternalMutation({
         "layers",
         {
           ...newLayer,
-          projectId: args.projectId,
+          projectId:   args.projectId,
           lastUpdated: timestamp,
-        }
+          image:       null,
+        },
       ));
     }
 
@@ -774,12 +788,13 @@ export const configureProjectSiteDb = zodInternalMutation({
     // return
     return {
       createdLayers: createdDbLayers.map(dbLayer => ({
-        id:          dbLayer._id,
-        name:        dbLayer.name,
-        description: dbLayer.description,
-        corners:     dbLayer.corners,
-        createdAt:   dbLayer._creationTime,
-        lastUpdated: dbLayer.lastUpdated,
+        id:            dbLayer._id,
+        name:          dbLayer.name,
+        description:   dbLayer.description,
+        corners:       dbLayer.corners,
+        image:         dbLayer.image,
+        createdAt:     dbLayer._creationTime,
+        lastUpdated:   dbLayer.lastUpdated,
       })),
       createdUnits: createdDbUnits.map(dbUnit => ({
         id:            dbUnit._id,
@@ -1684,3 +1699,111 @@ export const getTrainingJobResultsUrl = zodQuery({
     return url;
   },
 })
+
+export const finalizeProjectLayerImageUpload = zodInternalMutation({
+  args: {
+    projectId: zid("projects"),
+    layerId: zid("layers"),
+    storageId: zid("_storage"),
+    filename: zDbLayer.shape.image.unwrap().shape.name,
+    fileSize: zDbLayer.shape.image.unwrap().shape.size,
+    timestamp: zTimestamp,
+  },
+  handler: async (ctx, args): Promise<NonNullable<ApiLayer["image"]>> => {
+    const image: NonNullable<DbLayer["image"]> = {
+      name:       args.filename,
+      size:       args.fileSize,
+      storageId:  args.storageId,
+      uploadedAt: args.timestamp,
+    };
+
+    await ctx.db.patch(
+      "layers",
+      args.layerId,
+      {
+        image: {
+          name:       args.filename,
+          size:       args.fileSize,
+          storageId:  args.storageId,
+          uploadedAt: args.timestamp,
+        },
+        lastUpdated:    args.timestamp,
+      },
+    );
+
+    await ctx.db.patch(
+      "projects",
+      args.projectId,
+      { lastUpdated: args.timestamp },
+    )
+
+    return {
+      name:       image.name,
+      size:       image.size,
+      uploadedAt: image.uploadedAt,
+    };
+  },
+});
+
+export const getProjectLayerImageDownloadUrl = zodQuery({
+  args: {
+    projectId: zid("projects"),
+    layerId: zid("layers"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    if (project.layerIds.find(id => id === args.layerId) === undefined)
+      throw new InvalidRequestError(`Project does not have layer with ID '${args.layerId}'.`);
+
+    const layer = await ctx.db.get("layers", args.layerId);
+    if (layer === null)
+      throw new ResourceNotFoundError(`Layer with ID '${args.layerId}' not found.`);
+
+    if (layer.image === null)
+      throw new ResourceNotFoundError(`Layer with ID '${args.layerId}' doesn't have an image.`);
+
+    const url = await ctx.storage.getUrl(layer.image.storageId);
+    if (url === null)
+      throw new UnknownServerError("File couldn't be found.");
+    
+    return url;
+  },
+});
+
+export const deleteProjectLayerImage = zodMutation({
+  args: {
+    projectId: zid("projects"),
+    layerId: zid("layers"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    if (project.layerIds.find(id => id === args.layerId) === undefined)
+      throw new InvalidRequestError(
+        `Project does not have layer with ID '${args.layerId}'.`
+      );
+
+    const layer = await ctx.db.get("layers", args.layerId);
+    if (layer === null)
+      throw new ResourceNotFoundError(
+        `Layer with ID '${args.layerId}' not found.`
+      );
+    
+    if (layer.image === null)
+      throw new ResourceNotFoundError(
+        `Layer with ID '${args.layerId}' doesn't have an image.`
+      );
+
+    const timestamp = Date.now();
+    await ctx.storage.delete(layer.image.storageId);
+    await ctx.db.patch(
+      "layers",
+      args.layerId,
+      { image: null, lastUpdated: timestamp },
+    );
+    await ctx.db.patch("projects", args.projectId, { lastUpdated: timestamp });
+
+    return timestamp;
+  },
+});

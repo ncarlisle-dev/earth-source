@@ -62,6 +62,7 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       name:          layer.name,
       description:   layer.description,
       corners:       layer.corners.map(convertCoordRecordToObj).toList(),
+      image:         layer.image,
       createdAt:     DateTime.fromMicrosecondsSinceEpoch(layer.createdAt),
       lastUpdated:   DateTime.fromMicrosecondsSinceEpoch(layer.lastUpdated),
     )).toList(),
@@ -447,12 +448,13 @@ class NetworkService {
         lastUpdated:   DateTime.fromMicrosecondsSinceEpoch(unit.lastUpdated),
       )).toList(),
       createdLayers: configResult.createdLayers.map((layer) => common.Layer(
-        id:            layer.id,
-        name:          layer.name,
-        description:   layer.description,
-        corners:       layer.corners.map(convertCoordRecordToObj).toList(),
-        createdAt:     DateTime.fromMicrosecondsSinceEpoch(layer.createdAt),
-        lastUpdated:   DateTime.fromMicrosecondsSinceEpoch(layer.lastUpdated),
+        id:           layer.id,
+        name:         layer.name,
+        description:  layer.description,
+        corners:      layer.corners.map(convertCoordRecordToObj).toList(),
+        image:        layer.image,
+        createdAt:    DateTime.fromMicrosecondsSinceEpoch(layer.createdAt),
+        lastUpdated:  DateTime.fromMicrosecondsSinceEpoch(layer.lastUpdated),
       )).toList(),
       timestamp:     configResult.timestamp,
     );
@@ -481,6 +483,112 @@ class NetworkService {
     }
 
     return response.body;
+  }
+
+  Future<({ String name, int size, DateTime uploadedAt })> uploadLayerImage(
+    String projectId,
+    String layerId,
+    String imageContents,
+    String filename,
+  ) async
+  {
+    // setup request
+    final uri = Uri.parse(
+      "${_getClient().config.deploymentUrl}/uploadProjectLayerImage"
+    );
+
+    var request = http.MultipartRequest('POST', uri);
+
+    request.fields['projectId'] = projectId;
+    request.fields['layerId'] = layerId;
+    request.files.add(
+      .fromString(
+        'file',
+        imageContents,
+        filename: filename,
+      )
+    );
+
+    // send request
+    final http.StreamedResponse streamedResponse;
+    final http.Response response;
+
+    try {
+      streamedResponse = await request.send();
+      response = await http.Response.fromStream(streamedResponse);
+    } catch (e) {
+      throw common.ApiNetworkException(
+        "Failed to send network request:\n$e",
+        null
+      );
+    }
+
+    // validate response and return
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw common.ApiNetworkException(
+        "Failed to add layer image. Response body:\n${response.body}",
+        response.statusCode,
+      );
+    }
+
+    final apiImage = parseNetworkResponse(
+      response.body,
+      api_types.zApiImage,
+    );
+
+    return (
+      name:       apiImage.name,
+      size:       apiImage.size,
+      uploadedAt: apiImage.uploadedAt,
+    );
+  }
+
+  Future<String> fetchLayerImage(
+    String projectId,
+    String layerId,
+  ) async
+  {
+   final client = _getClient();
+    final downloadUrl = await client.query(
+      "projects:getProjectLayerImageDownloadUrl",
+      { 'projectId': projectId, 'layerId': layerId }
+    );
+
+    final http.Response response;
+    try {
+      response = await http.get(Uri.parse(downloadUrl));
+    } catch (e) {
+      throw common.ApiNetworkException('Image download failed: $e', null);
+    }
+
+    if (response.statusCode != 200) {
+      throw common.ApiNetworkException(
+        'Image download failed.',
+        response.statusCode
+      );
+    }
+
+    return response.body;
+  }
+
+  Future<DateTime> deleteLayerImage(
+    String projectId,
+    String layerId,
+  ) async
+  {
+    final client = _getClient();
+
+    final response = await client.mutation(
+      name: "projects:deleteProjectLayerImage",
+      args: { "projectId": projectId, "layerId": layerId },
+    );
+
+    final timestamp = parseNetworkResponse(
+      response,
+      api_types.zTimestamp,
+    );
+
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
   Future<common.PxrfDataSpec> addPxrfData(
