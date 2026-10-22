@@ -13,11 +13,27 @@ from ebk_predict import dataframe_to_grid
 from gbdt_model_renewed import PXRFMaterialClassifier
 
 #Get Job Function
-def get_job(job_id)
+def get_job(job_id):
+
+  job = client.query( "batch:get_job", {"job_id": job_id})
+
+  if job is None:
+    raise ValueError("Job could not be found")
+
+  return job
+
 #Upload URLS from the API
 def ret_upload_url()
 #Retrieve CSV function
-def download_csv()
+def download_csv(url):
+  
+  response = requests.get(url, timeout=(10, 120))
+
+  response.raise_for_status()
+
+  return pd.read_csv(io.BytesIO(response.content))
+
+
 #Load the Data
 def load_data()
 #Run the Classifier and EBK
@@ -27,6 +43,8 @@ def upload_to_convex()
 #Process the Job Using previous functions
 def process_job()
 #Update the Job to Finished
-def complete_job()
+def complete_job(uploaded_files, job_id):
+  client.mutation("batch:completeJob",{"jobId": job_id,"outputs": uploaded_files})
+
 #Train if Necessary
 def train_model()
