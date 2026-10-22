@@ -72,7 +72,31 @@ def load_data(job):
   return pd.concat( dataframes, ignore_index=True)
 
 #Run the Classifier and EBK
-def run_prediction()
+def run_prediction(df, model):
+  result_data_frame = model.predict(df)
+  
+  ebk_grid_df, origin_points_df = (
+        dataframe_to_grid(
+            result_data_frame,
+            x_col="X_Coord",
+            y_col="Y_Coord",
+            prob_col="non_soil_probability"
+        )
+  )
+  
+  return [
+    {
+      "name": "classification",
+      "filename": "ArchaeoSight_Results.csv",
+      "content": result_data_frame.to_csv(index=False).encode("utf-8"),
+      "contentType": "text/csv"},
+    {
+      "name": "ebk",
+      "filename": "ArchaeoSight_EBK_Grid.csv",
+      "content": ebk_grid_df.to_csv(index=False).encode("utf-8"),
+      "contentType": "text/csv"
+    }
+  ]
 #Upload Output File
 def upload_to_convex()
 #Process the Job Using previous functions
