@@ -137,7 +137,7 @@ def process_job(model, job_id):
       output = run_prediction(data_frame, model)
 
     elif kind == "training":
-      output = run_training(data_frame)
+      output = train_model(data_frame)
     
     else:
       raise ValueError(f"Unknown Job Field Kind: {kind}")
@@ -167,4 +167,30 @@ def complete_job(uploaded_files, job_id):
   client.mutation("batch:completeJob",{"jobId": job_id,"outputs": uploaded_files})
 
 #Train if Necessary
-def train_model()
+#Return the pkl model file
+def train_model(df):
+  with TemporaryDirectory() as folder:
+    training_path = (Path(folder)/"training_data.csv")
+
+    df.to_csv(training_path, index=False)
+
+    classifier = PXRFMaterialClassifier()
+
+    x, y = classifier.load_and_prepare_data(training_path)
+
+    x_train, x_test, y_train, y_test = (classifier.train_test_by_materials(x, y))
+
+    classifier.train_model(x_train,y_train)
+
+    buffer = io.BytesIO()
+
+    joblib.dump(classifier, buffer)
+
+    model_in_bytes = buffer.getvalue()
+  
+  return [{
+            "name": "model",
+            "filename": "trained_model.pkl",
+            "content": model_in_bytes,
+            "contentType": "application/octet-stream"
+  }]
