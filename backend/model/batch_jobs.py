@@ -118,7 +118,50 @@ def upload_to_convex(kind, job_id, output):
   }
 
 #Process the Job Using previous functions
-def process_job()
+def process_job(model, job_id):
+  job = get_job(job_id)
+  #Ensure that only starting jobs are processed
+  if job["status"] != "starting":
+    raise ValueError(
+      "Job must be in starting status"
+    )
+  #TODO: Initialize claim_job to retrieve the job
+  claim_job(job_id)
+  
+  try:
+    data_frame = load_data(job)
+    #Store the operation
+    kind = job["kind"]
+    #Determine which opertaion to run
+    if kind == "prediction":
+      output = run_prediction(data_frame, model)
+
+    elif kind == "training":
+      output = run_training(data_frame)
+    
+    else:
+      raise ValueError(f"Unknown Job Field Kind: {kind}")
+
+    uploads = []
+
+    for outs in output:
+      uploads.append(upload_output(
+        job_id,
+        kind,
+        output))
+    #Mark as Complete and Log
+    complete_job(job_id, uploads)
+    logger.info("Job %s completed successfully",job_id)
+    return {
+      "job_id": job_id,
+      "status": "complete",
+      "outputs": uploads
+    }
+  #Log in the event a Job fails with its ID  
+  except Exception as error:
+    logger.exception("Job %s failed",job_id)
+
+  
 #Update the Job to Finished
 def complete_job(uploaded_files, job_id):
   client.mutation("batch:completeJob",{"jobId": job_id,"outputs": uploaded_files})
