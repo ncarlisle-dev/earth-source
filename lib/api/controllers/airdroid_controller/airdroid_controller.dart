@@ -25,11 +25,6 @@ bool _isValidPort(int num)
 bool _isValidFilePath(String str)
   => str.isNotEmpty && str[0] == '/';
 
-/// Helper function that constructs a uniquely-identifiable key from the
-/// inputted [ipAddress] and [port].
-String convertAddressToKey(String ipAddress, int port)
-  => "$ipAddress:$port";
-
 /* =========================== AirdroidController =========================== */
 
 /// A singleton AirDroid connection manager, enabling device connection,
@@ -40,7 +35,7 @@ class AirdroidController
   static AirdroidController? _instance;
 
   /// Collection of all active [AirdroidClient] objects, mapped by
-  /// network address.
+  /// connection spec IDs.
   final Map<String, AirdroidClient> _activeClients = {};
 
   /// Collection of status listeners, called whenever the underlying client's
@@ -49,24 +44,23 @@ class AirdroidController
     = {};
 
   /// List of all the user's [ConnectionSpec]s.
-  List<common.ConnectionSpec>? connections;
+  final List<common.ConnectionSpec> connections;
 
 
   /// Internal constructor used to prevent other modules from creating a new
   /// [AirdroidController] instance.
-  AirdroidController._()
-  {
-    NetworkService networkService = NetworkService.getInstance();
-    networkService.getConnectionEntries()
-      .then((entries) => connections = entries);
-  }
-
+  AirdroidController._(this.connections);
 
   /// Returns the singleton [AirdroidController] instance, creating a new one
   /// if it is not yet initialized.
-  AirdroidController getInstance()
+  Future<AirdroidController> getInstance() async
   {
-    _instance ??= AirdroidController._();
+    if (_instance != null) return _instance!;
+
+    final networkService = await NetworkService.getInstance();
+    final connections = await networkService.getUserConnectionEntries();
+
+    _instance = AirdroidController._(connections);
     return _instance!;
   }
 
@@ -77,15 +71,12 @@ class AirdroidController
   /// Each connection may only have one registered callback at a time, so
   /// to unregister a callback, call this function with [null] as the callback.
   void watchConnectionStatus(
-    String ipAddress,
-    int port,
+    String id,
     void Function(common.ConnectionStatus status)? callback,
   )
   {
-    assert(_isValidIpAddress(ipAddress), "IP address is invalid.");
-    assert(_isValidPort(port), "Port is invalid.");
-
-    _statusListeners[convertAddressToKey(ipAddress, port)] = callback;
+    assert(connections.any((spec) => spec.id == id));
+    _statusListeners[id] = callback;
   }
 
 
@@ -97,70 +88,43 @@ class AirdroidController
   /// the connection is still maintained and must be [disconnect]ed for full
   /// cleanup.
   /// 
-  /// Throws a [common.AirdroidNetworkException] if connecting to the AirDroid 
-  /// server fails. Throws a [common.ApiNetworkException] if uploading the 
-  /// connection spec fails.
+  /// Throws a [common.ApiNetworkException] if uploading the connection spec 
+  /// fails.
   Future<void> connect(String ipAddress, int port) async
   {
     // check params
     assert(_isValidIpAddress(ipAddress), "IP address is invalid.");
     assert(_isValidPort(port), "Port is invalid.");
-    assert(connections != null, "Connections isn't fetched yet.");
 
-    // initialize client
-    final String clientKey = convertAddressToKey(ipAddress, port);
-    final AirdroidClient client;
-
-    if (_activeClients.containsKey(clientKey)) {
-      client = _activeClients[clientKey]!;
-    } else {
-      client = AirdroidClient();
-      _activeClients[clientKey] = client;
-    }
-
-    // set connection spec
-    final common.ConnectionSpec connSpec;
-    int existingConnSpecIndex = connections!.indexWhere(
-      (spec) => spec.ipAddress == ipAddress && spec.port == port
+    // create connection spec
+    final networkService = await NetworkService.getInstance();
+    final connectionSpec = await networkService.createConnectionSpec(
+      ipAddress,
+      port
     );
 
-    if (existingConnSpecIndex > 0) {
-      connSpec = connections![existingConnSpecIndex];
-    } else {
-      connSpec = common.ConnectionSpec(
-        ipAddress,
-        port,
-        DateTime.now(),
-        DateTime.now(),
-        client.status,
-      );
-    }
+    connections.add(connectionSpec);
 
-    connections!.add(connSpec);
+    // initialize client
+    final client = AirdroidClient();
+    _activeClients[connectionSpec.id] = client;
 
     // set status lisenter
     client.setStatusListener((status) {
-      if (
-        _statusListeners.containsKey(clientKey)
-        && _statusListeners[clientKey] != null
-      ) {
-        _statusListeners[clientKey]!(status);
+      if (_statusListeners.containsKey(connectionSpec.id)) {
+        _statusListeners[connectionSpec.id]!(status);
       }
 
-      connSpec.status = status;
+      connectionSpec.status = status;
     });
 
     // connect to the server
     try {
       await client.connect(ipAddress, port);
-    } on common.ApiNetworkException {
-      connections!.removeLast();
+    } on common.AirdroidNetworkException {
       client.setStatusListener(null);
+      connectionSpec.status = .disconnected;
     }
-
-    // upload the connection spec
-    final networkService = NetworkService.getInstance();
-    await networkService.uploadConnectionSpec(connSpec);
   }
 
 
@@ -168,23 +132,17 @@ class AirdroidController
   /// [port] exists, is connected, and is available.
   /// 
   /// Returns the [AirdroidClient] with the [ipAddress] and [port].
-  AirdroidClient _assertClientIsAvailable(String ipAddress, int port)
+  AirdroidClient _assertClientIsAvailable(String id)
   {
-    final String clientKey = convertAddressToKey(ipAddress, port);
+    final client = _activeClients[id];
+    assert(client != null, "Client with connection ID '$id' doesn't exist.");
 
     assert(
-      _activeClients.containsKey(clientKey),
-      "Client with key '$clientKey' doesn't exist."
+      client!.status == .connected,
+      "Client under connection ID '$id' is either disconnected or busy."
     );
 
-    final AirdroidClient client = _activeClients[clientKey]!;
-
-    assert(
-      client.status == .connected,
-      "Client with key '$clientKey' is either disconnected or busy."
-    );
-
-    return client;
+    return client!;
   }
 
 
@@ -193,12 +151,14 @@ class AirdroidController
   /// listener if the status changed.
   /// 
   /// There must be an active [connect]ion under the [ipAddress] and [port].
-  Future<void> ping(String ipAddress, int port) async
+  Future<void> ping(String id) async
   {
-    assert(_isValidIpAddress(ipAddress), "IP address is invalid.");
-    assert(_isValidPort(port), "Port is invalid.");
+    assert(
+      connections.any((spec) => spec.id == id),
+      "Connection with ID '$id' not found."
+    );
 
-    final AirdroidClient client = _assertClientIsAvailable(ipAddress, port);
+    final client = _assertClientIsAvailable(id);
     await client.updateConnectionStatus();
   }
 
@@ -206,12 +166,14 @@ class AirdroidController
   /// [port].
   /// 
   /// There must be an active [connect]ion under the [ipAddress] and [port].
-  Future<void> disconnect(String ipAddress, int port) async
+  Future<void> disconnect(String id) async
   {
-    assert(_isValidIpAddress(ipAddress), "IP address is invalid.");
-    assert(_isValidPort(port), "Port is invalid.");
+    assert(
+      connections.any((spec) => spec.id == id),
+      "Connection with ID '$id' not found."
+    );
 
-    final AirdroidClient client = _assertClientIsAvailable(ipAddress, port);
+    final client = _assertClientIsAvailable(id);
     await client.disconnect();
   }
 
@@ -227,19 +189,17 @@ class AirdroidController
   /// Throws a [common.AirdroidNetworkException] if the network request fails.
   /// Throws a [common.ApiNetworkException] if the database's
   /// [common.ConnectionSpec] couldn't be updated.
-  Future<String> getFileContents(
-    String ipAddress,
-    int port,
-    String filePath
-  ) async
+  Future<String> getFileContents(String id, String filePath) async
   {
-    assert(_isValidIpAddress(ipAddress), "IP address is invalid.");
-    assert(_isValidPort(port), "Port is invalid.");
-    assert(_isValidFilePath(filePath), "File path is invalid.");
+    assert(
+      connections.any((spec) => spec.id == id),
+      "Connection with ID '$id' not found."
+    );
+    assert(_isValidFilePath(filePath), "File path '$filePath' is invalid.");
 
-    final AirdroidClient client = _assertClientIsAvailable(ipAddress, port);
+    final client = _assertClientIsAvailable(id);
     return await client.fetchFile(filePath);
-    // TODO: update the lastUsed in the connection spec
+    // TODO: add and update a lastUsed field here
   }
 
   /// Fetches the items in an AirDroid server directory at the given
@@ -250,16 +210,17 @@ class AirdroidController
   /// 
   /// Throws a [common.AirdroidNetworkException] if the network request fails.
   Future<List<common.DirectoryItemSpec>> getDirectoryContents(
-    String ipAddress,
-    int port,
+    String id,
     String filePath
   ) async
   {
-    assert(_isValidIpAddress(ipAddress), "IP address is invalid.");
-    assert(_isValidPort(port), "Port is invalid.");
+    assert(
+      connections.any((spec) => spec.id == id),
+      "Connection with ID '$id' not found."
+    );
     assert(_isValidFilePath(filePath), "File path is invalid.");
 
-    final AirdroidClient client = _assertClientIsAvailable(ipAddress, port);
+    final client = _assertClientIsAvailable(id);
     return await client.queryDirectory(filePath);
   }
 }

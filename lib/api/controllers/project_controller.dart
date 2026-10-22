@@ -22,12 +22,12 @@ class ProjectController {
   /// projects fails.
   static Future<ProjectController> getInstance() async
   {
-    NetworkService networkService = NetworkService.getInstance();
+    final networkService = await NetworkService.getInstance();
     if (instance != null) return instance!;
 
     instance = ProjectController._();
     try {
-      instance!.userProjects = await networkService.getProjects();
+      instance!.userProjects = await networkService.getUserProjects();
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -46,17 +46,24 @@ class ProjectController {
   Future<Project> createProject(
     String name, 
     String description, 
-    int utmZone, 
-    bool isSouthernHemisphere
+    int utmZone,
+    bool isSouthernHemisphere,
+    List<Coordinate> corners,
   ) async
   {
+    // TODO: create a PushProject type or similar so that we're not forwarding
+    //       arguments like this so much.
     NetworkService networkService = await NetworkService.getInstance();
-    Project createdProject = 
-      Project(name, description, DateTime.now(), utmZone, isSouthernHemisphere);
-    createdProject.lastUpdated = DateTime.now();
+    final Project createdProject;
+
     try {
-      await networkService.createProject(createdProject);
-      userProjects.add(createdProject);
+      createdProject = await networkService.createProject(
+        name,
+        description,
+        utmZone,
+        isSouthernHemisphere,
+        corners
+      );
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -64,6 +71,8 @@ class ProjectController {
         error.statusCode
       );
     }
+
+    userProjects.add(createdProject);
     return createdProject;
   }
 
@@ -73,12 +82,12 @@ class ProjectController {
   /// project fails.
   Future<void> deleteProject(String id) async
   {
-    NetworkService networkService = NetworkService.getInstance();
-    int deleteIndex = userProjects.indexWhere((project) => project.id == id);
-    assert(deleteIndex != -1);
+    final networkService = await NetworkService.getInstance();
+    final deleteIndex = userProjects.indexWhere((project) => project.id == id);
+    assert(deleteIndex >= 0, "Project with ID '$id' not found.");
+
     try {
       await networkService.deleteProject(id);
-      userProjects.removeAt(deleteIndex);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -86,5 +95,7 @@ class ProjectController {
         error.statusCode
       );
     }
+
+    userProjects.removeAt(deleteIndex);
   }
 }

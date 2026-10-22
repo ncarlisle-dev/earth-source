@@ -259,6 +259,8 @@ class NetworkService {
   Future<common.Project> createProject(
     String                  name,
     String                  description,
+    int                     utmZone,
+    bool                    isSouthernHemisphere,
     List<common.Coordinate> corners,
   ) async
   {
@@ -266,9 +268,11 @@ class NetworkService {
     final response = await client.mutation(
       name: "projects:createProject",
       args: {
-        'name':        name,
-        'description': description,
-        'corners':     corners.map(convertCoordRecordToMap).toList(),
+        'name':                 name,
+        'description':          description,
+        'utmZone':              utmZone,
+        'isSouthernHemisphere': isSouthernHemisphere,
+        'corners':              corners.map(convertCoordRecordToMap).toList(),
       },
     );
     
