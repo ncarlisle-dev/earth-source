@@ -43,11 +43,16 @@ class ProjectController {
   /// 
   /// Throws a [network.ApiNetworkException] if the server request to upload a 
   /// new project fails.
-  Future<Project> createProject(String name, String description) async
+  Future<Project> createProject(
+    String name, 
+    String description, 
+    int utmZone, 
+    bool isSouthernHemisphere
+  ) async
   {
     NetworkService networkService = await NetworkService.getInstance();
     Project createdProject = 
-      Project(name, description, DateTime.now());
+      Project(name, description, DateTime.now(), utmZone, isSouthernHemisphere);
     createdProject.lastUpdated = DateTime.now();
     try {
       await networkService.createProject(createdProject);

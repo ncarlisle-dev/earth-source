@@ -77,7 +77,7 @@ class _PredictionsPageState extends State<PredictionsPage>
             Center(child:Text("Predictions could not be loaded."))
             :
             ListView.builder(
-              itemCount: 4, 
+              itemCount: snapshot.data!.length, 
               itemBuilder: (BuildContext context, int index) {
                 return Card(
                   elevation: 50,

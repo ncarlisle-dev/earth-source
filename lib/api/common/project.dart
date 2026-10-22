@@ -65,6 +65,11 @@ class Project
   final List<jobs.PredictionJob> predictions;
   /// List of batch jobs for training models.
   final List<jobs.TrainingJob> models;
+  /// UTM zone of the project site.
+  int utmZone;
+  /// Boolean that tracks whether or not the project is in the Southern 
+  /// Hemisphere.
+  bool isSouthernHemisphere;
   /// Time the project was created.
   final DateTime createdAt;
   /// Most recent time the project was updated.
@@ -82,6 +87,8 @@ class Project
     required this.dataAssignments,
     required this.predictions,
     required this.models,
+    required this.utmZone,
+    required this.isSouthernHemisphere,
     required this.createdAt,
     required this.lastUpdated,
   });
@@ -406,6 +413,34 @@ class Project
 
     layers[layerIndex].lastUpdated = updateTimestamp;
     lastUpdated = updateTimestamp;
+  }
+
+  /// Changes the positioning of a pre-existing layer. (Note: Since layers can
+  /// overlap with no issue, there shouldn't be any need to check the new
+  /// positioning.)
+  /// 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
+  /// after modification.
+  Future<void> setLayerPositioning(
+    String id, 
+    List<latlong.LatLng> cornerCoordinates
+  ) async
+  {
+    NetworkService networkService = NetworkService.getInstance();
+    int layerIndex = layers.indexWhere((layer) => layer.id == id);
+    layers[layerIndex].cornerCoordinates = cornerCoordinates;
+    layers[layerIndex].lastUpdated = DateTime.now();
+    lastUpdated = DateTime.now();
+
+    try {
+        await networkService.uploadProject(this);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
   }
 
   /// Deletes a layer from the project and deletes the corresponding directory
