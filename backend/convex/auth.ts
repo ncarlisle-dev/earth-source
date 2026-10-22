@@ -46,17 +46,21 @@ export const storeUser = zodMutation({
  */
 export async function authenticateUser(ctx: QueryCtx | MutationCtx | ActionCtx): Promise<Id<"users">>
 {
-  const identity = await ctx.auth.getUserIdentity();
+  // TODO: implement actual authentication
 
-  if (identity === null) 
-    throw new UnauthorizedError("User is not authenticated.");
-  const user = await ctx.runQuery(
-    internal.auth.getUserByToken,
-    { token: identity.tokenIdentifier }
-  ) as DbUser | null;
+  // const identity = await ctx.auth.getUserIdentity();
 
-  if (user === null) 
-    throw new UnauthorizedError("User is not registered.");
+  // if (identity === null) 
+  //   throw new UnauthorizedError("User is not authenticated.");
+  // const user = await ctx.runQuery(
+  //   internal.auth.getUserByToken,
+  //   { token: identity.tokenIdentifier }
+  // ) as DbUser | null;
 
-  return user._id;
+  // if (user === null) 
+  //   throw new UnauthorizedError("User is not registered.");
+
+  // return user._id;
+
+  return "j571gs7r7kq445eewebqx0cx8h8grp86" as Id<"users">; // replace with your own user ID
 } 
