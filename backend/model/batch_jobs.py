@@ -52,7 +52,25 @@ def download_csv(url):
 
 
 #Load the Data
-def load_data()
+def load_data(job):
+  
+  input_files = job["input_files"]
+  
+  dataframes = []
+  
+  if not input_files:
+    raise ValueError("Job has no input files")
+
+  for input_file in input_files:
+        data_f = download_csv(input_file["url"])
+
+        if data_f.empty:
+            raise ValueError("Input CSV is empty")
+
+        dataframes.append(data_f)
+  
+  return pd.concat( dataframes, ignore_index=True)
+
 #Run the Classifier and EBK
 def run_prediction()
 #Upload Output File
