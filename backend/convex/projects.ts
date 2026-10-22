@@ -1571,6 +1571,34 @@ export const getPredictionJobStatus = zodQuery({
   }
 });
 
+export const getPredictionJobById = zodQuery({
+  args: {
+    projectId: zid("projects"),
+    jobId: zid("jobs"),
+  },
+  handler: async (ctx, args): Promise<ApiPredictionJob> => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    const { job } = await assertProjectHasPredictionJob(
+      ctx,
+      project,
+      args.jobId,
+    );
+
+    return {
+      id:                 job._id,
+      name:               job.name,
+      description:        job.description,
+      layerId:            job.layerId,
+      modelId:            job.modelId,
+      dataAssignments:    job.dataAssignments,
+      status:             job.status,
+      createdAt:          job._creationTime,
+      lastUpdated:        job.lastUpdated,
+    };
+  }
+})
+
 /** Mutation that deletes a prediction job and its associated files. */
 export const deletePredictionJob = zodMutation({
   args: {
@@ -1811,6 +1839,32 @@ export const getTrainingJobStatus = zodQuery({
     return job.status;
   }
 });
+
+export const getTrainingJobById = zodQuery({
+  args: {
+    projectId: zid("projects"),
+    jobId: zid("jobs"),
+  },
+  handler: async (ctx, args): Promise<ApiTrainingJob> => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    const { job } = await assertProjectHasTrainingJob(
+      ctx,
+      project,
+      args.jobId,
+    );
+
+    return {
+      id:                 job._id,
+      name:               job.name,
+      description:        job.description,
+      trainingDataSpecId: job.trainingDataSpecId,
+      status:             job.status,
+      createdAt:          job._creationTime,
+      lastUpdated:        job.lastUpdated,
+    };
+  }
+})
 
 /** Mutation that deletes a training job and its associated files. */
 export const deleteTrainingJob = zodMutation({
