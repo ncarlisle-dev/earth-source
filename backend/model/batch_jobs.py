@@ -25,8 +25,8 @@ def get_job(job_id):
 #Upload URLS from the API
 def ret_upload_url(kind,job_id):
   endpoint = {
-        "prediction": "getPredictionOutputUrl",
-        "training": "getTrainingUrl"
+        "prediction": "getPredictionOutputUploadUrl",
+        "training": "getTrainingOutputUploadUrl"
     }[kind]
   
   response = requests.get(
