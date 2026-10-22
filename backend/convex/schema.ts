@@ -182,22 +182,24 @@ export type DbJob = z.infer<typeof zDbJob> & DbFields<"jobs">
 
 /** Zod type defining a project in the database. */
 export const zDbProject = z.object({
-  userId:              zid("users"),
-  name:                z.string(),
-  description:         z.string(),
-  lastUpdated:         zTimestamp,
-  corners:             zCoordinate.array().length(4),
-  layerIds:            z.array(zid("layers")),
-  unitIds:             z.array(zid("units")),
-  pxrfDataSpecIds:     z.array(zid("dataSpecs")),
-  trainingDataSpecIds: z.array(zid("dataSpecs")),
-  dataAssignments:     z.record(
-    zid("layers"),
-    z.record(
-      zid("units"),
-      zid("dataSpecs").nullable()
-    )
-  ),
+  userId:               zid("users"),
+  name:                 z.string(),
+  description:          z.string(),
+  utmZone:              z.int().gte(0).lte(60),
+  isSouthernHemisphere: z.boolean(),
+  lastUpdated:          zTimestamp,
+  corners:              zCoordinate.array().length(4),
+  layerIds:             z.array(zid("layers")),
+  unitIds:              z.array(zid("units")),
+  pxrfDataSpecIds:      z.array(zid("dataSpecs")),
+  trainingDataSpecIds:  z.array(zid("dataSpecs")),
+  dataAssignments:      z.record(
+                          zid("layers"),
+                          z.record(
+                            zid("units"),
+                            zid("dataSpecs").nullable()
+                          )
+                        ),
   predictionJobIds:     z.array(zid("jobs")),
   trainingJobIds:       z.array(zid("jobs")),
 });
@@ -334,11 +336,13 @@ export type ApiTrainingJob = z.infer<typeof zApiTrainingJob>;
  */
 export const zApiProject = zDbProject
   .pick({
-    name:            true,
-    description:     true,
-    lastUpdated:     true,
-    corners:         true,
-    dataAssignments: true,
+    name:                 true,
+    description:          true,
+    utmZone:              true,
+    isSouthernHemisphere: true,
+    lastUpdated:          true,
+    corners:              true,
+    dataAssignments:      true,
   })
   .extend({
     id: zid("projects"),

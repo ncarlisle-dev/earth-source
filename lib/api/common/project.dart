@@ -135,6 +135,48 @@ class Project
     description = newDescription;
   }
 
+  Future<void> setUtmZone(int utmZone) async
+  {
+    assert(utmZone >= 0 && utmZone <= 60, "UTM zone is invalid.");
+
+    final networkService = await NetworkService.getInstance();
+
+    try {
+      lastUpdated = await networkService.setProjectMetadata(
+        id,
+        utmZone: utmZone
+      );
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+
+    utmZone = utmZone;
+  }
+
+  Future<void> setHemisphere(bool isSouthern) async
+  {
+    final networkService = await NetworkService.getInstance();
+
+    try {
+      lastUpdated = await networkService.setProjectMetadata(
+        id,
+        isSouthernHemisphere: isSouthern
+      );
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+
+    isSouthernHemisphere = isSouthern;
+  }
+
   /// Adds a file containing pXRF data to the project after validating the
   /// file's contents.
   /// 
@@ -413,34 +455,6 @@ class Project
 
     layers[layerIndex].lastUpdated = updateTimestamp;
     lastUpdated = updateTimestamp;
-  }
-
-  /// Changes the positioning of a pre-existing layer. (Note: Since layers can
-  /// overlap with no issue, there shouldn't be any need to check the new
-  /// positioning.)
-  /// 
-  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
-  /// after modification.
-  Future<void> setLayerPositioning(
-    String id, 
-    List<latlong.LatLng> cornerCoordinates
-  ) async
-  {
-    NetworkService networkService = NetworkService.getInstance();
-    int layerIndex = layers.indexWhere((layer) => layer.id == id);
-    layers[layerIndex].cornerCoordinates = cornerCoordinates;
-    layers[layerIndex].lastUpdated = DateTime.now();
-    lastUpdated = DateTime.now();
-
-    try {
-        await networkService.uploadProject(this);
-    }
-    on network.ApiNetworkException catch (error) {
-      throw network.ApiNetworkException(
-        "Project failed to update with the following error:\n$error", 
-        error.statusCode
-      );
-    }
   }
 
   /// Deletes a layer from the project and deletes the corresponding directory

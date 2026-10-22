@@ -44,18 +44,22 @@ latlong.LatLng convertCoordRecordToObj(common.Coordinate coord)
 common.Project convertApiProject(api_types.ApiProject apiProject)
 {
   return common.Project(
-    id:               apiProject.id,
-    name:             apiProject.name,
-    description:      apiProject.description,
-    corners:          apiProject.corners.map((corner) => latlong.LatLng(
-                        corner.latitude,
-                        corner.longitude,
-                      )).toList(),
-    dataAssignments:  apiProject.dataAssignments,
-    createdAt:        DateTime.fromMicrosecondsSinceEpoch(apiProject.createdAt),
-    lastUpdated:      DateTime.fromMicrosecondsSinceEpoch(
-                        apiProject.lastUpdated
-                      ),
+    id:                   apiProject.id,
+    name:                 apiProject.name,
+    description:          apiProject.description,
+    utmZone:              apiProject.utmZone,
+    isSouthernHemisphere: apiProject.isSouthernHemisphere,
+    corners:              apiProject.corners.map((corner) => latlong.LatLng(
+                            corner.latitude,
+                            corner.longitude,
+                          )).toList(),
+    dataAssignments:      apiProject.dataAssignments,
+    createdAt:            DateTime.fromMillisecondsSinceEpoch(
+                            apiProject.createdAt
+                          ),
+    lastUpdated:          DateTime.fromMillisecondsSinceEpoch(
+                            apiProject.lastUpdated
+                          ),
 
     layers: apiProject.layers.map((layer) => common.Layer(
       id:            layer.id,
@@ -63,8 +67,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       description:   layer.description,
       corners:       layer.corners.map(convertCoordRecordToObj).toList(),
       image:         layer.image,
-      createdAt:     DateTime.fromMicrosecondsSinceEpoch(layer.createdAt),
-      lastUpdated:   DateTime.fromMicrosecondsSinceEpoch(layer.lastUpdated),
+      createdAt:     DateTime.fromMillisecondsSinceEpoch(layer.createdAt),
+      lastUpdated:   DateTime.fromMillisecondsSinceEpoch(layer.lastUpdated),
     )).toList(),
 
     units: apiProject.units.map((unit) => common.Unit(
@@ -73,8 +77,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       description:   unit.description,
       corners:       unit.corners.map(convertCoordRecordToObj).toList(),
       pointInterval: unit.pointInterval,
-      createdAt:     DateTime.fromMicrosecondsSinceEpoch(unit.createdAt),
-      lastUpdated:   DateTime.fromMicrosecondsSinceEpoch(unit.lastUpdated),
+      createdAt:     DateTime.fromMillisecondsSinceEpoch(unit.createdAt),
+      lastUpdated:   DateTime.fromMillisecondsSinceEpoch(unit.lastUpdated),
     )).toList(),
 
     pxrfData: apiProject.pxrfData.map((spec) => common.PxrfDataSpec(
@@ -82,8 +86,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       fileName:           spec.fileName,
       numPoints:          spec.numPoints,
       size:               spec.size,
-      createdAt:          DateTime.fromMicrosecondsSinceEpoch(spec.createdAt),
-      lastUpdated:        DateTime.fromMicrosecondsSinceEpoch(spec.lastUpdated),
+      createdAt:          DateTime.fromMillisecondsSinceEpoch(spec.createdAt),
+      lastUpdated:        DateTime.fromMillisecondsSinceEpoch(spec.lastUpdated),
     )).toList(),
 
     trainingData: apiProject.trainingData.map(
@@ -92,8 +96,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
         fileName:         spec.fileName,
         numPoints:        spec.numPoints,
         size:             spec.size,
-        createdAt:        DateTime.fromMicrosecondsSinceEpoch(spec.createdAt),
-        lastUpdated:      DateTime.fromMicrosecondsSinceEpoch(spec.lastUpdated),
+        createdAt:        DateTime.fromMillisecondsSinceEpoch(spec.createdAt),
+        lastUpdated:      DateTime.fromMillisecondsSinceEpoch(spec.lastUpdated),
       )
     ).toList(),
 
@@ -104,8 +108,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       layerId:            job.layerId,
       modelId:            job.modelId,
       status:             job.status,
-      createdAt:          DateTime.fromMicrosecondsSinceEpoch(job.createdAt),
-      lastUpdated:        DateTime.fromMicrosecondsSinceEpoch(job.lastUpdated),
+      createdAt:          DateTime.fromMillisecondsSinceEpoch(job.createdAt),
+      lastUpdated:        DateTime.fromMillisecondsSinceEpoch(job.lastUpdated),
     )).toList(),
 
     models: apiProject.models.map((job) => common.TrainingJob(
@@ -114,8 +118,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       description:        job.description,
       status:             job.status,
       trainingDataSpecId: job.trainingDataSpecId,
-      createdAt:          DateTime.fromMicrosecondsSinceEpoch(job.createdAt),
-      lastUpdated:        DateTime.fromMicrosecondsSinceEpoch(job.lastUpdated),
+      createdAt:          DateTime.fromMillisecondsSinceEpoch(job.createdAt),
+      lastUpdated:        DateTime.fromMillisecondsSinceEpoch(job.lastUpdated),
     )).toList(),
   );
 }
@@ -173,7 +177,7 @@ class NetworkService {
         id:        spec.id,
         ipAddress: spec.ipAddress,
         port:      spec.port,
-        createdAt: DateTime.fromMicrosecondsSinceEpoch(spec.createdAt),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(spec.createdAt),
         status:    .disconnected,
       ))
       .toList();
@@ -205,7 +209,7 @@ class NetworkService {
         id:        createdSpec.id,
         ipAddress: createdSpec.ipAddress,
         port:      createdSpec.port,
-        createdAt: DateTime.fromMicrosecondsSinceEpoch(createdSpec.createdAt),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(createdSpec.createdAt),
         status:    .disconnected,
     );
   }
@@ -285,19 +289,29 @@ class NetworkService {
     String id,
     {
       String? name,
-      String? description
+      String? description,
+      int?    utmZone,
+      bool?   isSouthernHemisphere,
     }
   ) async
   {
-    assert(name != null || description != null, "No updates specified.");
+    assert(
+      name != null
+        || description != null
+        || utmZone != null
+        || isSouthernHemisphere != null,
+      "No updates specified."
+    );
 
     final client = _getClient();
     final response = await client.mutation(
       name: "projects:setProjectMetadata",
       args: {
-        'id':          id,
-        'name':        name,
-        'description': description,
+        'id':                   id,
+        'name':                 name,
+        'description':          description,
+        'utmZone':              utmZone,
+        'isSouthernHemisphere': isSouthernHemisphere,
       },
     );
 
@@ -444,8 +458,8 @@ class NetworkService {
         description:   unit.description,
         corners:       unit.corners.map(convertCoordRecordToObj).toList(),
         pointInterval: unit.pointInterval,
-        createdAt:     DateTime.fromMicrosecondsSinceEpoch(unit.createdAt),
-        lastUpdated:   DateTime.fromMicrosecondsSinceEpoch(unit.lastUpdated),
+        createdAt:     DateTime.fromMillisecondsSinceEpoch(unit.createdAt),
+        lastUpdated:   DateTime.fromMillisecondsSinceEpoch(unit.lastUpdated),
       )).toList(),
       createdLayers: configResult.createdLayers.map((layer) => common.Layer(
         id:           layer.id,
@@ -453,8 +467,8 @@ class NetworkService {
         description:  layer.description,
         corners:      layer.corners.map(convertCoordRecordToObj).toList(),
         image:        layer.image,
-        createdAt:    DateTime.fromMicrosecondsSinceEpoch(layer.createdAt),
-        lastUpdated:  DateTime.fromMicrosecondsSinceEpoch(layer.lastUpdated),
+        createdAt:    DateTime.fromMillisecondsSinceEpoch(layer.createdAt),
+        lastUpdated:  DateTime.fromMillisecondsSinceEpoch(layer.lastUpdated),
       )).toList(),
       timestamp:     configResult.timestamp,
     );
@@ -899,10 +913,10 @@ class NetworkService {
       modelId:          createdJob.modelId,
       dataAssignments:  createdJob.dataAssignments,
       status:           createdJob.status,
-      createdAt:        DateTime.fromMicrosecondsSinceEpoch(
+      createdAt:        DateTime.fromMillisecondsSinceEpoch(
                           createdJob.createdAt
                         ),
-      lastUpdated:      DateTime.fromMicrosecondsSinceEpoch(
+      lastUpdated:      DateTime.fromMillisecondsSinceEpoch(
                           createdJob.lastUpdated
                         ),
     );
@@ -1038,10 +1052,10 @@ class NetworkService {
       description:        createdJob.description,
       trainingDataSpecId: createdJob.trainingDataSpecId,
       status:             createdJob.status,
-      createdAt:          DateTime.fromMicrosecondsSinceEpoch(
+      createdAt:          DateTime.fromMillisecondsSinceEpoch(
                             createdJob.createdAt
                           ),
-      lastUpdated:        DateTime.fromMicrosecondsSinceEpoch(
+      lastUpdated:        DateTime.fromMillisecondsSinceEpoch(
                             createdJob.lastUpdated
                           ),
     );

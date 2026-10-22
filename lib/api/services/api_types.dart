@@ -408,6 +408,8 @@ class ApiProject
   final String                           id;
   final String                           name;
   final String                           description;
+  final int                              utmZone;
+  final bool                             isSouthernHemisphere;
   final List<common.Coordinate>          corners;
   final Map<String, Map<String, String>> dataAssignments;
   final List<ApiLayer>                   layers;
@@ -423,6 +425,9 @@ class ApiProject
     required this.id,
     required this.name,
     required this.description,
+    required this.utmZone,
+    required this.isSouthernHemisphere,
+    required this.lastUpdated,
     required this.corners,
     required this.dataAssignments,
     required this.layers,
@@ -431,45 +436,48 @@ class ApiProject
     required this.trainingData,
     required this.predictions,
     required this.models,
-    required this.lastUpdated,
     required this.createdAt,
   });
 
   factory ApiProject.fromMap(Map<String, dynamic> map)
     => ApiProject(
-      id:               map['id'],
-      name:             map['name'],
-      description:      map['description'],
-      corners:          map['corners'].map((coord) => (
-                          latitude:  coord['latitude'],
-                          longitude: coord['longitude'],
-                        )),
-      dataAssignments:  map['dataAssignments'],
-      layers:           map['layers'],
-      units:            map['units'],
-      pxrfData:         map['pxrfData'],
-      trainingData:     map['trainingData'],
-      predictions:      map['predictions'],
-      models:           map['models'],
-      lastUpdated:      map['lastUpdated'],
-      createdAt:        map['createdAt'],
+      id:                   map['id'],
+      name:                 map['name'],
+      description:          map['description'],
+      utmZone:              map['utmZone'],
+      isSouthernHemisphere: map['isSouthernHemisphere'],
+      corners:              map['corners'].map((coord) => (
+                              latitude:  coord['latitude'],
+                              longitude: coord['longitude'],
+                            )),
+      dataAssignments:      map['dataAssignments'],
+      layers:               map['layers'],
+      units:                map['units'],
+      pxrfData:             map['pxrfData'],
+      trainingData:         map['trainingData'],
+      predictions:          map['predictions'],
+      models:               map['models'],
+      lastUpdated:          map['lastUpdated'],
+      createdAt:            map['createdAt'],
     );
 }
 
 final zApiProject = _z.object({
-  'id':               zId,
-  'name':             _z.string(),
-  'description':      _z.string(),
-  'corners':          _z.array(_zCoordinate).length(4),
-  'dataAssignments':  _z.record(
-                        _z.record(zId.nullable()).keySchema(zId)
-                      ).keySchema(zId),
-  'layers':           _z.array(zApiLayer),
-  'units':            _z.array(zApiUnit),
-  'pxrfData':         _z.array(zApiPxrfDataSpec),
-  'trainingData':     _z.array(zApiTrainingDataSpec),
-  'predictions':      _z.array(zApiPredictionJob),
-  'models':           _z.array(zApiTrainingJob),
-  'lastUpdated':      zTimestamp,
-  'createdAt':        zTimestamp,
+  'id':                   zId,
+  'name':                 _z.string(),
+  'description':          _z.string(),
+  'utmZone':              _z.integer().min(0).max(60),
+  'isSouthernHemisphere': _z.boolean(),
+  'corners':              _z.array(_zCoordinate).length(4),
+  'dataAssignments':      _z.record(
+                            _z.record(zId.nullable()).keySchema(zId)
+                          ).keySchema(zId),
+  'layers':               _z.array(zApiLayer),
+  'units':                _z.array(zApiUnit),
+  'pxrfData':             _z.array(zApiPxrfDataSpec),
+  'trainingData':         _z.array(zApiTrainingDataSpec),
+  'predictions':          _z.array(zApiPredictionJob),
+  'models':               _z.array(zApiTrainingJob),
+  'lastUpdated':          zTimestamp,
+  'createdAt':            zTimestamp,
 }).transform(ApiProject.fromMap);

@@ -88,7 +88,7 @@ async function getDbProject(
  * @param updates The update object.
  * @returns The non-empty update fields.
  */
-async function validateUpdates(updates: Record<string, any>) {
+async function validateUpdates<R extends Record<string, any>>(updates: R): Promise<R> {
     for (const key of Object.keys(updates)) {
       if (updates[key] === undefined)
         delete updates[key];
@@ -108,27 +108,31 @@ async function validateUpdates(updates: Record<string, any>) {
  */
 export const createProject = zodMutation({
   args: {
-    name:        zDbProject.shape.name,
-    description: zDbProject.shape.description,
-    corners:     zDbProject.shape.corners,
+    name:                 zDbProject.shape.name,
+    description:          zDbProject.shape.description,
+    corners:              zDbProject.shape.corners,
+    utmZone:              zDbProject.shape.utmZone,
+    isSouthernHemisphere: zDbProject.shape.isSouthernHemisphere,
   },
   handler: async (ctx, args): Promise<ApiProject> => {
     const userId = await authenticateUser(ctx);
     const timestamp = Date.now();
 
     const projectId = await ctx.db.insert("projects", {
-      userId:              userId,
-      name:                args.name,
-      description:         args.description,
-      lastUpdated:         timestamp,
-      corners:             args.corners,
-      dataAssignments:     {}, 
-      layerIds:            [],
-      unitIds:             [],
-      pxrfDataSpecIds:     [],
-      trainingDataSpecIds: [],
-      predictionJobIds:    [],
-      trainingJobIds:      [],
+      userId:               userId,
+      name:                 args.name,
+      description:          args.description,
+      utmZone:              args.utmZone,
+      isSouthernHemisphere: args.isSouthernHemisphere,
+      lastUpdated:          timestamp,
+      corners:              args.corners,
+      dataAssignments:      {}, 
+      layerIds:             [],
+      unitIds:              [],
+      pxrfDataSpecIds:      [],
+      trainingDataSpecIds:  [],
+      predictionJobIds:     [],
+      trainingJobIds:       [],
     });
 
     return await ctx.runQuery(
@@ -177,18 +181,20 @@ export const getUserProjectSpecs = zodQuery({
       .collect();
     
     return projects.map((dbProject) => ({
-      id:              dbProject._id,
-      name:            dbProject.name,
-      description:     dbProject.description,
-      corners:         dbProject.corners,
-      lastUpdated:     dbProject.lastUpdated,
-      createdAt:       dbProject._creationTime,
-      numLayers:       dbProject.layerIds.length,
-      numUnits:        dbProject.unitIds.length,
-      numPxrfData:     dbProject.pxrfDataSpecIds.length,
-      numTrainingData: dbProject.trainingDataSpecIds.length,
-      numPredictions:  dbProject.predictionJobIds.length,
-      numModels:       dbProject.trainingJobIds.length,
+      id:                   dbProject._id,
+      name:                 dbProject.name,
+      description:          dbProject.description,
+      utmZone:              dbProject.utmZone,
+      isSouthernHemisphere: dbProject.isSouthernHemisphere,
+      corners:              dbProject.corners,
+      lastUpdated:          dbProject.lastUpdated,
+      createdAt:            dbProject._creationTime,
+      numLayers:            dbProject.layerIds.length,
+      numUnits:             dbProject.unitIds.length,
+      numPxrfData:          dbProject.pxrfDataSpecIds.length,
+      numTrainingData:      dbProject.trainingDataSpecIds.length,
+      numPredictions:       dbProject.predictionJobIds.length,
+      numModels:            dbProject.trainingJobIds.length,
     }));
   },
 });
@@ -203,19 +209,21 @@ export const getProjectById = zodQuery({
     const dbProject = await getDbProject(ctx, args.id, userId);
 
     const project: ApiProject = {
-      id:              dbProject._id,
-      name:            dbProject.name,
-      description:     dbProject.description,
-      corners:         dbProject.corners,
-      lastUpdated:     dbProject.lastUpdated,
-      createdAt:       dbProject._creationTime,
-      dataAssignments: dbProject.dataAssignments,
-      layers:          [],
-      units:           [],
-      pxrfData:        [],
-      trainingData:    [],
-      predictions:     [],
-      models:          [],
+      id:                   dbProject._id,
+      name:                 dbProject.name,
+      description:          dbProject.description,
+      utmZone:              dbProject.utmZone,
+      isSouthernHemisphere: dbProject.isSouthernHemisphere,
+      corners:              dbProject.corners,
+      lastUpdated:          dbProject.lastUpdated,
+      createdAt:            dbProject._creationTime,
+      dataAssignments:      dbProject.dataAssignments,
+      layers:               [],
+      units:                [],
+      pxrfData:             [],
+      trainingData:         [],
+      predictions:          [],
+      models:               [],
     };
 
     // fetch layers
@@ -360,6 +368,8 @@ export const setProjectMetadata = zodMutation({
     id: zid("projects"),
     name: zDbProject.shape.name.optional(),
     description: zDbProject.shape.description.optional(),
+    utmZone: zDbProject.shape.utmZone.optional(),
+    isSoutherHemisphere: zDbProject.shape.isSouthernHemisphere.optional(),
   },
   handler: async (ctx, args) => {
     const userId = await authenticateUser(ctx);
