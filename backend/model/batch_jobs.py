@@ -23,7 +23,24 @@ def get_job(job_id):
   return job
 
 #Upload URLS from the API
-def ret_upload_url()
+def ret_upload_url(kind,job_id):
+  endpoint = {
+        "prediction": "getPredictionOutputUrl",
+        "training": "getTrainingUrl"
+    }[kind]
+  
+  response = requests.get(
+        f"{GATEWAY_URL}/{endpoint}",
+        params = {"jobId": job_id},
+        headers = {
+            "Authorization": f"Bearer {GATEWAY_TOKEN}"
+        },
+        timeout = 10
+  )
+  
+  response.raise_for_status()
+  
+  return response.json()["uploadUrl"]
 #Retrieve CSV function
 def download_csv(url):
   
