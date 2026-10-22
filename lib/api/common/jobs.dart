@@ -89,7 +89,9 @@ class PredictionJob extends Job
   /// empty list.
   /// 
   /// Throws a [network.ApiNetworkException] if results file cannot be fetched.
-  Future<List<List<double>>> getResults() async
+  /// 
+  /// TODO: make this not required projectId
+  Future<List<List<double>>> getResults(String projectId) async
   {
     final List<List<double>> results = [];
     NetworkService networkService = await NetworkService.getInstance();

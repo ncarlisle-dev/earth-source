@@ -255,9 +255,13 @@ class _PredictionViewState extends State<PredictionView> {
     int projectIndex = projectController.userProjects.indexWhere(
       (project) => project.id == widget.projectId);
 
-    List<List<double>>? results = await widget.predictionJob.getResults();
-    String? imageContents = 
-      await projectController.userProjects[projectIndex].getLayerImage(
+    List<List<double>>? results = await widget.predictionJob.getResults(
+      widget.projectId
+    );
+
+    String? imageContents = await projectController
+      .userProjects[projectIndex]
+      .getLayerImage(
         widget.predictionJob.layerId
       );
 

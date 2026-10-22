@@ -823,6 +823,114 @@ export const configureProjectSiteDb = zodInternalMutation({
   }
 });
 
+export const finalizeProjectLayerImageUpload = zodInternalMutation({
+  args: {
+    projectId: zid("projects"),
+    layerId: zid("layers"),
+    storageId: zid("_storage"),
+    filename: zDbLayer.shape.image.unwrap().shape.name,
+    fileSize: zDbLayer.shape.image.unwrap().shape.size,
+    timestamp: zTimestamp,
+  },
+  handler: async (ctx, args): Promise<NonNullable<ApiLayer["image"]>> => {
+    const image: NonNullable<DbLayer["image"]> = {
+      name:       args.filename,
+      size:       args.fileSize,
+      storageId:  args.storageId,
+      uploadedAt: args.timestamp,
+    };
+
+    await ctx.db.patch(
+      "layers",
+      args.layerId,
+      {
+        image: {
+          name:       args.filename,
+          size:       args.fileSize,
+          storageId:  args.storageId,
+          uploadedAt: args.timestamp,
+        },
+        lastUpdated:    args.timestamp,
+      },
+    );
+
+    await ctx.db.patch(
+      "projects",
+      args.projectId,
+      { lastUpdated: args.timestamp },
+    )
+
+    return {
+      name:       image.name,
+      size:       image.size,
+      uploadedAt: image.uploadedAt,
+    };
+  },
+});
+
+export const getProjectLayerImageDownloadUrl = zodQuery({
+  args: {
+    projectId: zid("projects"),
+    layerId: zid("layers"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    if (project.layerIds.find(id => id === args.layerId) === undefined)
+      throw new InvalidRequestError(`Project does not have layer with ID '${args.layerId}'.`);
+
+    const layer = await ctx.db.get("layers", args.layerId);
+    if (layer === null)
+      throw new ResourceNotFoundError(`Layer with ID '${args.layerId}' not found.`);
+
+    if (layer.image === null)
+      throw new ResourceNotFoundError(`Layer with ID '${args.layerId}' doesn't have an image.`);
+
+    const url = await ctx.storage.getUrl(layer.image.storageId);
+    if (url === null)
+      throw new UnknownServerError("File couldn't be found.");
+    
+    return url;
+  },
+});
+
+export const deleteProjectLayerImage = zodMutation({
+  args: {
+    projectId: zid("projects"),
+    layerId: zid("layers"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    if (project.layerIds.find(id => id === args.layerId) === undefined)
+      throw new InvalidRequestError(
+        `Project does not have layer with ID '${args.layerId}'.`
+      );
+
+    const layer = await ctx.db.get("layers", args.layerId);
+    if (layer === null)
+      throw new ResourceNotFoundError(
+        `Layer with ID '${args.layerId}' not found.`
+      );
+    
+    if (layer.image === null)
+      throw new ResourceNotFoundError(
+        `Layer with ID '${args.layerId}' doesn't have an image.`
+      );
+
+    const timestamp = Date.now();
+    await ctx.storage.delete(layer.image.storageId);
+    await ctx.db.patch(
+      "layers",
+      args.layerId,
+      { image: null, lastUpdated: timestamp },
+    );
+    await ctx.db.patch("projects", args.projectId, { lastUpdated: timestamp });
+
+    return timestamp;
+  },
+});
+
 /* ========================= File endpoint helpers ========================= */
 
 /**
@@ -1414,6 +1522,36 @@ export const setPredictionJobMetadata = zodMutation({
   },
 });
 
+export const setPredictionJobStatus = zodMutation({
+  args: {
+    projectId: zid("projects"),
+    jobId: zid("jobs"),
+    status: zDbPredictionJob.shape.status,
+  },
+  handler: async (ctx, args) => {
+    // TODO: Add authentication to only allow the batch server to do this
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    await assertProjectHasPredictionJob(ctx, project, args.jobId);
+
+    const timestamp = Date.now();
+
+    await ctx.db.patch(
+      "jobs",
+      args.jobId,
+      { status: args.status, lastUpdated: timestamp },
+    );
+
+    await ctx.db.patch(
+      "projects",
+      project._id,
+      { lastUpdated: timestamp },
+    );
+
+    return timestamp;
+  }
+});
+
 /** Query that fetches a project's {@link PredictionJob}. */
 export const getPredictionJobStatus = zodQuery({
   args: {
@@ -1593,9 +1731,9 @@ export const runTrainingJob = zodAction({
  */
 export const setTrainingJobMetadata = zodMutation({
   args: {
-    projectId: zid("projects"),
-    jobId: zid("jobs"),
-    name: zDbTrainingJob.shape.name.optional(),
+    projectId:   zid("projects"),
+    jobId:       zid("jobs"),
+    name:        zDbTrainingJob.shape.name.optional(),
     description: zDbTrainingJob.shape.description.optional(),
   },
   handler: async (ctx, args) => {
@@ -1622,6 +1760,37 @@ export const setTrainingJobMetadata = zodMutation({
 
     return timestamp;
   },
+});
+
+/** Mutation that sets a training job's status. */
+export const setTrainingJobStatus = zodMutation({
+  args: {
+    projectId: zid("projects"),
+    jobId: zid("jobs"),
+    status: zDbTrainingJob.shape.status,
+  },
+  handler: async (ctx, args) => {
+    // TODO: Add authentication to only allow the batch server to do this
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    await assertProjectHasTrainingJob(ctx, project, args.jobId);
+
+    const timestamp = Date.now();
+
+    await ctx.db.patch(
+      "jobs",
+      args.jobId,
+      { status: args.status, lastUpdated: timestamp },
+    );
+
+    await ctx.db.patch(
+      "projects",
+      project._id,
+      { lastUpdated: timestamp },
+    );
+
+    return timestamp;
+  }
 });
 
 /** Query that fetches a project's {@link TrainingJob}. */
@@ -1707,113 +1876,5 @@ export const getTrainingJobResultsUrl = zodQuery({
       throw new UnknownServerError("Job file couldn't be found.");
     
     return url;
-  },
-})
-
-export const finalizeProjectLayerImageUpload = zodInternalMutation({
-  args: {
-    projectId: zid("projects"),
-    layerId: zid("layers"),
-    storageId: zid("_storage"),
-    filename: zDbLayer.shape.image.unwrap().shape.name,
-    fileSize: zDbLayer.shape.image.unwrap().shape.size,
-    timestamp: zTimestamp,
-  },
-  handler: async (ctx, args): Promise<NonNullable<ApiLayer["image"]>> => {
-    const image: NonNullable<DbLayer["image"]> = {
-      name:       args.filename,
-      size:       args.fileSize,
-      storageId:  args.storageId,
-      uploadedAt: args.timestamp,
-    };
-
-    await ctx.db.patch(
-      "layers",
-      args.layerId,
-      {
-        image: {
-          name:       args.filename,
-          size:       args.fileSize,
-          storageId:  args.storageId,
-          uploadedAt: args.timestamp,
-        },
-        lastUpdated:    args.timestamp,
-      },
-    );
-
-    await ctx.db.patch(
-      "projects",
-      args.projectId,
-      { lastUpdated: args.timestamp },
-    )
-
-    return {
-      name:       image.name,
-      size:       image.size,
-      uploadedAt: image.uploadedAt,
-    };
-  },
-});
-
-export const getProjectLayerImageDownloadUrl = zodQuery({
-  args: {
-    projectId: zid("projects"),
-    layerId: zid("layers"),
-  },
-  handler: async (ctx, args) => {
-    const userId = await authenticateUser(ctx);
-    const project = await getDbProject(ctx, args.projectId, userId);
-    if (project.layerIds.find(id => id === args.layerId) === undefined)
-      throw new InvalidRequestError(`Project does not have layer with ID '${args.layerId}'.`);
-
-    const layer = await ctx.db.get("layers", args.layerId);
-    if (layer === null)
-      throw new ResourceNotFoundError(`Layer with ID '${args.layerId}' not found.`);
-
-    if (layer.image === null)
-      throw new ResourceNotFoundError(`Layer with ID '${args.layerId}' doesn't have an image.`);
-
-    const url = await ctx.storage.getUrl(layer.image.storageId);
-    if (url === null)
-      throw new UnknownServerError("File couldn't be found.");
-    
-    return url;
-  },
-});
-
-export const deleteProjectLayerImage = zodMutation({
-  args: {
-    projectId: zid("projects"),
-    layerId: zid("layers"),
-  },
-  handler: async (ctx, args) => {
-    const userId = await authenticateUser(ctx);
-    const project = await getDbProject(ctx, args.projectId, userId);
-    if (project.layerIds.find(id => id === args.layerId) === undefined)
-      throw new InvalidRequestError(
-        `Project does not have layer with ID '${args.layerId}'.`
-      );
-
-    const layer = await ctx.db.get("layers", args.layerId);
-    if (layer === null)
-      throw new ResourceNotFoundError(
-        `Layer with ID '${args.layerId}' not found.`
-      );
-    
-    if (layer.image === null)
-      throw new ResourceNotFoundError(
-        `Layer with ID '${args.layerId}' doesn't have an image.`
-      );
-
-    const timestamp = Date.now();
-    await ctx.storage.delete(layer.image.storageId);
-    await ctx.db.patch(
-      "layers",
-      args.layerId,
-      { image: null, lastUpdated: timestamp },
-    );
-    await ctx.db.patch("projects", args.projectId, { lastUpdated: timestamp });
-
-    return timestamp;
   },
 });
