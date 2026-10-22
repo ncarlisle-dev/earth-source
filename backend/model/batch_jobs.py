@@ -190,6 +190,13 @@ def job_failed(job_id, error):
                     "error": type(error).__name__
                   }
                  )
+#Once the claimed the Job can be ran
+#from starting -> running
+def claim_job(job_id):
+  is_claimed = client.mutation("batch:claimJob",{"jobId": job_id})
+
+  if is_claimed is not True:
+    raise ValueError("Job could not be claimed")
 
 #Train if Necessary
 #Return the pkl model file
