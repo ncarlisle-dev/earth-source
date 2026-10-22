@@ -11,6 +11,11 @@ from convex_client import client
 from cloud_model import PXRFModel
 from ebk_predict import dataframe_to_grid
 from gbdt_model_renewed import PXRFMaterialClassifier
+from tempfile import TemporaryDirectory
+
+GATEWAY_URL = ""
+GATEWAY_TOKEN = ""
+logger = logging.getLogger(__name__)
 
 #Get Job Function
 def get_job(job_id):
@@ -24,6 +29,7 @@ def get_job(job_id):
 
 #Upload URLS from the API
 def ret_upload_url(kind,job_id):
+  
   endpoint = {
         "prediction": "getPredictionOutputUploadUrl",
         "training": "getTrainingOutputUploadUrl"
@@ -100,12 +106,12 @@ def run_prediction(df, model):
 #Upload Output File
 def upload_to_convex(kind, job_id, output):
   
-  upload_url = get_upload_url(job_id, kind)
+  upload_url = ret_upload_url(job_id, kind)
   
   response = requests.post(
     upload_url,
     data=output["content"],
-    headers={"Content-Type": output["content_type"]},
+    headers={"Content-Type": output["contentType"]},
     timeout=(10, 60)
   )
   
@@ -114,7 +120,7 @@ def upload_to_convex(kind, job_id, output):
   return {
     "name": output["name"],
     "filename": output["filename"],
-    "storage_id": response.json()["storage_id"]
+    "storage_id": response.json()["storageId"]
   }
 
 #Process the Job Using previous functions
@@ -145,13 +151,15 @@ def process_job(model, job_id):
     uploads = []
 
     for outs in output:
-      uploads.append(upload_output(
+      uploads.append(upload_to_convex(
         job_id,
         kind,
-        output))
+        outs))
     #Mark as Complete and Log
-    complete_job(job_id, uploads)
+    complete_job(uploads, job_id)
+    
     logger.info("Job %s completed successfully",job_id)
+    
     return {
       "job_id": job_id,
       "status": "complete",
@@ -160,11 +168,28 @@ def process_job(model, job_id):
   #Log in the event a Job fails with its ID  
   except Exception as error:
     logger.exception("Job %s failed",job_id)
+    try:
+      job_failed(job_id,error)
+      
+    except Exception:
+      logger.exception("Could not mark job as failed")
+
+    raise
 
   
 #Update the Job to Finished
 def complete_job(uploaded_files, job_id):
   client.mutation("batch:completeJob",{"jobId": job_id,"outputs": uploaded_files})
+
+#Add job_failed function for failed jobs
+
+def job_failed(job_id, error):
+  client.mutation("batch:failJob",
+                  {
+                    "jobId": job_id,
+                    "error": type(error).__name__
+                  }
+                 )
 
 #Train if Necessary
 #Return the pkl model file
