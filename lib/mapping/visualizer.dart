@@ -29,8 +29,7 @@ class MappedPoint
 /// to be drawn onto the map if the file contains valid content; an empty list 
 /// if invalid or if no data file is provided.
 Future<List<map.Polygon>> _validateData(
-  List<List<double>> predictionData, 
-  List<latlong.LatLng> cornerCoordinates,
+  Map<double, latlong.LatLng> locatedData,
   double threshold
 ) async
 {

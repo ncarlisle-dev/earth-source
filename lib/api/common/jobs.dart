@@ -96,10 +96,10 @@ class PredictionJob extends Job
 
     List<List<String>> resultsAsString = [];
     List<String> fileLines = fileContents.split('\n');
-    for (var i = 0; i < fileLines.length; i++) {
+    for (var i = 1; i < fileLines.length; i++) {
       resultsAsString.add(fileLines[i].split(','));
     }
-    for (var i = 0; i < fileLines.length; i++) {
+    for (var i = 0; i < fileLines.length - 1; i++) {
       List<double> parsedList = [];
       for (var j = 0; j < fileLines[0].length; j++) {
         parsedList.add(double.parse(resultsAsString[i][j]));

@@ -245,8 +245,10 @@ class _PredictionViewState extends State<PredictionView> {
 
   /// Loads both the image and the prediction results for display on the 
   /// prediction view page.
-  Future<(String, List<List<double>>)> loadPredictionData() async
+  Future<(String, List<List<visualizer.MappedPoint>>)> loadPredictionData() async
   {
+    List<List<visualizer.MappedPoint>> mappedData = [];
+
     api.ProjectController projectController = 
       await api.ProjectController.getInstance();
     int projectIndex = projectController.userProjects.indexWhere(
@@ -257,6 +259,10 @@ class _PredictionViewState extends State<PredictionView> {
       await projectController.userProjects[projectIndex].getLayerImage(
         widget.predictionJob.layer.id!
       );
+
+    for (var i = 0; i < results!.length; i++) {
+      visualizer.MappedPoint point = visualizer.MappedPoint();
+    }
 
     return (imageContents!, results!);
   }
