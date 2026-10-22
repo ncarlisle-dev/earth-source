@@ -151,19 +151,14 @@ class PredictionGenerationState extends State<PredictionGeneration>
 
                   // Create a prediction job with the appropriate fields
                   // assigned.
-                  api.PredictionJob predictionJob = await
-                  projectController.userProjects[projectIndex].runPredictionJob(
-                    layerId!, ""
-                  );
-                  projectController.userProjects[projectIndex].setJobName(
-                    predictionJob.id!, 
-                    jobName!
-                  );
-                  projectController.userProjects[projectIndex].
-                  setJobDescription(
-                    predictionJob.id!, 
-                    jobDescription!
-                  );
+                  api.PredictionJob predictionJob = await projectController
+                    .userProjects[projectIndex]
+                    .runPredictionJob(
+                      jobName!,
+                      jobDescription!,
+                      layerId!,
+                      null
+                    );
 
                   // Navigate to the prediction view page, passing along the
                   // created job.

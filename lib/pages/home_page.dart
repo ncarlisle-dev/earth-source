@@ -55,10 +55,12 @@ class _HomePageState extends material.State<HomePage> {
             icon: material.Icon(material.Icons.info_outline),
             label: 'About',
           ),
-          /*material.NavigationDestination(
-            icon: material.Icon(material.Icons.warning),
-            label: 'WIP'
-          ),*/
+
+          // Use below for testing pages
+          // material.NavigationDestination(
+          //   icon: material.Icon(material.Icons.warning),
+          //   label: 'WIP'
+          // ),
         ],
       ),
       

@@ -88,7 +88,7 @@ class _PredictionsPageState extends State<PredictionsPage>
                       child: Column(
                         children: [
                           Text(
-                            snapshot.data![index].name!,
+                            snapshot.data![index].name,
                             style: TextStyle(
                               fontSize: 30,
                               color: Colors.indigo,
@@ -98,7 +98,7 @@ class _PredictionsPageState extends State<PredictionsPage>
                           Text(
                           "Status: "
                           "${possibleJobStatuses[snapshot.data![index].status.index]}"
-                          "\nDescription: ${snapshot.data![index].name!}\n"
+                          "\nDescription: ${snapshot.data![index].name}\n"
                           "Date Created: ${snapshot.data![index].createdAt}",
                             style: TextStyle(
                               fontSize: 15,

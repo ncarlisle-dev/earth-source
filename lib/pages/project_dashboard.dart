@@ -59,13 +59,16 @@ class _ProjectDashboardState extends State<ProjectDashboard>
                       // Find the appropriate project in the project controller
                       // and change the description of the corresponding 
                       // prediction job.
-                      api.ProjectController projectController = 
+                      final projectController = 
                         await api.ProjectController.getInstance();
-                      int projectIndex = 
+
+                      final projectIndex = 
                         projectController.userProjects.indexWhere(
                         (project) => project.id == widget.project.id);
+
                       projectController.userProjects[projectIndex].
-                        changeDescription(value!);
+                        setDescription(value!);
+
                       setState(() {
                         projectDescription = value;
                       });
@@ -153,7 +156,7 @@ class _ProjectDashboardState extends State<ProjectDashboard>
           child: FloatingActionButton(
             onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
               builder: 
-                (context) => PredictionsPage(projectId: widget.project.id!),
+                (context) => PredictionsPage(projectId: widget.project.id),
             )),
             child: Text("Predictions")
           )
@@ -163,7 +166,7 @@ class _ProjectDashboardState extends State<ProjectDashboard>
           child: FloatingActionButton(
             onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
               builder: 
-                (context) => ProjectSettings(projectId: widget.project.id!),
+                (context) => ProjectSettings(projectId: widget.project.id),
             )),
             child: Text("Settings")
           )

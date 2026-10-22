@@ -8,7 +8,7 @@ import '../home_page.dart';
 class PredictionView extends StatefulWidget {
   const PredictionView({
     super.key, 
-    required this.projectId, 
+    required this.projectId,
     required this.predictionJob
   });
 
@@ -82,10 +82,11 @@ class _PredictionViewState extends State<PredictionView> {
                       int projectIndex = 
                         projectController.userProjects.indexWhere(
                         (project) => project.id == widget.projectId);
-                      projectController.userProjects[projectIndex].setJobName(
-                        widget.predictionJob.id!, 
-                        value!
-                      );
+                      await projectController.userProjects[projectIndex]
+                        .setPredictionJobMetadata(
+                          widget.predictionJob.id,
+                          name: value!,
+                        );
 
                       setState(() {
                         changedName = value;
@@ -145,16 +146,17 @@ class _PredictionViewState extends State<PredictionView> {
                       // Find the appropriate project in the project controller
                       // and change the description of the corresponding 
                       // prediction job.
-                      api.ProjectController projectController = 
+                      final projectController = 
                         await api.ProjectController.getInstance();
-                      int projectIndex = 
-                        projectController.userProjects.indexWhere(
-                        (project) => project.id == widget.projectId);
-                      projectController.userProjects[projectIndex].
-                        setJobDescription(
-                          widget.predictionJob.id!, 
-                          value!
+                      final projectIndex = projectController.userProjects.indexWhere(
+                        (project) => project.id == widget.projectId
                       );
+
+                      await projectController.userProjects[projectIndex].
+                        setPredictionJobMetadata(
+                          widget.predictionJob.id, 
+                          description: value!,
+                        );
 
                       setState(() {
                         changedDescription = value;
@@ -201,13 +203,16 @@ class _PredictionViewState extends State<PredictionView> {
               onPressed: () async {
                 // Find the appropriate project in the project controller
                 // and delete the corresponding prediction job.
-                api.ProjectController projectController = 
+                final projectController = 
                   await api.ProjectController.getInstance();
-                int projectIndex = 
-                  projectController.userProjects.indexWhere(
-                  (project) => project.id == widget.projectId);
-                projectController.userProjects[projectIndex].
-                  deleteJob(widget.predictionJob.id!);
+
+                final projectIndex = projectController.userProjects.indexWhere(
+                  (project) => project.id == widget.projectId
+                );
+
+                await projectController.userProjects[projectIndex]
+                  .deletePredictionJob(widget.predictionJob.id);
+
                 if (context.mounted)
                 {
                   Navigator.push(context, MaterialPageRoute<void>(
@@ -229,18 +234,16 @@ class _PredictionViewState extends State<PredictionView> {
 
   /// Fetches the unit and data file assignments corresponding to the layer
   /// for the current prediction.
-  Future<Map<String, String>> getLayerAssignments() async
+  Future<Map<String, String?>> getLayerAssignments() async
   {
-    api.ProjectController projectController = 
-      await api.ProjectController.getInstance();
-    int projectIndex = projectController.userProjects.indexWhere(
-      (project) => project.id == widget.projectId);
+    final projectController = await api.ProjectController.getInstance();
+    final projectIndex = projectController.userProjects.indexWhere(
+      (project) => project.id == widget.projectId
+    );
 
-    Map<String, String>? layerAssignments = 
-      projectController.userProjects[projectIndex].
-      dataAssignments[widget.predictionJob.layer.id];
-
-    return layerAssignments!;
+    return projectController
+      .userProjects[projectIndex]
+      .dataAssignments[widget.predictionJob.layerId]!;
   }
 
   /// Loads both the image and the prediction results for display on the 
@@ -255,15 +258,31 @@ class _PredictionViewState extends State<PredictionView> {
     List<List<double>>? results = await widget.predictionJob.getResults();
     String? imageContents = 
       await projectController.userProjects[projectIndex].getLayerImage(
-        widget.predictionJob.layer.id!
+        widget.predictionJob.layerId
       );
 
-    return (imageContents!, results!);
+    return (imageContents, results);
   }
 
   @override
   Widget build(BuildContext context) {
     String jobStatus = jobStatusList[widget.predictionJob.status.index];
+
+    api.Project? project;
+    api.Layer? jobLayer;
+
+    api.ProjectController.getInstance()
+      .then(
+        (controller) {
+          project = controller
+            .userProjects
+            .singleWhere((project) => project.id == widget.projectId);
+
+          jobLayer = project!
+            .layers
+            .singleWhere((layer) => layer.id == widget.predictionJob.layerId);
+        }
+      );
     
     return ListView(
       children: [
@@ -282,7 +301,7 @@ class _PredictionViewState extends State<PredictionView> {
               )
             :
               Text(
-                "${widget.predictionJob.name}", 
+                widget.predictionJob.name, 
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   fontWeight: FontWeight.bold, 
                   color: Colors.indigo
@@ -344,7 +363,8 @@ class _PredictionViewState extends State<PredictionView> {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: Center(
-            child: Text("Layer: ${widget.predictionJob.layer.name}"))),
+            // TODO: Get the actual layer information
+            child: Text("Layer: ${widget.predictionJob.layerId}"))), 
         FutureBuilder(
             future: getLayerAssignments(),
             builder: (
@@ -388,24 +408,22 @@ class _PredictionViewState extends State<PredictionView> {
               BuildContext ctx, 
               AsyncSnapshot<(String, List)> snapshot
             ) 
-            => snapshot.hasData
-            ?
-            mapDisplay 
-              ? 
-              visualizer.Visualizer(
-                predictionData: snapshot.data!.$2 as List<List<double>>, 
-                imageFilePath: snapshot.data!.$1,
-                corners: widget.predictionJob.layer.corners,
-                threshold: 0.5
-              )
-              :
-              visualizer.TextDisplay(
-                corners: widget.predictionJob.layer.corners, 
-                predictionData: snapshot.data!.$2 as List<List<double>>, 
-                threshold: 0.5
-              )
-            :
-            Center(child: Text("Prediction data failed to load."))
+              => !snapshot.hasData
+                ? Center(child: Text("Prediction data failed to load."))
+                : jobLayer == null
+                  ? Center(child: Text("Loading..."))
+                  : mapDisplay 
+                    ? visualizer.Visualizer(
+                        predictionData: snapshot.data!.$2 as List<List<double>>, 
+                        imageFilePath: snapshot.data!.$1,
+                        corners: jobLayer!.corners,
+                        threshold: 0.5
+                      )
+                    : visualizer.TextDisplay(
+                        corners: jobLayer!.corners, 
+                        predictionData: snapshot.data!.$2 as List<List<double>>, 
+                        threshold: 0.5
+                      )
           ),
         ),
       ]

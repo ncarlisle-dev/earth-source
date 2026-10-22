@@ -142,7 +142,13 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                   projectName!, 
                   projectDescription!,
                   utmZone!,
-                  isSouthernHemisphere
+                  isSouthernHemisphere,
+                  [
+                    (latitude: 0, longitude: 0), // TODO: add input for this field
+                    (latitude: 0, longitude: 0),
+                    (latitude: 0, longitude: 0),
+                    (latitude: 0, longitude: 0),
+                  ]
                 );
                 if (context.mounted)
                 {
