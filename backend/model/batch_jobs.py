@@ -98,7 +98,25 @@ def run_prediction(df, model):
     }
   ]
 #Upload Output File
-def upload_to_convex()
+def upload_to_convex(kind, job_id, output):
+  
+  upload_url = get_upload_url(job_id, kind)
+  
+  response = requests.post(
+    upload_url,
+    data=output["content"],
+    headers={"Content-Type": output["content_type"]},
+    timeout=(10, 60)
+  )
+  
+  response.raise_for_status()
+  
+  return {
+    "name": output["name"],
+    "filename": output["filename"],
+    "storage_id": response.json()["storage_id"]
+  }
+
 #Process the Job Using previous functions
 def process_job()
 #Update the Job to Finished
