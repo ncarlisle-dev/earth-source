@@ -1091,7 +1091,7 @@ class _MapPageState extends State<MapPage>
       ? units = widget.project.units
       : units = updatedUnits;
 
-    return ListView(
+    return Material(child:ListView(
       children: [
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
@@ -1288,6 +1288,6 @@ class _MapPageState extends State<MapPage>
           }
         ),
       ]
-    );
+    ));
   }
 }

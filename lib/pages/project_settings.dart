@@ -62,7 +62,7 @@ class _ProjectSettingsState extends State<ProjectSettings>
   @override
   Widget build(BuildContext context) 
   {
-    return ListView(
+    return Material(child: ListView(
       children: [
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
@@ -91,6 +91,6 @@ class _ProjectSettingsState extends State<ProjectSettings>
           )
         ), 
       ]
-    );
+    ));
   }
 }
