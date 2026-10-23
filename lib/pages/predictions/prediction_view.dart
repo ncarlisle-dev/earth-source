@@ -250,10 +250,6 @@ class _PredictionViewState extends State<PredictionView> {
     List<coord_converter.UTMCoordinates> predictionPoints = [];
     List<double> predictionValues = [];
 
-    api.ProjectController projectController = 
-      await api.ProjectController.getInstance();
-    int projectIndex = projectController.userProjects.indexWhere(
-      (project) => project.id == widget.projectId);
     final projectController = await api.ProjectController.getInstance();
     final project = await projectController.getProjectById(widget.projectId);
 
@@ -268,15 +264,14 @@ class _PredictionViewState extends State<PredictionView> {
       coord_converter.UTMCoordinates coords = coord_converter.UTMCoordinates(
         x: results[i][0], 
         y: results[i][1], 
-        zoneNumber: projectController.userProjects[projectIndex].utmZone,
-        isSouthernHemisphere: projectController.userProjects[projectIndex].
-          isSouthernHemisphere
+        zoneNumber: project.utmZone,
+        isSouthernHemisphere: project.isSouthernHemisphere
       );
       predictionPoints.add(coords);
       predictionValues.add(results[i][2]);
     }
 
-    return (imageContents!, predictionPoints, predictionValues);
+    return (imageContents, predictionPoints, predictionValues);
   }
 
   @override
@@ -415,45 +410,29 @@ class _PredictionViewState extends State<PredictionView> {
               BuildContext ctx, 
               AsyncSnapshot<(String, List, List)> snapshot
             ) 
-            => snapshot.hasData
-            ?
-            mapDisplay 
-              ? 
-              visualizer.Visualizer(
-                predictionCoords: 
-                  snapshot.data!.$2 as List<coord_converter.UTMCoordinates>,
-                predictionValues: snapshot.data!.$3 as List<double>, 
-                imageFile: snapshot.data!.$1,
-                cornerCoordinates: widget.predictionJob.layer.cornerCoordinates,
-                threshold: 0.5
-              )
-              :
-              visualizer.TextDisplay(
-                predictionCoords: 
-                  snapshot.data!.$2 as List<coord_converter.UTMCoordinates>, 
-                predictionValues: snapshot.data!.$3 as List<double>,  
-                threshold: 0.5
-              )
-            :
-            Center(child: Text("Prediction data failed to load."))
-              AsyncSnapshot<(String, List<List<double>>)> snapshot
-            ) 
-              => !snapshot.hasData
-                ? Center(child: Text("Prediction data failed to load."))
-                : jobLayer == null
-                  ? Center(child: Text("Loading..."))
-                  : mapDisplay 
-                    ? visualizer.Visualizer(
-                        predictionData: snapshot.data!.$2, 
-                        imageFilePath: snapshot.data!.$1,
-                        corners: jobLayer!.corners,
-                        threshold: 0.5
-                      )
-                    : visualizer.TextDisplay(
-                        corners: jobLayer!.corners, 
-                        predictionData: snapshot.data!.$2, 
-                        threshold: 0.5
-                      )
+            => !snapshot.hasData
+              ? Center(child: Text("Prediction data failed to load."))
+              : jobLayer == null
+                ? Center(child: Text("Loading..."))
+                : mapDisplay 
+                    ? 
+                    visualizer.Visualizer(
+                      predictionCoords: 
+                        snapshot.data!.$2 as 
+                        List<coord_converter.UTMCoordinates>,
+                      predictionValues: snapshot.data!.$3 as List<double>, 
+                      imageFile: snapshot.data!.$1,
+                      corners: jobLayer!.corners,
+                      threshold: 0.5
+                    )
+                    :
+                    visualizer.TextDisplay(
+                      predictionCoords: 
+                        snapshot.data!.$2 as 
+                        List<coord_converter.UTMCoordinates>, 
+                      predictionValues: snapshot.data!.$3 as List<double>,  
+                      threshold: 0.5
+                    )
           ),
         ),
       ]

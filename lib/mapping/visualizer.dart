@@ -136,7 +136,7 @@ class Visualizer extends StatelessWidget
     required this.imageFile, 
     required this.predictionCoords, 
     required this.predictionValues,
-    required this.cornerCoordinates,
+    required this.corners,
     required this.threshold
   });
 
