@@ -1458,7 +1458,14 @@ export const runPredictionJob = zodAction({
       }
     );
 
-    // TODO: send HTTP request with job ID
+    const baseUrl = "https://earth-source-web-server.onrender.com/run";
+    const params = new URLSearchParams({
+      jobId:      createdJob._id,
+      projectId:  args.projectId,
+      outputName: "classification",
+    });
+
+    fetch(`${baseUrl}?${params}`);
 
     return {
       id:              createdJob._id,
