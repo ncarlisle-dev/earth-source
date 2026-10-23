@@ -236,7 +236,7 @@ List<coord_converter.UTMCoordinates> convertCoordsLatLng(
 )
 {
   List<coord_converter.UTMCoordinates> utmCoords = [];
-  for (var i = 0; i < utmCoords.length; i++) {
+  for (var i = 0; i < latLongCoords.length; i++) {
     coord_converter.DDCoordinates ddCoords = coord_converter.DDCoordinates(
       latitude: latLongCoords[i].latitude, 
       longitude: latLongCoords[i].longitude

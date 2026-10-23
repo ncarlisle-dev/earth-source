@@ -70,11 +70,15 @@ class _ProjectDashboardState extends State<ProjectDashboard>
           actions: [
             ElevatedButton(
               child: const Text("Submit"),
-              onPressed: () {
+              onPressed: () async {
                 formKey.currentState!.save();
+                await widget.project.setDescription(projectDescription!);
+
                 setState(() {
                   isDescriptionChanged = true;
                 });
+
+                if (!context.mounted) return;
                 Navigator.of(context).pop();
               },
             ),

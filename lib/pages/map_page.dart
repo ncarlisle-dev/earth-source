@@ -355,8 +355,7 @@ class _MapPageState extends State<MapPage>
                     ),
                     initialValue: "${cornerCoords[0].y}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[0].y)
-                      {
+                      if (double.parse(value!) != cornerCoords[0].y) {
                         cornerCoords[0].y = double.parse(value);
                         positioningChanged = true;
                       }
@@ -368,8 +367,7 @@ class _MapPageState extends State<MapPage>
                     ),
                     initialValue: "${cornerCoords[1].x}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[1].x)
-                      {
+                      if (double.parse(value!) != cornerCoords[1].x) {
                         cornerCoords[1].x = double.parse(value);
                         positioningChanged = true;
                       }
@@ -381,8 +379,7 @@ class _MapPageState extends State<MapPage>
                     ),
                     initialValue: "${cornerCoords[1].y}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[1].y)
-                      {
+                      if (double.parse(value!) != cornerCoords[1].y) {
                         cornerCoords[1].y = double.parse(value);
                         positioningChanged = true;
                       }
@@ -394,8 +391,7 @@ class _MapPageState extends State<MapPage>
                     ),
                     initialValue: "${cornerCoords[2].x}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[2].x)
-                      {
+                      if (double.parse(value!) != cornerCoords[2].x) {
                         cornerCoords[2].x = double.parse(value);
                         positioningChanged = true;
                       }
@@ -407,8 +403,7 @@ class _MapPageState extends State<MapPage>
                     ),
                     initialValue: "${cornerCoords[2].y}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[2].y)
-                      {
+                      if (double.parse(value!) != cornerCoords[2].y) {
                         cornerCoords[2].y = double.parse(value);
                         positioningChanged = true;
                       }
@@ -420,8 +415,7 @@ class _MapPageState extends State<MapPage>
                     ),
                     initialValue: "${cornerCoords[3].x}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[3].x)
-                      {
+                      if (double.parse(value!) != cornerCoords[3].x) {
                         cornerCoords[3].x = double.parse(value);
                         positioningChanged = true;
                       }
@@ -433,8 +427,7 @@ class _MapPageState extends State<MapPage>
                     ),
                     initialValue: "${cornerCoords[3].y}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[3].y)
-                      {
+                      if (double.parse(value!) != cornerCoords[3].y) {
                         cornerCoords[3].y = double.parse(value);
                         positioningChanged = true;
                       }

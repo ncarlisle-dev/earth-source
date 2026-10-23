@@ -455,16 +455,9 @@ export const configureProjectSite = zodAction({
       }
     ) as ConfigureProjectSiteDbResult;
 
-    // delete files indicated by database
-    const deleteFilePromises: Promise<void>[] = [];
-    for (const storageId of dbUpdateResult.storageIdsToDelete)
-      deleteFilePromises.push(ctx.storage.delete(storageId));
-
     // TODO: Resize all prediction output files
 
-    // await and return the updates
-    await Promise.all(deleteFilePromises);
-
+    // return
     return {
       createdUnits:  dbUpdateResult.createdUnits,
       createdLayers: dbUpdateResult.createdLayers,
@@ -477,7 +470,6 @@ export const configureProjectSite = zodAction({
 interface ConfigureProjectSiteDbResult {
   createdLayers: ApiLayer[];
   createdUnits: ApiUnit[];
-  storageIdsToDelete: Id<"_storage">[];
   timestamp: Timestamp;
 }
 
@@ -815,9 +807,6 @@ export const configureProjectSiteDb = zodInternalMutation({
         createdAt:     dbUnit._creationTime,
         lastUpdated:   dbUnit.lastUpdated,
       })),
-      storageIdsToDelete: predictionJobsToDelete
-        .map(job => job.outputStorageId)
-        .filter(id => id !== undefined) as Id<"_storage">[],
       timestamp,
     };
   }

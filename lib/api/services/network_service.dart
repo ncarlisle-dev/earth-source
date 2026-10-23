@@ -328,6 +328,7 @@ class NetworkService {
     }
   ) async
   {
+    // TODO: merge this method and project site updater into one thing
     assert(
       name != null
         || description != null
@@ -339,13 +340,13 @@ class NetworkService {
     final client = _getClient();
     final response = await client.mutation(
       name: "projects:setProjectMetadata",
-      args: {
+      args: removeNullEntries({
         'id':                   id,
         'name':                 name,
         'description':          description,
         'utmZone':              utmZone,
         'isSouthernHemisphere': isSouthernHemisphere,
-      },
+      }),
     );
 
     final timestamp = parseNetworkResponse(response, api_types.zTimestamp);
