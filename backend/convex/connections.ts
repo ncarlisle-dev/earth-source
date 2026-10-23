@@ -60,7 +60,7 @@ export const deleteConnectionSpec = zodMutation({
 
 /** Query that returns the user's connection specs. */
 export const getUserConnectionSpecs = zodQuery({
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<ApiConnectionSpec[]> => {
     const userId = await authenticateUser(ctx);
 
     const specs = await ctx.db
@@ -71,6 +71,11 @@ export const getUserConnectionSpecs = zodQuery({
       )
       .collect();
     
-    return specs;
+    return specs.map(dbSpec => ({
+      id:        dbSpec._id,
+      ipAddress: dbSpec.ipAddress,
+      port:      dbSpec.port,
+      createdAt: dbSpec._creationTime,
+    }));
   }
 });
