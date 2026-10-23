@@ -28,25 +28,12 @@ def get_job(job_id):
   return job
 
 #Upload URLS from the API
-def ret_upload_url(kind,job_id):
+def ret_upload_url(job_id):
   
-  endpoint = {
-        "prediction": "getPredictionOutputUploadUrl",
-        "training": "getTrainingOutputUploadUrl"
-    }[kind]
+  uploadUrl = client.query("batch:getPredictionJobOutputUploadUrl", { "jobId": job_id })
   
-  response = requests.get(
-        f"{GATEWAY_URL}/{endpoint}",
-        params = {"jobId": job_id},
-        headers = {
-            "Authorization": f"Bearer {GATEWAY_TOKEN}"
-        },
-        timeout = 10
-  )
-  
-  response.raise_for_status()
-  
-  return response.json()["uploadUrl"]
+  return uploadUrl
+
 #Retrieve CSV function
 def download_csv(url):
   
@@ -106,7 +93,7 @@ def run_prediction(df, model):
 #Upload Output File
 def upload_to_convex(kind, job_id, output):
   
-  upload_url = ret_upload_url(job_id, kind)
+  upload_url = ret_upload_url(job_id)
   
   response = requests.post(
     upload_url,
@@ -116,11 +103,21 @@ def upload_to_convex(kind, job_id, output):
   )
   
   response.raise_for_status()
+  #Receive the file's identifier
+  storage_id = response.json()["storageId"]
+  #Save the reference of the file
+  client.mutation(
+    "batch:setPredictionJobOutputStorageId",
+    {
+      "jobId": job_id,
+      "storageId": storage_id
+    }
+  )
   
   return {
     "name": output["name"],
     "filename": output["filename"],
-    "storage_id": response.json()["storageId"]
+    "storage_id": storageId
   }
 
 #Process the Job Using previous functions
