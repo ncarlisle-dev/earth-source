@@ -91,7 +91,7 @@ class _ProjectDashboardState extends State<ProjectDashboard>
   @override
   Widget build(BuildContext context) 
   {
-    return ListView(
+    return Material(child: ListView(
       children: [
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
@@ -114,8 +114,8 @@ class _ProjectDashboardState extends State<ProjectDashboard>
         ), 
         Center(
           child: isDescriptionChanged
-            ? Text(projectDescription!)
-            : Text(widget.project.description)
+            ? Text(projectDescription!, style: TextStyle(fontSize: 15, color: Colors.indigo))
+            : Text(widget.project.description, style: TextStyle(fontSize: 15, color: Colors.indigo))
         ),
         Center(
             child: Text("Date Created: ${widget.project.createdAt}")
@@ -175,6 +175,6 @@ class _ProjectDashboardState extends State<ProjectDashboard>
           )
         ),
       ]
-    );
+    ));
   }
 }

@@ -286,7 +286,7 @@ class _PredictionViewState extends State<PredictionView> {
         ));
       });
     
-    return ListView(
+    return Material(child: ListView(
       children: [
       Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
@@ -443,6 +443,6 @@ class _PredictionViewState extends State<PredictionView> {
           ),
         ),
       ]
-    );
+    ));
   }
 }

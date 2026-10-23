@@ -34,7 +34,7 @@ class _PredictionsPageState extends State<PredictionsPage>
   Widget build(BuildContext context) 
   {
   
-    return ListView(
+    return Material(child: ListView(
       children: [
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
@@ -136,6 +136,6 @@ class _PredictionsPageState extends State<PredictionsPage>
           ),
         ),
       ],
-    );
+    ));
   }
 }

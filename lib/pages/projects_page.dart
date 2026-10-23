@@ -25,6 +25,9 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   /// hemisphere.
   bool isSouthernHemisphere = false;
 
+  String zoneValue = "1";
+  String hemisphere = "Southern";
+
   List<String> utmZones = [for (var i = 1; i <= 60; i++) "$i"];
   List<String> hemispheres = ["Southern", "Northern"];
 
@@ -92,7 +95,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     child: Text("Select UTM Zone:")
                   ),
                   DropdownButton(
-                    value: utmZones[0],
+                    value: zoneValue,
                     icon: const Icon(Icons.keyboard_arrow_down),
                     items:
                         utmZones.map<DropdownMenuItem<String>>(
@@ -103,6 +106,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     onChanged: (String? newValue) {
                       setState(() {
                         utmZone = int.parse(newValue!);
+                        zoneValue = newValue;
                       });
                     },
                   ),
@@ -111,7 +115,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     child: Text("Select hemisphere:")
                   ),
                   DropdownButton(
-                    value: hemispheres[0],
+                    value: hemisphere,
                     icon: const Icon(Icons.keyboard_arrow_down),
                     items:
                         hemispheres.map<DropdownMenuItem<String>>(
@@ -124,6 +128,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                         if (newValue == hemispheres[0]) {
                           isSouthernHemisphere = true;
                         }
+                        hemisphere = newValue!;
                       });
                     },
                   ),
