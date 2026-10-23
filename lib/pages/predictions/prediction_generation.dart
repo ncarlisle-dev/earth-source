@@ -51,119 +51,121 @@ class PredictionGenerationState extends State<PredictionGeneration>
   @override
   Widget build(BuildContext context)
   {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            TextFormField(
-              decoration: const InputDecoration(hintText: 'Prediction Name'),
-              validator: (String? value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the prediction name.';
-                }
-                return null;
-              },
-              onSaved: (value) {
-                setState(() {
-                  jobName = value;
-                });
-              },
-            ),
-            TextFormField(
-              decoration: const InputDecoration(
-                hintText: 'Prediction Description'
-              ),
-              validator: (String? value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the prediction description.';
-                }
-                return null;
-              },
-              onSaved: (value) {
-                setState(() {
-                  jobDescription = value;
-                });
-              },
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 16.0),
-              child: Text("Select layer:")
-            ),
-            FutureBuilder(
-                future: getLayersWithAssignments(),
-                builder: (
-                  BuildContext ctx, 
-                  AsyncSnapshot<List<api.Layer>> snapshot
-                ) 
-                  => snapshot.hasData && snapshot.data != null
-                    ? DropdownButton(
-                        value: snapshot.data![0] as String,
-                        icon: const Icon(Icons.keyboard_arrow_down),
-                        items: snapshot.data!
-                          .map<DropdownMenuItem<String>>((layer) {
-                            return DropdownMenuItem<String>(
-                              value: layer.id,
-                              child: Text(layer.name)
-                            );
-                          })
-                          .toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            layerId = newValue!;
-                          });
-                        },
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.only(top: 16.0),
-                        child: Text(
-                          "Project layers cannot currently be accessed."
-                        ),
-                      ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: ElevatedButton(
-                // Note that I tried to make the below its own function so
-                // there wouldn't be so much indentation here, but it gave me
-                // issues due to not having access to the context passed in
-                // to the overridden build function.
-                onPressed: () async {
-                  _formKey.currentState!.save();
-                  final projectController = await api.ProjectController
-                    .getInstance();
-                  
-                  final project = await projectController
-                    .getProjectById(widget.projectId);
-
-                  // Create a prediction job with the appropriate fields
-                  // assigned.
-                  final predictionJob = await project.runPredictionJob(
-                    jobName!,
-                    jobDescription!,
-                    layerId!,
-                    null
-                  );
-
-                  // Navigate to the prediction view page, passing along the
-                  // created job.
-                  if (context.mounted) {
-                    Navigator.push(context, MaterialPageRoute<void>(
-                      builder: (context) => PredictionView(
-                        projectId: widget.projectId, 
-                        predictionJob: predictionJob,
-                      ),
-                    ));
+    return Material(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              TextFormField(
+                decoration: const InputDecoration(hintText: 'Prediction Name'),
+                validator: (String? value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the prediction name.';
                   }
+                  return null;
                 },
-                child: Text("Generate Predictions"),
-              )
-            ),
-          ]
+                onSaved: (value) {
+                  setState(() {
+                    jobName = value;
+                  });
+                },
+              ),
+              TextFormField(
+                decoration: const InputDecoration(
+                  hintText: 'Prediction Description'
+                ),
+                validator: (String? value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the prediction description.';
+                  }
+                  return null;
+                },
+                onSaved: (value) {
+                  setState(() {
+                    jobDescription = value;
+                  });
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Text("Select layer:")
+              ),
+              FutureBuilder(
+                  future: getLayersWithAssignments(),
+                  builder: (
+                    BuildContext ctx, 
+                    AsyncSnapshot<List<api.Layer>> snapshot
+                  ) 
+                    => snapshot.hasData && snapshot.data != null
+                      ? DropdownButton(
+                          value: snapshot.data![0].id,
+                          icon: const Icon(Icons.keyboard_arrow_down),
+                          items: snapshot.data!
+                            .map<DropdownMenuItem<String>>((layer) {
+                              return DropdownMenuItem<String>(
+                                value: layer.id,
+                                child: Text(layer.name)
+                              );
+                            })
+                            .toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              layerId = newValue!;
+                            });
+                          },
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.only(top: 16.0),
+                          child: Text(
+                            "Project layers cannot currently be accessed."
+                          ),
+                        ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: ElevatedButton(
+                  // Note that I tried to make the below its own function so
+                  // there wouldn't be so much indentation here, but it gave me
+                  // issues due to not having access to the context passed in
+                  // to the overridden build function.
+                  onPressed: () async {
+                    _formKey.currentState!.save();
+                    final projectController = await api.ProjectController
+                      .getInstance();
+                    
+                    final project = await projectController
+                      .getProjectById(widget.projectId);
+
+                    // Create a prediction job with the appropriate fields
+                    // assigned.
+                    final predictionJob = await project.runPredictionJob(
+                      jobName!,
+                      jobDescription!,
+                      layerId!,
+                      null
+                    );
+
+                    // Navigate to the prediction view page, passing along the
+                    // created job.
+                    if (context.mounted) {
+                      Navigator.push(context, MaterialPageRoute<void>(
+                        builder: (context) => PredictionView(
+                          projectId: widget.projectId, 
+                          predictionJob: predictionJob,
+                        ),
+                      ));
+                    }
+                  },
+                  child: Text("Generate Predictions"),
+                )
+              ),
+            ]
+          )
         )
-      )
+      ),
     );
   }
 }

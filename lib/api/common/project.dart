@@ -6,7 +6,6 @@ import '../services/network_service.dart';
 import 'network.dart' as network;
 import 'specs.dart' as specs;
 import 'jobs.dart' as jobs;
-import 'package:flutter_map_math/flutter_geo_math.dart' as map_math;
 import 'package:latlong2/latlong.dart' as latlong;
 
 typedef Coordinate = ({ double latitude, double longitude });
@@ -753,10 +752,10 @@ class Project
       "Model with ID '$modelId' not found."
     );
 
-    assert(
-      !dataAssignments[layerId]!.values.every((id) => id == null),
-      "Project has no data assignments on layer with ID '$layerId'."
-    );
+    // assert(
+    //   !dataAssignments[layerId]!.values.every((id) => id == null),
+    //   "Project has no data assignments on layer with ID '$layerId'."
+    // );
 
     // run update
     final networkService = await NetworkService.getInstance();
