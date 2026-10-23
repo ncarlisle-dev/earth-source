@@ -85,14 +85,12 @@ final zApiUser = _z.object({
 class ApiConnectionSpec
 {
   final String id;
-  final String userId;
   final String ipAddress;
   final int    port;
   final int    createdAt;
 
   ApiConnectionSpec({
     required this.id,
-    required this.userId,
     required this.ipAddress,
     required this.port,
     required this.createdAt,
@@ -101,7 +99,6 @@ class ApiConnectionSpec
   factory ApiConnectionSpec.fromMap(Map<String, dynamic> map)
     => ApiConnectionSpec(
         id:        map['id'],
-        userId:    map['userId'],
         ipAddress: map['ipAddress'],
         port:      map['port'],
         createdAt: map['createdAt'],
@@ -109,15 +106,14 @@ class ApiConnectionSpec
 }
 
 final _ipv4AddrRegex = RegExp(
-  r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[09][0-9]?)\.){3}'
+  r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
   r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
 );
 
 final zApiConnectionSpec = _z.object({
   'id':        zId,
-  'userId':    zId,
   'ipAddress': _z.string().regex(_ipv4AddrRegex),
-  'port':      _z.integer().min(0).max(65535),
+  'port':      _z.integer().min(0).max(65535).transform((val) => val.toInt()),
   'createdAt': zTimestamp,
 }).transform(ApiConnectionSpec.fromMap);
 

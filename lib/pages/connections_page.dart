@@ -1,13 +1,13 @@
-/*import 'package:flutter/material.dart' as material;
-import '../api/api.dart' as api;
+import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart' as intl;
+import '../api/api.dart' as api;
 
 // TODO: port this page over to use new AirdroidController
 
 /* ============================== Utility ============================== */
 
 /// Maps [api.ConnectionStatus]es to symbols indicating their value.
-const _connectionStatusSymbols = {
+const Map<api.ConnectionStatus, material.Icon> _connectionStatusSymbols = {
   api.ConnectionStatus.disconnecting: material.Icon(
     material.Icons.circle,
     color: material.Colors.red,
@@ -33,9 +33,30 @@ const _connectionStatusSymbols = {
 /// The current setState function given by the builder.
 /// 
 /// Some processes occur asynchronously to the build process, so this acts as
-/// a pointer to the proper setState() function and makes sure an outdated
+/// a pointer to the current setState() function and makes sure an outdated
 /// function call isn't made.
 void Function(void Function())? currSetState;
+
+Future<List<api.ConnectionSpec>> getUserConnectionSpecs() async
+{
+  final airdroidController = await api.AirdroidController.getInstance();
+  await pingConnections();
+
+  return airdroidController.connections;
+}
+
+Future<void> pingConnections() async {
+  final airdroidController = await api.AirdroidController.getInstance();
+
+  final List<Future<void>> pingFutures = [];
+  for (final spec in airdroidController.connections) {
+    if (spec.status == .connected) {
+      pingFutures.add(airdroidController.ping(spec.id));
+    }
+  }
+
+  await Future.wait(pingFutures);
+}
 
 /* ============================ Connections page ============================ */
 
@@ -52,247 +73,370 @@ class ConnectionsPage extends material.StatefulWidget
 /// State of the [ConnectionsPage].
 class _ConnectionsPageState extends material.State<ConnectionsPage>
 {
+
   @override
   material.Widget build(material.BuildContext context)
   {
-    return material.Text("Connections page");
+
+    currSetState = setState;
+
+    return material.FutureBuilder(
+      future: getUserConnectionSpecs(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          print(snapshot.error.toString());
+
+          return material.Center(child: material.Text(
+            "Error occurred fetching your connections."
+          ));
+        }
+
+        if (!snapshot.hasData || snapshot.data == null) {
+          return material.Center(child: material.Text("Loading..."));
+        }
+
+        return material.Padding(
+          padding: material.EdgeInsetsGeometry.symmetric(
+            vertical: 20.0,
+            horizontal: 30.0
+          ),
+          child: material.Scaffold(
+            body: material.SingleChildScrollView(
+              child: material.Column(
+                spacing: 15.0,
+                crossAxisAlignment: material.CrossAxisAlignment.stretch,
+                children: snapshot.data!.map((spec)
+                  => material.Container(
+                    padding: material.EdgeInsets.all(10.0),
+                    decoration: material.BoxDecoration(
+                      color: material.Color.fromARGB(255, 231, 231, 231),
+                      borderRadius: material.BorderRadius.circular(10.0),
+                    ),
+                    child: material.Row(
+                      spacing: 10.0,
+                      children: [
+                        _connectionStatusSymbols[spec.status]!,
+
+                        material.Column(
+                          crossAxisAlignment: material.CrossAxisAlignment.start,
+                          children: [
+                            material.Text(
+                              "${spec.ipAddress}:${spec.port}",
+                              style: material.TextStyle(
+                                fontWeight: material.FontWeight.bold
+                              ),
+                            ),
+                            material.Text(
+                              "${intl.DateFormat.yMMMEd().format(spec.createdAt)} "
+                              "at ${intl.DateFormat.jm().format(spec.createdAt)}"
+                            )
+                          ]
+                        ),
+
+                        material.IconButton(
+                          icon: material.Icon(material.Icons.folder_open),
+                          onPressed: () async {
+                            final filePath = await _showFileDownloadModal(
+                              context,
+                              spec.id
+                            );
+
+                            if (filePath == null) return;
+
+                            final airdroidController = 
+                              await api.AirdroidController.getInstance();
+
+                            final fileContents = await airdroidController
+                              .getFileContents(spec.id, filePath);
+
+                            print(fileContents);
+                          },
+                        ),
+
+                        material.IconButton(
+                          icon: material.Icon(material.Icons.refresh),
+                          onPressed: () async {
+                            final airdroidController = 
+                              await api.AirdroidController.getInstance();
+                            
+                            final createdSpec = airdroidController.connect(
+                              spec.ipAddress,
+                              spec.port
+                            );
+
+                            airdroidController.watchConnectionStatus(
+                              (await createdSpec).id,
+                              (_) => currSetState!(() {})
+                            );
+
+                            pingConnections();
+
+                            setState(() {});
+                          },
+                        ),
+                      ]
+                    )
+                  )
+                ).toList().reversed.toList(),
+              ),
+            ),
+            floatingActionButton: material.Row(
+              mainAxisAlignment: .end,
+              spacing: 10.0,
+              children: [
+                material.IconButton(
+                  onPressed: pingConnections,
+                  icon: const material.Icon(material.Icons.refresh),
+                ),
+
+                material.FloatingActionButton(
+                  onPressed: () async
+                  {
+                    final String? createdSpecId = await _showConnectionModal(
+                      context
+                    );
+                    if (createdSpecId == null) return;
+
+                    await pingConnections();
+
+                    final airdroidController = await api.AirdroidController
+                      .getInstance();
+
+                    airdroidController.watchConnectionStatus(
+                      createdSpecId,
+                      (_) => currSetState!(() {})
+                    );
+
+                    setState(() {});
+                  },
+                  tooltip: 'Add connection',
+                  child: const material.Icon(material.Icons.add),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    );
   }
-   @override
-   material.Widget build(material.BuildContext context)
-   {
-     // get setState
-     currSetState = setState;
+}
 
-     // build
-     return material.Padding(
-       padding: material.EdgeInsetsGeometry.symmetric(
-         vertical: 20.0,
-         horizontal: 30.0
-       ),
-       child: material.Scaffold(
-         body: material.Column(
-           spacing: 15.0,
-           crossAxisAlignment: material.CrossAxisAlignment.stretch,
-           children: _connectionEntries.map((entry)
-             => material.Container(
-               padding: material.EdgeInsets.all(10.0),
-               decoration: material.BoxDecoration(
-                 color: material.Color.fromARGB(255, 231, 231, 231),
-                 borderRadius: material.BorderRadius.circular(10.0),
-               ),
-               child: material.Row(
-                 spacing: 10.0,
-                 children: [
-                   _connectionStatusSymbols[entry.client?.status
-                     ?? api.ConnectionStatus.disconnected]!,
+/// Given the current build [context], shows the connection modal enabling the
+/// user to create a new connection.
+/// 
+/// Returns the [_ConnectionSpec] created by the user, or null if they
+/// cancelled its creation.
+Future<String?> _showConnectionModal(
+  material.BuildContext context
+) async
+{
+  String ipAddress = "";
+  String port = "";
+  bool isConnecting = false;
+  String? specId;
 
-                   material.Column(
-                     crossAxisAlignment: material.CrossAxisAlignment.start,
-                     children: [
-                       material.Text(
-                         "${entry.ipAddress}:${entry.port}",
-                         style: material.TextStyle(
-                           fontWeight: material.FontWeight.bold
-                         ),
-                       ),
-                       material.Text(
-                         "${intl.DateFormat.yMMMEd().format(entry.timeCreated)} "
-                         "at ${intl.DateFormat.jm().format(entry.timeCreated)}"
-                       )
-                     ]
-                   ),
-                 ]
-               )
-             )
-           ).toList().reversed.toList(),
-         ),
-         floatingActionButton: material.Row(
-           mainAxisAlignment: .end,
-           spacing: 10.0,
-           children: [
-             material.IconButton(
-               onPressed: refreshConnections,
-               icon: const material.Icon(material.Icons.refresh),
-             ),
+  final material.GlobalKey<material.FormState> formKey = 
+    material.GlobalKey<material.FormState>();
 
-             material.FloatingActionButton(
-               onPressed: () async
-               {
-                 final _ConnectionSpec? entry = await _showConnectionModal(
-                   context
-                 );
-                 refreshConnections();
-              
-                 if (entry != null)
-                 {
-                   entry.client!.setStatusListener((_)
-                     => currSetState!(() {})
-                   );
+  await material.showDialog(
+    barrierDismissible: false,
+    context: context,
+    builder: (material.BuildContext context)
+      => material.StatefulBuilder(
+        builder: (
+          material.BuildContext context,
+          material.StateSetter setModalState
+        )
+          => material.AlertDialog(
+            // padding: const material.EdgeInsets.all(24.0),
+            content: material.Form(
+              key: formKey,
+              child: material.Column(
+                mainAxisSize: material.MainAxisSize.min,
+                crossAxisAlignment: material.CrossAxisAlignment.stretch,
+                children: [
+                  const material.Text(
+                    "Add connection",
+                    style: material.TextStyle(fontSize: 25.0),
+                  ),
 
-                   setState(() {
-                     _connectionEntries.add(entry);
-                   });
-                 }
-               },
-               tooltip: 'Add connection',
-               child: const material.Icon(material.Icons.add),
-             ),
-           ],
-         ),
-       ),
-     );
-   }
+                  material.TextFormField(
+                    decoration: const material.InputDecoration(
+                      hintText: 'IP address'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the IP address';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      ipAddress = value ?? "";
+                    },
+                  ),
 
+                  // TODO: make this field number-only
+                  material.TextFormField(
+                    decoration: const material.InputDecoration(
+                      hintText: 'Port number'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the port number';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      port = value ?? "";
+                    },
+                  ),
 
- /// Given the current build [context], shows the connection modal enabling the
- /// user to create a new connection.
- /// 
- /// Returns the [_ConnectionSpec] created by the user, or null if they
- /// cancelled its creation.
- Future<_ConnectionSpec?> _showConnectionModal(
-   material.BuildContext context
- ) async
- {
-   String ipAddress = "";
-   String port = "";
-   bool isConnecting = false;
+                  material.Padding(
+                    padding: .only(top: 15.0),
+                    child: material.Row(
+                      mainAxisAlignment: .spaceBetween,
+                      children: [
+                        material.ElevatedButton(
+                          onPressed: () => material.Navigator.pop(context),
+                          child: const material.Text('Cancel'),
+                        ),
 
-   api.AirdroidClient? client;
+                        // TODO: add another button that cancels the connection
+                        // request instead of also closing the modal
 
-   final material.GlobalKey<material.FormState> formKey = 
-     material.GlobalKey<material.FormState>();
+                        material.ElevatedButton(
+                          onPressed: isConnecting
+                            ? null
+                            : () async
+                            {
+                              // validate and save the form data
+                              if (!formKey.currentState!.validate()) {
+                                return;
+                              }
 
-   await material.showDialog(
-     barrierDismissible: false,
-     context: context,
-     builder: (material.BuildContext context)
-       => material.StatefulBuilder(
-         builder: (
-           material.BuildContext context,
-           material.StateSetter setModalState
-         )
-           => material.AlertDialog(
-             // padding: const material.EdgeInsets.all(24.0),
-             content: material.Form(
-               key: formKey,
-               child: material.Column(
-                 mainAxisSize: material.MainAxisSize.min,
-                 crossAxisAlignment: material.CrossAxisAlignment.stretch,
-                 children: [
-                   const material.Text(
-                     "Add connection",
-                     style: material.TextStyle(fontSize: 25.0),
-                   ),
+                              formKey.currentState!.save();
 
-                   material.TextFormField(
-                     decoration: const material.InputDecoration(
-                       hintText: 'IP address'
-                     ),
-                     validator: (String? value) {
-                       if (value == null || value.isEmpty) {
-                         return 'Please enter the IP address';
-                       }
-                       return null;
-                     },
-                     onSaved: (value) {
-                       ipAddress = value ?? "";
-                     },
-                   ),
+                              // update frontend to show connection progress
+                              setModalState(() { isConnecting = true; });
 
-                   // TODO: make this field number-only
-                   material.TextFormField(
-                     decoration: const material.InputDecoration(
-                       hintText: 'Port number'
-                     ),
-                     validator: (String? value) {
-                       if (value == null || value.isEmpty) {
-                         return 'Please enter the port number';
-                       }
-                       return null;
-                     },
-                     onSaved: (value) {
-                       port = value ?? "";
-                     },
-                   ),
+                              // connect
+                              final airdroidController = 
+                                await api.AirdroidController.getInstance();
 
-                   material.Padding(
-                     padding: .only(top: 15.0),
-                     child: material.Row(
-                       mainAxisAlignment: .spaceBetween,
-                       children: [
-                         material.ElevatedButton(
-                           onPressed: () => material.Navigator.pop(context),
-                           child: const material.Text('Cancel'),
-                         ),
+                              try {
+                                specId = (await airdroidController.connect(
+                                  ipAddress,
+                                  int.parse(port)
+                                )).id;
 
-                         // TODO: add another button that cancels the connection
-                         // request instead of also closing the modal
-
-                         material.ElevatedButton(
-                           onPressed: isConnecting
-                             ? null
-                             : () async
-                             {
-                               // validate and save the form data
-                               if (!formKey.currentState!.validate()) {
-                                 return;
-                               }
-
-                               formKey.currentState!.save();
-
-                               // update frontend to show connection progress
-                               setModalState(() {
-                                 isConnecting = true;
-                               });
-
-                               // create the client and connect
-                               client = api.AirdroidClient();
-
-                               try {
-                                 await client!.connect(
-                                   ipAddress,
-                                   int.parse(port)
-                                 );
-
-                                 if (context.mounted) {
-                                   // close modal
-                                   material.Navigator.pop(context);
-                                 }
-                               } on api.NetworkException {
-                                 // TODO: properly handle connection failure
-                                 print("connection couldn't be made");
-                                 client = null;
-
-                                 setModalState(() {
-                                   isConnecting = false;
-                                 });
-                               }
-                             },
-                           child: material.Text(
-                             isConnecting
-                               ? 'Connecting... (Check your device)'
-                               : 'Connect',
-                           ),
-                         ),
-                       ],
-                     ),
-                   ),
-                 ],
-               ),
-             ),
-           ),
-       ),
-   );
-
-   if (client == null)
-   {
-     return null;
-   }
-
-  return _ConnectionSpec(
-    ipAddress,
-    int.parse(port),
-    DateTime.now(),
-    client
+                                if (context.mounted) {
+                                  // close modal
+                                  material.Navigator.pop(context);
+                                }
+                              } on api.AirdroidNetworkException {
+                                // TODO: handle connection failure better
+                                setModalState(() {
+                                  isConnecting = false;
+                                });
+                              }
+                            },
+                          child: material.Text(
+                            isConnecting
+                              ? 'Connecting... (Check your device)'
+                              : 'Connect',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ),
   );
-}*/
+
+  return specId;
+}
+
+Future<List<api.DirectoryItemSpec>> _getDirectoryItems(
+  String specId,
+  String filePath
+) async
+{
+  final airdroidController = await api.AirdroidController.getInstance();
+  return await airdroidController.getDirectoryContents(specId, filePath);
+}
+
+Future<String?> _showFileDownloadModal(
+  material.BuildContext context,
+  String specId,
+) async
+{
+  String currFilePath = "/sdcard";
+  bool itemSelected = false;
+
+  await material.showDialog(
+    barrierDismissible: true,
+    context: context,
+    builder: (material.BuildContext context) => material.StatefulBuilder(
+      builder: (
+        material.BuildContext context,
+        material.StateSetter setModalState
+      )
+      => material.AlertDialog(
+        content: material.Column(
+          children: [
+            material.Text(currFilePath),
+            material.FutureBuilder(
+              future: _getDirectoryItems(specId, currFilePath),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  print(snapshot.error.toString());
+                  return material.Center(child: material.Text("Getting items..."));
+                }
+
+                if (!snapshot.hasData || snapshot.data == null) {
+                  return material.Center(child: material.Text("Getting items..."));
+                }
+
+                return material.Column(
+                  spacing: 15.0,
+                  crossAxisAlignment: .stretch,
+                  children: snapshot.data!.map((item) => material.InkWell(
+                    onTap: () {
+                      setModalState(() {
+                        currFilePath += "/${item.name}";
+                      });
+
+                      if (item.isFile && context.mounted) {
+                        itemSelected = true;
+                        material.Navigator.pop(context);
+                      }
+                    },
+                    child: material.Row(
+                      spacing: 10.0,
+                      children: [
+                        item.isFile
+                          ? material.Icon(material.Icons.description)
+                          : material.Icon(material.Icons.folder),
+                        material.Text(item.name),
+                        material.Text("${item.size} bytes"),
+                        material.Text(
+                          "${intl.DateFormat.yMMMEd().format(item.lastModified)}, "
+                          "${intl.DateFormat.jm().format(item.lastModified)}"
+                        ),
+                      ],
+                    ),
+                  )).toList()
+                );
+              }
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  return itemSelected ? currFilePath : null;
+}
