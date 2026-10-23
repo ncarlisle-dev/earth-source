@@ -994,10 +994,12 @@ export const finalizePxrfFileUpload = zodInternalMutation({
     timestamp: zTimestamp,
   },
   handler: async (ctx, args) => {
+    const { timestamp, ...specFields } = args;
+
     const specId = await ctx.db.insert("dataSpecs", {
       kind: "pxrf",
-      lastUpdated: args.timestamp,
-      ...args,
+      lastUpdated: timestamp,
+      ...specFields,
     });
 
     const { pxrfDataSpecIds } = (await ctx.db.get("projects", args.projectId))!;
@@ -1006,7 +1008,7 @@ export const finalizePxrfFileUpload = zodInternalMutation({
     await ctx.db.patch(
       "projects",
       args.projectId,
-      { pxrfDataSpecIds, lastUpdated: args.timestamp }
+      { pxrfDataSpecIds, lastUpdated: timestamp }
     );
 
     const dbSpec = await ctx.db.get("dataSpecs", specId);
@@ -1043,10 +1045,12 @@ export const finalizeTrainingFileUpload = zodInternalMutation({
     timestamp: zTimestamp,
   },
   handler: async (ctx, args) => {
+    const { timestamp, ...specFields } = args;
+
     const specId = await ctx.db.insert("dataSpecs", {
       kind: "training",
-      lastUpdated: args.timestamp,
-      ...args,
+      lastUpdated: timestamp,
+      ...specFields,
     });
 
     const { trainingDataSpecIds } = (
@@ -1058,7 +1062,7 @@ export const finalizeTrainingFileUpload = zodInternalMutation({
     await ctx.db.patch(
       "projects",
       args.projectId,
-      { trainingDataSpecIds, lastUpdated: args.timestamp }
+      { trainingDataSpecIds, lastUpdated: timestamp }
     );
 
     return specId;

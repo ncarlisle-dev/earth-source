@@ -45,6 +45,12 @@ Future<List<api.ConnectionSpec>> getUserConnectionSpecs() async
   return airdroidController.connections;
 }
 
+Future<List<api.ProjectSpec>> getUserProjectSpecs() async
+{
+  final projectController = await api.ProjectController.getInstance();
+  return await projectController.getUserProjectSpecs();
+}
+
 Future<void> pingConnections() async {
   final airdroidController = await api.AirdroidController.getInstance();
 
@@ -136,20 +142,34 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
                         material.IconButton(
                           icon: material.Icon(material.Icons.folder_open),
                           onPressed: () async {
-                            final filePath = await _showFileDownloadModal(
+                            final selectedContent = await _showFileDownloadModal(
                               context,
                               spec.id
                             );
 
-                            if (filePath == null) return;
+                            if (selectedContent == null) return;
 
                             final airdroidController = 
                               await api.AirdroidController.getInstance();
 
                             final fileContents = await airdroidController
-                              .getFileContents(spec.id, filePath);
+                              .getFileContents(
+                                spec.id,
+                                selectedContent.filepath
+                              );
 
-                            print(fileContents);
+                            final projectController = 
+                              await api.ProjectController.getInstance();
+
+                            final project = await projectController
+                              .getProjectById(selectedContent.projectId);
+                            
+                            // TODO: move this logic to the projects page
+                            await project.addPxrfData(
+                              fileContents,
+                              selectedContent.filepath,
+                              ""
+                            );
                           },
                         ),
 
@@ -159,13 +179,13 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
                             final airdroidController = 
                               await api.AirdroidController.getInstance();
                             
-                            final createdSpec = airdroidController.connect(
+                            final createdSpec = await airdroidController.connect(
                               spec.ipAddress,
                               spec.port
                             );
 
                             airdroidController.watchConnectionStatus(
-                              (await createdSpec).id,
+                              createdSpec.id,
                               (_) => currSetState!(() {})
                             );
 
@@ -368,13 +388,14 @@ Future<List<api.DirectoryItemSpec>> _getDirectoryItems(
   return await airdroidController.getDirectoryContents(specId, filePath);
 }
 
-Future<String?> _showFileDownloadModal(
+Future<({ String filepath, String projectId })?> _showFileDownloadModal(
   material.BuildContext context,
   String specId,
 ) async
 {
   String currFilePath = "/sdcard";
   bool itemSelected = false;
+  String? projectId;
 
   await material.showDialog(
     barrierDismissible: true,
@@ -385,58 +406,110 @@ Future<String?> _showFileDownloadModal(
         material.StateSetter setModalState
       )
       => material.AlertDialog(
-        content: material.Column(
-          children: [
-            material.Text(currFilePath),
-            material.FutureBuilder(
-              future: _getDirectoryItems(specId, currFilePath),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  print(snapshot.error.toString());
-                  return material.Center(child: material.Text("Getting items..."));
-                }
-
-                if (!snapshot.hasData || snapshot.data == null) {
-                  return material.Center(child: material.Text("Getting items..."));
-                }
-
-                return material.Column(
-                  spacing: 15.0,
-                  crossAxisAlignment: .stretch,
-                  children: snapshot.data!.map((item) => material.InkWell(
-                    onTap: () {
-                      setModalState(() {
-                        currFilePath += "/${item.name}";
-                      });
-
-                      if (item.isFile && context.mounted) {
-                        itemSelected = true;
-                        material.Navigator.pop(context);
+        content: material.SingleChildScrollView(
+          child: !itemSelected
+            ? material.Column(
+                children: [
+                  material.Text(currFilePath),
+                  material.FutureBuilder(
+                    future: _getDirectoryItems(specId, currFilePath),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        print(snapshot.error.toString());
+                        return material.Center(child: material.Text(
+                          "Failed to fetch items."
+                        ));
                       }
-                    },
-                    child: material.Row(
-                      spacing: 10.0,
-                      children: [
-                        item.isFile
-                          ? material.Icon(material.Icons.description)
-                          : material.Icon(material.Icons.folder),
-                        material.Text(item.name),
-                        material.Text("${item.size} bytes"),
-                        material.Text(
-                          "${intl.DateFormat.yMMMEd().format(item.lastModified)}, "
-                          "${intl.DateFormat.jm().format(item.lastModified)}"
-                        ),
-                      ],
-                    ),
-                  )).toList()
-                );
-              }
+
+                      if (!snapshot.hasData || snapshot.data == null) {
+                        return material.Center(child: material.Text(
+                          "Getting items..."
+                        ));
+                      }
+
+                      return material.Column(
+                        spacing: 15.0,
+                        crossAxisAlignment: .stretch,
+                        children: snapshot.data!.map((item) => material.InkWell(
+                          onTap: () {
+                            setModalState(() {
+                              currFilePath += "/${item.name}";
+                              if (item.isFile) itemSelected = true;
+                            });
+                          },
+                          child: material.Row(
+                            spacing: 10.0,
+                            children: [
+                              item.isFile
+                                ? material.Icon(material.Icons.description)
+                                : material.Icon(material.Icons.folder),
+                              material.Text(item.name),
+                              material.Text("${item.size} bytes"),
+                              material.Text(
+                                "${intl.DateFormat.yMMMEd().format(item.lastModified)}, "
+                                "${intl.DateFormat.jm().format(item.lastModified)}"
+                              ),
+                            ],
+                          ),
+                        )).toList()
+                      );
+                    }
+                  ),
+                ],
+              )
+            : material.Column(
+                children: [
+                  material.Text("Select project"),
+                  material.FutureBuilder(
+                    future: getUserProjectSpecs(),
+                    builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                        print(snapshot.error.toString());
+                        return material.Center(child: material.Text(
+                          "Failed to fetch projects."
+                        ));
+                      }
+
+                      if (!snapshot.hasData || snapshot.data == null) {
+                        return material.Center(child: material.Text(
+                          "Fetching projects..."
+                        ));
+                      }
+
+                      return material.Column(
+                        spacing: 15.0,
+                        crossAxisAlignment: .stretch,
+                        children: snapshot.data!.map((spec) => material.InkWell(
+                          onTap: () {
+                            projectId = spec.id;
+                            if (context.mounted) {
+                              material.Navigator.pop(context);
+                            }
+                          },
+                          child: material.Row(
+                            spacing: 10.0,
+                            children: [
+                              material.Text(spec.name),
+                              material.Text("${spec.numUnits} units"),
+                              material.Text("${spec.numLayers} layers"),
+                              material.Text(
+                                "${intl.DateFormat.yMMMEd().format(spec.lastUpdated)}, "
+                                "${intl.DateFormat.jm().format(spec.lastUpdated)}"
+                              ),
+                            ],
+                          ),
+                        )).toList()
+                      );
+                    }
+                  ),
+                ]
             ),
-          ],
         ),
       ),
     ),
   );
 
-  return itemSelected ? currFilePath : null;
+  return (itemSelected && projectId != null)
+    ? (filepath: currFilePath, projectId: projectId!)
+    : null;
 }
