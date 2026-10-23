@@ -25,11 +25,9 @@ class _PredictionsPageState extends State<PredictionsPage>
   /// project.
   Future<List<api.PredictionJob>> fetchPredictions() async
   {
-    api.ProjectController projectController = 
-      await api.ProjectController.getInstance();
-    int projectIndex = projectController.userProjects.indexWhere(
-      (project) => project.id == widget.projectId);
-    return projectController.userProjects[projectIndex].predictions;
+    final projectController = await api.ProjectController.getInstance();
+    final project = await projectController.getProjectById(widget.projectId);
+    return project.predictions;
   }
 
   @override

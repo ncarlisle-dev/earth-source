@@ -395,7 +395,7 @@ export const setProjectMetadata = zodMutation({
  */
 export const configureProjectSite = zodAction({
   args: {
-    projectId: zid("projects"),
+    id: zid("projects"),
 
     siteCorners: zDbProject.shape.corners.optional(),
 
@@ -423,6 +423,7 @@ export const configureProjectSite = zodAction({
         createdAt: true,
         lastUpdated: true,
         id: true,
+        image: true,
       })
     ).optional(),
 
@@ -432,6 +433,7 @@ export const configureProjectSite = zodAction({
         createdAt: true,
         lastUpdated: true,
         id: true,
+        image: true,
       }).partial(),
     ).optional(),
 
@@ -441,11 +443,14 @@ export const configureProjectSite = zodAction({
     // authenticate user
     const userId = await authenticateUser(ctx);
 
+    const { id, ...siteUpdates } = args;
+
     // handle database transactions
     const dbUpdateResult = await ctx.runMutation(
       internal.projects.configureProjectSiteDb,
       {
-        ...args,
+        ...siteUpdates,
+        projectId: id,
         userId,
       }
     ) as ConfigureProjectSiteDbResult;
@@ -673,22 +678,20 @@ export const configureProjectSiteDb = zodInternalMutation({
 
     // delete layers
     const deleteLayerPromises: Promise<void>[] = [];
+    const deleteLayerImagePromises: Promise<void>[] = [];
 
     for (const layerId of args.layersToDelete ?? []) {
+      // TODO: optimize this by putting this process in a promise array
+      const layer = await ctx.db.get("layers", layerId);
+
+      if (layer!.image !== null) 
+        deleteLayerImagePromises.push(
+          ctx.storage.delete(layer!.image.storageId)
+        );
+      
       deleteLayerPromises.push(ctx.db.delete("layers", layerId));
       projectLayerIds.delete(layerId);
       delete dataAssignments[layerId];
-    }
-
-    const deletePredictionJobPromises: Promise<void>[] = [];
-    const projectPredictionJobIds = new Set<Id<"jobs">>(
-      project.predictionJobIds
-    );
-
-    for (const { _id: jobId, outputStorageId } of predictionJobsToDelete) {
-      deletePredictionJobPromises.push(ctx.db.delete("jobs", jobId));
-      projectPredictionJobIds.delete(jobId);
-      storageIdsToDelete.push(outputStorageId!);
     }
 
     // create units
@@ -740,7 +743,6 @@ export const configureProjectSiteDb = zodInternalMutation({
     const createdUnitIds = await Promise.all(createUnitPromises);
 
     const newLayerIds = [...projectLayerIds, ...createdLayerIds];
-    const newPredictionIds = [...projectPredictionJobIds];
     const newUnitIds = [...projectUnitIds, ...createdUnitIds];
     
     for (const layerId of projectLayerIds)
@@ -758,17 +760,15 @@ export const configureProjectSiteDb = zodInternalMutation({
       "projects",
       args.projectId,
       {
-        corners: args.siteCorners,
+        corners: args.siteCorners ?? project.corners,
         dataAssignments,
         layerIds: newLayerIds,
-        predictionJobIds: newPredictionIds,
         unitIds: newUnitIds,
         lastUpdated: timestamp,
       }
     );
 
     // get the created layers and units
-
     const createdDbLayerPromises: Promise<DbLayer>[] = createdLayerIds.map(async (id) => {
       const dbLayer = await ctx.db.get("layers", id)
       if (dbLayer === null)
@@ -788,7 +788,7 @@ export const configureProjectSiteDb = zodInternalMutation({
     // wait for any remaining updates to finish
     await Promise.all(patchLayerPromises);
     await Promise.all(deleteLayerPromises);
-    await Promise.all(deletePredictionJobPromises);
+    await Promise.all(deleteLayerImagePromises);
     await Promise.all(patchUnitPromises);
     await Promise.all(deleteUnitPromises);
 

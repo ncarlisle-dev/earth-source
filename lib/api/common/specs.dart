@@ -141,3 +141,39 @@ class DirectoryItemSpec {
     this.lastModified,
   );
 }
+
+/// A shallow representation of a project, holding metadata about the project
+/// it represents.
+class ProjectSpec {
+  final String                  id;
+  final String                  name;
+  final String                  description;
+  final int                     utmZone;
+  final bool                    isSouthernHemisphere;
+  final List<latlong.LatLng>    corners;
+  final int                     numLayers;
+  final int                     numUnits;
+  final int                     numPxrfData;
+  final int                     numTrainingData;
+  final int                     numPredictions;
+  final int                     numModels;
+  final DateTime                createdAt;
+  final DateTime                lastUpdated;
+
+  ProjectSpec({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.utmZone,
+    required this.isSouthernHemisphere,
+    required this.corners,
+    required this.numLayers,
+    required this.numUnits,
+    required this.numPxrfData,
+    required this.numTrainingData,
+    required this.numPredictions,
+    required this.numModels,
+    required this.createdAt,
+    required this.lastUpdated,
+  });
+}

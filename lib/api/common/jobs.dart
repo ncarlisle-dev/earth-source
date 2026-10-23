@@ -70,7 +70,7 @@ class PredictionJob extends Job
   /// Model id if a newly trained model is being used (defaults to base model if 
   /// empty).
   final String? modelId;
-  final Map<String, String> dataAssignments;
+  final Map<String, String?> dataAssignments;
 
   PredictionJob({
     required super.id,

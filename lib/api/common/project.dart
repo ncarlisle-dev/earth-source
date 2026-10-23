@@ -99,7 +99,7 @@ class Project
   /// Throws a [network.ApiNetworkException] if the update fails.
   Future<void> setName(String name) async
   {
-    NetworkService networkService = await NetworkService.getInstance();
+    final networkService = await NetworkService.getInstance();
     try {
       lastUpdated = await networkService.setProjectMetadata(id, name: name);
     }

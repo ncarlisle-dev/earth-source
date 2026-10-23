@@ -17,7 +17,7 @@ final _z = dzod.z;
 
 T parseNetworkResponse<T>(String response, dzod.Schema<T> schema)
 {
-  dynamic jsonResponse = convert.jsonDecode(response);
+  final dynamic jsonResponse = convert.jsonDecode(response);
   final validationResult = schema.validate(jsonResponse);
   final data = validationResult.data;
   
@@ -40,6 +40,12 @@ Map<String, double> convertCoordRecordToMap(common.Coordinate coord)
 
 latlong.LatLng convertCoordRecordToObj(common.Coordinate coord)
   => latlong.LatLng(coord.latitude, coord.longitude);
+
+Map<String, dynamic> removeNullEntries(Map<String, dynamic> map)
+{
+  map.removeWhere((_, value) => value == null);
+  return map;
+}
 
 common.Project convertApiProject(api_types.ApiProject apiProject)
 {
@@ -123,6 +129,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
     )).toList(),
   );
 }
+const _cloudUrl = "https://standing-eel-607.convex.cloud";
+const _httpActionsUrl = "https://standing-eel-607.convex.site";
 
 class NetworkService {
   static NetworkService? instance;
@@ -144,7 +152,7 @@ class NetworkService {
 
     await convex.ConvexClient.initialize(
       convex.ConvexConfig(
-        deploymentUrl: "https://standing-eel-607.convex.cloud",
+        deploymentUrl: _cloudUrl,
         operationTimeout: Duration(seconds: 15),
         healthCheckQuery: "health:ping",
       ),
@@ -223,24 +231,45 @@ class NetworkService {
     );
   }
 
-  Future<List<common.Project>> getUserProjects() async
+  Future<List<common.ProjectSpec>> getUserProjectSpecs() async
   {
-    // TODO: this needs to return project specs, not projects
     final client = _getClient();
     final response = await client.query(
-      "projects:getUserProjects",
+      "projects:getUserProjectSpecs",
       {},
     );
-    
-    final apiProjects = parseNetworkResponse(
+
+    final apiProjectSpecs = parseNetworkResponse(
       response,
-      _z.array(api_types.zApiProject),
+      _z.array(api_types.zApiProjectSpec)
     );
 
-    return apiProjects.map(convertApiProject).toList();
+    return apiProjectSpecs.map((apiSpec) => common.ProjectSpec(
+      id:                   apiSpec.id,
+      name:                 apiSpec.name,
+      description:          apiSpec.description,
+      utmZone:              apiSpec.utmZone,
+      isSouthernHemisphere: apiSpec.isSouthernHemisphere,
+      corners:              apiSpec
+                              .corners
+                              .map(convertCoordRecordToObj)
+                              .toList(),
+      numLayers:            apiSpec.numLayers,
+      numUnits:             apiSpec.numUnits,
+      numPxrfData:          apiSpec.numPxrfData,
+      numTrainingData:      apiSpec.numTrainingData,
+      numPredictions:       apiSpec.numPredictions,
+      numModels:            apiSpec.numModels,
+      createdAt:            DateTime.fromMillisecondsSinceEpoch(
+                              apiSpec.createdAt
+                            ),
+      lastUpdated:          DateTime.fromMillisecondsSinceEpoch(
+                              apiSpec.lastUpdated
+                            ),
+    )).toList();
   }
 
-  Future<common.Project> getProject(String id) async
+  Future<common.Project> getProjectById(String id) async
   {
     final client = _getClient();
     final response = await client.query(
@@ -386,10 +415,11 @@ class NetworkService {
     );
 
     // send request
+    // TODO: remove empty arrays/maps from arguments
     final client = _getClient();
-    final response = await client.mutation(
+    final response = await client.action(
       name: "projects:configureProjectSite",
-      args: {
+      args: removeNullEntries({
         'id':             id,
         'siteCorners':    siteCorners?.map((corner) => {
                             'latitude':  corner.latitude,
@@ -405,14 +435,14 @@ class NetworkService {
                           }).toList(),
         'unitUpdates':    unitUpdates.map((unitId, updates) => MapEntry(
                             unitId, 
-                            {
+                            removeNullEntries({
                               'name':           updates.name,
                               'description':    updates.description,
                               'corners':        updates.corners
                                                   ?.map(convertCoordRecordToMap)
                                                   .toList(),
                               'pointInterval':  updates.pointInterval,
-                            }
+                            }),
                           )),
         'unitsToDelete':  unitsToDelete,
         'newLayers':      newLayers.map((layer) => {
@@ -424,17 +454,17 @@ class NetworkService {
                           }).toList(),
         'layerUpdates':   layerUpdates.map((layerId, updates) => MapEntry(
                             layerId,
-                            {
+                            removeNullEntries({
                               'name':         updates.name,
                               'description':  updates.description,
                               'corners':      updates.corners
                                                 ?.map(convertCoordRecordToMap)
                                                 .toList(),
-                            }
+                            }),
                           )),
         'layersToDelete': layersToDelete,
       },
-    );
+    ));
 
     // parse response
     final zExpectedConfigurationResult = _z
@@ -446,7 +476,7 @@ class NetworkService {
       .transform((map) => (
         createdUnits: map['createdUnits'] as List<api_types.ApiUnit>,
         createdLayers: map['createdLayers'] as List<api_types.ApiLayer>,
-        timestamp: DateTime.fromMillisecondsSinceEpoch(map['createdLayerIds']),
+        timestamp: DateTime.fromMillisecondsSinceEpoch(map['timestamp']),
       ));
 
     final configResult = parseNetworkResponse(
@@ -511,9 +541,7 @@ class NetworkService {
   ) async
   {
     // setup request
-    final uri = Uri.parse(
-      "${_getClient().config.deploymentUrl}/uploadProjectLayerImage"
-    );
+    final uri = Uri.parse("$_httpActionsUrl/uploadLayerImage");
 
     var request = http.MultipartRequest('POST', uri);
 
@@ -617,9 +645,7 @@ class NetworkService {
   ) async
   {
     // setup request
-    final uri = Uri.parse(
-      "${_getClient().config.deploymentUrl}/uploadPxrfData"
-    );
+    final uri = Uri.parse("$_httpActionsUrl/uploadPxrfData");
 
     var request = http.MultipartRequest('POST', uri);
 
@@ -782,9 +808,7 @@ class NetworkService {
   ) async
   {
     // setup request
-    final uri = Uri.parse(
-      "${_getClient().config.deploymentUrl}/uploadTrainingData"
-    );
+    final uri = Uri.parse("$_httpActionsUrl/uploadTrainingData");
 
     var request = http.MultipartRequest('POST', uri);
 
