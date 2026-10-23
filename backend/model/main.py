@@ -3,6 +3,9 @@ from fastapi.responses import StreamingResponse
 import pandas as pd
 import io
 
+#testing import to prove Render Connection
+from client_convex import client
+
 from cloud_model import PXRFModel
 from ebk_predict import dataframe_to_grid
 from batch_jobs import process_job
@@ -85,3 +88,9 @@ def run_job(
     outputName: str = "classification"
 ):
     return process_job(model, jobId, projectId, outputName)
+
+#testing
+@app.get("/test-convex")
+def test_convex():
+    result = client.query("testConnect:ping", {})
+    return result
