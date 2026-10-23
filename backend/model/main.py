@@ -84,8 +84,7 @@ async def ebk(file: UploadFile = File(...)):
 @app.get("/run")
 def run_job(
     jobId: str,
-    projectId: str,
-    outputName: str = "classification"
+    projectId: str
 ):
     return process_job(model, jobId, projectId, outputName)
 
