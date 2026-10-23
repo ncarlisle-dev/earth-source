@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../mapping/visualizer.dart' as visualizer;
 import '../../api/api.dart' as api;
 import '../home_page.dart';
+import 'package:coordinate_converter/coordinate_converter.dart' as 
+  coord_converter;
 
 /// A stateful widget for the prediction view page, which takes the id for the
 /// current project and a prediction job object as required fields.
@@ -242,8 +244,12 @@ class _PredictionViewState extends State<PredictionView> {
 
   /// Loads both the image and the prediction results for display on the 
   /// prediction view page.
-  Future<(String, List<List<double>>)> loadPredictionData() async
+  Future<(String, List<coord_converter.UTMCoordinates>, List<double>)> 
+    loadPredictionData() async
   {
+    List<coord_converter.UTMCoordinates> predictionPoints = [];
+    List<double> predictionValues = [];
+
     final projectController = await api.ProjectController.getInstance();
     final project = await projectController.getProjectById(widget.projectId);
 
@@ -254,7 +260,18 @@ class _PredictionViewState extends State<PredictionView> {
     final String imageContents = await project
       .getLayerImage(widget.predictionJob.layerId);
 
-    return (imageContents, results);
+    for (var i = 0; i < results!.length; i++) {
+      coord_converter.UTMCoordinates coords = coord_converter.UTMCoordinates(
+        x: results[i][0], 
+        y: results[i][1], 
+        zoneNumber: project.utmZone,
+        isSouthernHemisphere: project.isSouthernHemisphere
+      );
+      predictionPoints.add(coords);
+      predictionValues.add(results[i][2]);
+    }
+
+    return (imageContents, predictionPoints, predictionValues);
   }
 
   @override
@@ -391,24 +408,31 @@ class _PredictionViewState extends State<PredictionView> {
             future: loadPredictionData(),
             builder: (
               BuildContext ctx, 
-              AsyncSnapshot<(String, List<List<double>>)> snapshot
+              AsyncSnapshot<(String, List, List)> snapshot
             ) 
-              => !snapshot.hasData
-                ? Center(child: Text("Prediction data failed to load."))
-                : jobLayer == null
-                  ? Center(child: Text("Loading..."))
-                  : mapDisplay 
-                    ? visualizer.Visualizer(
-                        predictionData: snapshot.data!.$2, 
-                        imageFilePath: snapshot.data!.$1,
-                        corners: jobLayer!.corners,
-                        threshold: 0.5
-                      )
-                    : visualizer.TextDisplay(
-                        corners: jobLayer!.corners, 
-                        predictionData: snapshot.data!.$2, 
-                        threshold: 0.5
-                      )
+            => !snapshot.hasData
+              ? Center(child: Text("Prediction data failed to load."))
+              : jobLayer == null
+                ? Center(child: Text("Loading..."))
+                : mapDisplay 
+                    ? 
+                    visualizer.Visualizer(
+                      predictionCoords: 
+                        snapshot.data!.$2 as 
+                        List<coord_converter.UTMCoordinates>,
+                      predictionValues: snapshot.data!.$3 as List<double>, 
+                      imageFile: snapshot.data!.$1,
+                      corners: jobLayer!.corners,
+                      threshold: 0.5
+                    )
+                    :
+                    visualizer.TextDisplay(
+                      predictionCoords: 
+                        snapshot.data!.$2 as 
+                        List<coord_converter.UTMCoordinates>, 
+                      predictionValues: snapshot.data!.$3 as List<double>,  
+                      threshold: 0.5
+                    )
           ),
         ),
       ]
