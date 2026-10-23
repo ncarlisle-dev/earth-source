@@ -16,9 +16,10 @@ from tempfile import TemporaryDirectory
 logger = logging.getLogger(__name__)
 
 #Get Job Function
-def get_job(job_id):
+def get_job(job_id, project_id):
 
-  job = client.query( "batch:get_job", {"job_id": job_id})
+  job = client.query( "batch:getPredictionJobById", 
+                     {"jobId": job_id, "projectId": project_id})
 
   if job is None:
     raise ValueError("Job could not be found")
@@ -28,7 +29,7 @@ def get_job(job_id):
 #Upload URLS from the API
 def ret_upload_url(job_id):
   
-  uploadUrl = client.query("batch:getPredictionJobOutputUploadUrl", { "jobId": job_id })
+  uploadUrl = client.query("batch:getPredictionJobResultsUploadUrl", { "jobId": job_id })
   
   return uploadUrl
 
@@ -43,23 +44,33 @@ def download_csv(url):
 
 
 #Load the Data
-def load_data(job):
+def load_data(job, project_id):
   
-  input_files = job["input_files"]
+  assignments = job["dataAssignments"]
   
   dataframes = []
   
-  if not input_files:
-    raise ValueError("Job has no input files")
+  for unit_id, spec_id in assignments.items():
+    if spec_id is None:
+      continue
 
-  for input_file in input_files:
-        data_f = download_csv(input_file["url"])
+    url = client.query(
+      "projects:getProjectPxrfDataUrl",
+      {
+        "projectId": project_id,
+        "specId": spec_id
+      })
+    
+    dframe = download_csv(url)
+    
+    if dframe.empty:
+      raise ValueError(f"CSV for unit {unit_id} is empty")
 
-        if data_f.empty:
-            raise ValueError("Input CSV is empty")
+    dataframes.append(dframe)
+    
+  if not dataframes:
+    raise ValueError("Prediction job has no assigned pXRF data")
 
-        dataframes.append(data_f)
-  
   return pd.concat( dataframes, ignore_index=True)
 
 #Run the Classifier and EBK
@@ -89,7 +100,7 @@ def run_prediction(df, model):
     }
   ]
 #Upload Output File
-def upload_to_convex(kind, job_id, output):
+def upload_to_convex(job_id, output):
   
   upload_url = ret_upload_url(job_id)
   
@@ -103,68 +114,49 @@ def upload_to_convex(kind, job_id, output):
   response.raise_for_status()
   #Receive the file's identifier
   storage_id = response.json()["storageId"]
-  #Save the reference of the file
-  client.mutation(
-    "batch:setPredictionJobOutputStorageId",
-    {
-      "jobId": job_id,
-      "storageId": storage_id
-    }
-  )
   
-  return {
-    "name": output["name"],
-    "filename": output["filename"],
-    "storage_id": storageId
-  }
+  return storage_id
 
 #Process the Job Using previous functions
-def process_job(model, job_id):
-  job = get_job(job_id)
+def process_job(model, job_id, project_id, output_name="classification"):
+  #Ensure that what the user wants is specified
+  if output_name not in ["classification", "ebk"]:
+    raise ValueError("Output must be either classification or ebk")
+  
+  job = get_job(job_id, project_id)
   #Ensure that only starting jobs are processed
   if job["status"] != "starting":
-    raise ValueError(
-      "Job must be in starting status"
-    )
+    raise ValueError("Job must be in starting status")
   #TODO: Initialize claim_job to change job status
-  claim_job(job_id)
+  claim_job(job_id, project_id)
   
   try:
-    data_frame = load_data(job)
-    #Store the operation
-    kind = job["kind"]
-    #Determine which opertaion to run
-    if kind == "prediction":
-      output = run_prediction(data_frame, model)
-
-    elif kind == "training":
-      output = train_model(data_frame)
+    data_frame = load_data(job,project_id)
     
-    else:
-      raise ValueError(f"Unknown Job Field Kind: {kind}")
+    outputs = run_prediction(data_frame, model)
 
-    uploads = []
-
-    for outs in output:
-      uploads.append(upload_to_convex(
-        job_id,
-        kind,
-        outs))
-    #Mark as Complete and Log
-    #complete_job(uploads, job_id)
+    select_one_output = next(
+      output for output in outputs
+      if output["name"]==output_name
+    )
+    storage_id = upload_to_convex(job_id, select_one_output)
+    complete_job(job_id, project_id, storage_id)
     
     logger.info("Job %s completed successfully",job_id)
     
     return {
       "job_id": job_id,
+      "projectId": project_id,
       "status": "complete",
-      "outputs": uploads
+      "filename": select_one_output["filename"],
+      "storageId": storage_id
     }
+    
   #Log in the event a Job fails with its ID  
   except Exception as error:
     logger.exception("Job %s failed",job_id)
     try:
-      job_failed(job_id,error)
+      job_failed(job_id,project_id)
       
     except Exception:
       logger.exception("Could not mark job as failed")
@@ -173,25 +165,27 @@ def process_job(model, job_id):
 
   
 #Update the Job to Finished
-#def complete_job(uploaded_files, job_id):
-# client.mutation("batch:completeJob",{"jobId": job_id,"outputs": uploaded_files})
+def complete_job(job_id, project_id, storage_id):
+  client.mutation("batch:completePredictionJob",
+                  {"jobId": job_id,
+                   "projectId": project_id,
+                   "storageId": storage_id
+                  })
 
 #Add job_failed function for failed jobs
 
-def job_failed(job_id, error):
-  client.mutation("batch:failJob",
+def job_failed(job_id, project_id):
+  client.mutation("batch:failPredictionJob",
                   {
                     "jobId": job_id,
-                    "error": type(error).__name__
+                    "projectId": project_id
                   }
                  )
 #Once the claimed the Job can be ran
 #from starting -> running
-def claim_job(job_id):
-  is_claimed = client.mutation("batch:claimJob",{"jobId": job_id})
-
-  if is_claimed is not True:
-    raise ValueError("Job could not be claimed")
+def claim_job(job_id, project_id):
+  is_claimed = client.mutation( "batch:claimPredictionJob", 
+                     {"jobId": job_id, "projectId": project_id})
 
 #Train if Necessary
 #Return the pkl model file
