@@ -5,6 +5,7 @@ import io
 
 from cloud_model import PXRFModel
 from ebk_predict import dataframe_to_grid
+from batch_jobs import process_job
 
 app = FastAPI()
 
@@ -77,3 +78,6 @@ async def ebk(file: UploadFile = File(...)):
             "attachment; filename=ArchaeoSight_EBK_Grid.csv"
         }
     )
+@app.get("/run")
+def run_job(jobId: str):
+    return process_job(model, jobId)
