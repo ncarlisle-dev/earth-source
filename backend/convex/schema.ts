@@ -26,6 +26,15 @@ const zCoordinate = z.object({
   longitude: zLongitude
 });
 
+export const zJobStatus = z.union([
+  z.literal("starting"),
+  z.literal("running"),
+  z.literal("complete"),
+  z.literal("failed"),
+]);
+
+export type JobStatus = z.infer<typeof zJobStatus>;
+
 /**
  * Zod type defining a valid timestamp. Must be an integer >= 0. Represents
  * milliseconds since epoch.
@@ -139,12 +148,7 @@ const zDbBaseJob = z.object({
   name:            z.string(),
   description:     z.string(),
   lastUpdated:     zTimestamp,
-  status:          z.union([
-    z.literal("starting"),
-    z.literal("running"),
-    z.literal("complete"),
-    z.literal("failed"),
-  ]),
+  status:          zJobStatus,
 });
 
 

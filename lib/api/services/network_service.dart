@@ -1027,7 +1027,7 @@ class NetworkService {
   {
     final client = _getClient();
     final downloadUrl = await client.query(
-      "projects:getPredictionJobResultsUrl",
+      "projects:getPredictionJobResultsDownloadUrl",
       { 'projectId': projectId, 'jobId': jobId }
     );
 

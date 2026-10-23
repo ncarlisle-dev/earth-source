@@ -1511,36 +1511,6 @@ export const setPredictionJobMetadata = zodMutation({
   },
 });
 
-export const setPredictionJobStatus = zodMutation({
-  args: {
-    projectId: zid("projects"),
-    jobId: zid("jobs"),
-    status: zDbPredictionJob.shape.status,
-  },
-  handler: async (ctx, args) => {
-    // TODO: Add authentication to only allow the batch server to do this
-    const userId = await authenticateUser(ctx);
-    const project = await getDbProject(ctx, args.projectId, userId);
-    await assertProjectHasPredictionJob(ctx, project, args.jobId);
-
-    const timestamp = Date.now();
-
-    await ctx.db.patch(
-      "jobs",
-      args.jobId,
-      { status: args.status, lastUpdated: timestamp },
-    );
-
-    await ctx.db.patch(
-      "projects",
-      project._id,
-      { lastUpdated: timestamp },
-    );
-
-    return timestamp;
-  }
-});
-
 /** Query that fetches a project's {@link PredictionJob}. */
 export const getPredictionJobStatus = zodQuery({
   args: {
@@ -1559,34 +1529,6 @@ export const getPredictionJobStatus = zodQuery({
     return job.status;
   }
 });
-
-export const getPredictionJobById = zodQuery({
-  args: {
-    projectId: zid("projects"),
-    jobId: zid("jobs"),
-  },
-  handler: async (ctx, args): Promise<ApiPredictionJob> => {
-    const userId = await authenticateUser(ctx);
-    const project = await getDbProject(ctx, args.projectId, userId);
-    const { job } = await assertProjectHasPredictionJob(
-      ctx,
-      project,
-      args.jobId,
-    );
-
-    return {
-      id:                 job._id,
-      name:               job.name,
-      description:        job.description,
-      layerId:            job.layerId,
-      modelId:            job.modelId,
-      dataAssignments:    job.dataAssignments,
-      status:             job.status,
-      createdAt:          job._creationTime,
-      lastUpdated:        job.lastUpdated,
-    };
-  }
-})
 
 /** Mutation that deletes a prediction job and its associated files. */
 export const deletePredictionJob = zodMutation({
@@ -1626,7 +1568,7 @@ export const deletePredictionJob = zodMutation({
   },
 });
 
-export const getPredictionJobResultsUrl = zodQuery({
+export const getPredictionJobResultsDownloadUrl = zodQuery({
   args: {
     projectId: zid("projects"),
     jobId: zid("jobs"),
@@ -1779,37 +1721,6 @@ export const setTrainingJobMetadata = zodMutation({
   },
 });
 
-/** Mutation that sets a training job's status. */
-export const setTrainingJobStatus = zodMutation({
-  args: {
-    projectId: zid("projects"),
-    jobId: zid("jobs"),
-    status: zDbTrainingJob.shape.status,
-  },
-  handler: async (ctx, args) => {
-    // TODO: Add authentication to only allow the batch server to do this
-    const userId = await authenticateUser(ctx);
-    const project = await getDbProject(ctx, args.projectId, userId);
-    await assertProjectHasTrainingJob(ctx, project, args.jobId);
-
-    const timestamp = Date.now();
-
-    await ctx.db.patch(
-      "jobs",
-      args.jobId,
-      { status: args.status, lastUpdated: timestamp },
-    );
-
-    await ctx.db.patch(
-      "projects",
-      project._id,
-      { lastUpdated: timestamp },
-    );
-
-    return timestamp;
-  }
-});
-
 /** Query that fetches a project's {@link TrainingJob}. */
 export const getTrainingJobStatus = zodQuery({
   args: {
@@ -1828,32 +1739,6 @@ export const getTrainingJobStatus = zodQuery({
     return job.status;
   }
 });
-
-export const getTrainingJobById = zodQuery({
-  args: {
-    projectId: zid("projects"),
-    jobId: zid("jobs"),
-  },
-  handler: async (ctx, args): Promise<ApiTrainingJob> => {
-    const userId = await authenticateUser(ctx);
-    const project = await getDbProject(ctx, args.projectId, userId);
-    const { job } = await assertProjectHasTrainingJob(
-      ctx,
-      project,
-      args.jobId,
-    );
-
-    return {
-      id:                 job._id,
-      name:               job.name,
-      description:        job.description,
-      trainingDataSpecId: job.trainingDataSpecId,
-      status:             job.status,
-      createdAt:          job._creationTime,
-      lastUpdated:        job.lastUpdated,
-    };
-  }
-})
 
 /** Mutation that deletes a training job and its associated files. */
 export const deleteTrainingJob = zodMutation({
@@ -1893,7 +1778,7 @@ export const deleteTrainingJob = zodMutation({
   },
 });
 
-export const getTrainingJobResultsUrl = zodQuery({
+export const getTrainingJobResultsDownloadUrl = zodQuery({
   args: {
     projectId: zid("projects"),
     jobId: zid("jobs"),
