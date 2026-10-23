@@ -548,10 +548,7 @@ final zApiProject = _z.object({
   'id':                   zId,
   'name':                 _z.string(),
   'description':          _z.string(),
-  'utmZone':              _z.integer()
-                            .min(0)
-                            .max(60)
-                            .transform((val) => val.toInt()),
+  'utmZone':              _zUtmZone,
   'isSouthernHemisphere': _z.boolean(),
   'corners':              _z.array(_zCoordinate).length(4),
   'dataAssignments':      _zProjectDataAssignments,
