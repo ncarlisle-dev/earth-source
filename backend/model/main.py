@@ -3,8 +3,12 @@ from fastapi.responses import StreamingResponse
 import pandas as pd
 import io
 
+#testing import to prove Render Connection
+from client_convex import client
+
 from cloud_model import PXRFModel
 from ebk_predict import dataframe_to_grid
+from batch_jobs import process_job
 
 app = FastAPI()
 
@@ -77,3 +81,16 @@ async def ebk(file: UploadFile = File(...)):
             "attachment; filename=ArchaeoSight_EBK_Grid.csv"
         }
     )
+@app.get("/run")
+def run_job(
+    jobId: str,
+    projectId: str,
+    outputName: str = "classification"
+):
+    return process_job(model, jobId, projectId, outputName)
+
+#testing
+@app.get("/test-convex")
+def test_convex():
+    result = client.query("testConnect:ping", {})
+    return result
