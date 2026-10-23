@@ -60,7 +60,7 @@ final _zProjectDataAssignments = _z
 
 final zJobStatus = _z
   .enum_(common.JobStatus.values.map((val) => val.name).toList())
-  .transform((val) => val as common.JobStatus);
+  .transform((val) => common.JobStatus.values.byName(val));
 
 /* ================================== User ================================== */
 

@@ -20,9 +20,7 @@ class DataView extends StatelessWidget {
     List<String> headers = [];
     List<String> data = [];
 
-    String? fileString = await project.getPxrfData(dataSpec.id!);
-
-    if (fileString == null) return (headers, data);
+    String fileString = await project.getPxrfData(dataSpec.id);
 
     List<String> fileLines = fileString.split('\n');
 

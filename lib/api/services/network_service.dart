@@ -966,13 +966,13 @@ class NetworkService {
 
     final response = await client.mutation(
       name: "projects:setPredictionJobMetadata",
-      args: {
+      args: removeNullEntries({
         'projectId':   projectId,
         'jobId':       jobId,
         'name':        name,
         'description': description,
       },
-    );
+    ));
 
     final timestamp = parseNetworkResponse(response, api_types.zTimestamp);
     return DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -1105,13 +1105,13 @@ class NetworkService {
 
     final response = await client.mutation(
       name: "projects:setTrainingJobMetadata",
-      args: {
+      args: removeNullEntries({
         'projectId':   projectId,
         'jobId':       jobId,
         'name':        name,
         'description': description,
       },
-    );
+    ));
 
     final timestamp = parseNetworkResponse(response, api_types.zTimestamp);
     return DateTime.fromMillisecondsSinceEpoch(timestamp);
