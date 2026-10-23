@@ -1,19 +1,19 @@
-import { UnauthorizedError, ResourceNotFoundError } from "./errors";
+import { UnauthorizedError, ResourceNotFoundError, UnknownServerError } from "./errors";
 import { zodQuery, zodMutation, } from "./builders";
 import { authenticateUser } from "./auth";
-import { zDbConnectionSpec } from "./schema";
+import { ApiConnectionSpec, zDbConnectionSpec } from "./schema";
 import { zid } from "convex-helpers/server/zod4";
 
 /**
  * Given an IP address and port, creates a connection spec in the database.
- * Returns the generated spec's ID.
+ * Returns the generated spec.
  */
 export const createConnectionSpec = zodMutation({
   args: {
     ipAddress: zDbConnectionSpec.shape.ipAddress,
     port: zDbConnectionSpec.shape.port,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<ApiConnectionSpec> => {
     const userId = await authenticateUser(ctx);
 
     const id = await ctx.db.insert("connectionSpecs", {
@@ -22,7 +22,16 @@ export const createConnectionSpec = zodMutation({
       port: args.port,
     });
 
-    return id;
+    const dbSpec = await ctx.db.get("connectionSpecs", id);
+    if (dbSpec === null)
+      throw new UnknownServerError("Couldn't fetch created connection spec.");
+    
+    return {
+      id:        dbSpec._id,
+      ipAddress: dbSpec.ipAddress,
+      port:      dbSpec.port,
+      createdAt: dbSpec._creationTime,
+    };
   },
 });
 

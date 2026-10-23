@@ -26,9 +26,9 @@ class MapPage extends StatefulWidget
 class _MapPageState extends State<MapPage>
 {
   /// List containing updated layers for the project.
-  List<api.LayerSpec> updatedLayers = [];
+  List<api.Layer> updatedLayers = [];
   /// List containing updated units for the project.
-  List<api.UnitSpec> updatedUnits = [];
+  List<api.Unit> updatedUnits = [];
   /// String to store the encoded contents of an image file.
   String? imageContents;
 
@@ -253,33 +253,31 @@ class _MapPageState extends State<MapPage>
                 formKey.currentState!.save();
 
                 // Convert corner coordinates to lat/long.
-                List<latlong.LatLng> layerCorners = 
+                final List<latlong.LatLng> layerCorners = 
                   visualizer.convertCoordsUTM(cornerCoords);
 
                 // Access project controller and add new layer to the project.
-                api.ProjectController projectController = 
-                  await api.ProjectController.getInstance();
-                int projectIndex = projectController.userProjects.indexWhere(
-                  (project) => project.id == widget.project.id);
-                api.LayerSpec createdLayer = await 
-                  projectController.userProjects[projectIndex].createLayer(
-                    layerName!, 
-                    layerDescription!, 
-                    layerCorners
-                  );
+                final createdLayer = await widget.project.createLayer(
+                  layerName!, 
+                  layerDescription!, 
+                  layerCorners
+                    .map((coord) => (
+                      latitude: coord.latitude,
+                      longitude: coord.longitude
+                    ))
+                    .toList()
+                );
 
                 // Upload layer image encoded as a string to the database.
-                projectController.userProjects[projectIndex].
-                  uploadLayerImage(createdLayer.id!, imageContents!);
+                await widget.project.uploadLayerImage(
+                  createdLayer.id,
+                  imageContents!,
+                  "unnamed image" // TODO: create an input for this
+                );
 
-                setState(() {
-                  updatedLayers = 
-                    projectController.userProjects[projectIndex].layers;
-                });
-                if (context.mounted)
-                {
-                  Navigator.of(context).pop();
-                }
+                setState(() => updatedLayers = widget.project.layers);
+
+                if (context.mounted) Navigator.of(context).pop();
               },
             ),
             ElevatedButton(
@@ -295,7 +293,7 @@ class _MapPageState extends State<MapPage>
   /// Displays a form filled in with the fields for the corresponding layer that
   /// the user can choose to edit, registers which if any of the fields have 
   /// been changed, and updates information for the layer accordingly.
-  void editLayer(api.LayerSpec layer)
+  void editLayer(api.Layer layer)
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
@@ -305,9 +303,9 @@ class _MapPageState extends State<MapPage>
 
     String layerName = layer.name;
     String layerDescription = layer.description;
-    List<coord_converter.UTMCoordinates> cornerCoords = 
-      visualizer.convertCoordsLatLng(layer.cornerCoordinates);
-
+    final List<coord_converter.UTMCoordinates> cornerCoords = 
+      visualizer.convertCoordsLatLng(layer.corners);
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -343,10 +341,9 @@ class _MapPageState extends State<MapPage>
                     decoration: InputDecoration(
                       labelText: 'Top-left X Coordinate:'
                     ),
-                    initialValue: cornerCoords[0].x as String,
+                    initialValue: "${cornerCoords[0].x}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[0].x)
-                      {
+                      if (double.parse(value!) != cornerCoords[0].x) {
                         cornerCoords[0].x = double.parse(value);
                         positioningChanged = true;
                       }
@@ -356,10 +353,9 @@ class _MapPageState extends State<MapPage>
                     decoration: InputDecoration(
                       labelText: 'Top-left Y Coordinate:'
                     ),
-                    initialValue: cornerCoords[0].y as String,
+                    initialValue: "${cornerCoords[0].y}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[0].y)
-                      {
+                      if (double.parse(value!) != cornerCoords[0].y) {
                         cornerCoords[0].y = double.parse(value);
                         positioningChanged = true;
                       }
@@ -369,10 +365,9 @@ class _MapPageState extends State<MapPage>
                     decoration: InputDecoration(
                       labelText: 'Bottom-left X Coordinate:'
                     ),
-                    initialValue: cornerCoords[1].x as String,
+                    initialValue: "${cornerCoords[1].x}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[1].x)
-                      {
+                      if (double.parse(value!) != cornerCoords[1].x) {
                         cornerCoords[1].x = double.parse(value);
                         positioningChanged = true;
                       }
@@ -382,10 +377,9 @@ class _MapPageState extends State<MapPage>
                     decoration: InputDecoration(
                       labelText: 'Bottom-left Y Coordinate:'
                     ),
-                    initialValue: cornerCoords[1].y as String,
+                    initialValue: "${cornerCoords[1].y}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[1].y)
-                      {
+                      if (double.parse(value!) != cornerCoords[1].y) {
                         cornerCoords[1].y = double.parse(value);
                         positioningChanged = true;
                       }
@@ -395,10 +389,9 @@ class _MapPageState extends State<MapPage>
                     decoration: InputDecoration(
                       labelText: 'Top-right X Coordinate:'
                     ),
-                    initialValue: cornerCoords[2].x as String,
+                    initialValue: "${cornerCoords[2].x}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[2].x)
-                      {
+                      if (double.parse(value!) != cornerCoords[2].x) {
                         cornerCoords[2].x = double.parse(value);
                         positioningChanged = true;
                       }
@@ -408,10 +401,9 @@ class _MapPageState extends State<MapPage>
                     decoration: InputDecoration(
                       labelText: 'Top-right Y Coordinate:'
                     ),
-                    initialValue: cornerCoords[2].y as String,
+                    initialValue: "${cornerCoords[2].y}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[2].y)
-                      {
+                      if (double.parse(value!) != cornerCoords[2].y) {
                         cornerCoords[2].y = double.parse(value);
                         positioningChanged = true;
                       }
@@ -421,10 +413,9 @@ class _MapPageState extends State<MapPage>
                     decoration: InputDecoration(
                       labelText: 'Bottom-right X Coordinate:'
                     ),
-                    initialValue: cornerCoords[3].x as String,
+                    initialValue: "${cornerCoords[3].x}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[3].x)
-                      {
+                      if (double.parse(value!) != cornerCoords[3].x) {
                         cornerCoords[3].x = double.parse(value);
                         positioningChanged = true;
                       }
@@ -434,10 +425,9 @@ class _MapPageState extends State<MapPage>
                     decoration: InputDecoration(
                       labelText: 'Bottom-right Y Coordinate:'
                     ),
-                    initialValue: cornerCoords[3].y as String,
+                    initialValue: "${cornerCoords[3].y}",
                     onSaved: (value) {
-                      if (double.parse(value!) != cornerCoords[3].y)
-                      {
+                      if (double.parse(value!) != cornerCoords[3].y) {
                         cornerCoords[3].y = double.parse(value);
                         positioningChanged = true;
                       }
@@ -457,38 +447,34 @@ class _MapPageState extends State<MapPage>
                 List<latlong.LatLng> layerCorners = 
                   visualizer.convertCoordsUTM(cornerCoords);
 
-                // Access appropriate project in the project controller.
-                api.ProjectController projectController = 
-                  await api.ProjectController.getInstance();
-                int projectIndex = projectController.userProjects.indexWhere(
-                  (project) => project.id == widget.project.id);
-                
                 // Check to see which, if any, of the fields has been changed
                 // by the user and make updates accordingly.
                 if (nameChanged) {
-                  projectController.userProjects[projectIndex].setLayerName(
-                    layer.id!, 
-                    layerName
+                  await widget.project.updateLayer(layer.id, name: layerName);
+                }
+
+                if (descriptionChanged) {
+                  await widget.project.updateLayer(
+                    layer.id,
+                    description: layerDescription
                   );
                 }
-                if (descriptionChanged) {
-                  projectController.userProjects[projectIndex].
-                    setLayerDescription(layer.id!, layerDescription);
-                }
+
                 if (positioningChanged) {
-                  projectController.userProjects[projectIndex].
-                    setLayerPositioning(layer.id!, layerCorners);
+                  await widget.project.updateLayer(
+                    layer.id,
+                    corners: layerCorners.map(
+                      (coord) => (
+                        latitude: coord.latitude,
+                        longitude: coord.longitude
+                      )
+                    ).toList(),
+                  );
                 }
 
-                setState(() {
-                  updatedLayers = 
-                    projectController.userProjects[projectIndex].layers;
-                });
+                setState(() => updatedLayers = widget.project.layers);
 
-                if (context.mounted)
-                {
-                  Navigator.of(context).pop();
-                }
+                if (context.mounted) Navigator.of(context).pop();
               },
             ),
             ElevatedButton(
@@ -517,20 +503,10 @@ class _MapPageState extends State<MapPage>
             ElevatedButton(
               child: const Text("Confirm Deletion"),
               onPressed: () async {
-                api.ProjectController projectController = 
-                  await api.ProjectController.getInstance();
-                int projectIndex = projectController.userProjects.indexWhere(
-                  (project) => project.id == widget.project.id);
-                projectController.userProjects[projectIndex].
-                  deleteLayer(layerId);
-                setState(() {
-                  updatedLayers = 
-                    projectController.userProjects[projectIndex].layers;
-                });
-                if (context.mounted)
-                {
-                  Navigator.of(context).pop();
-                }
+                await widget.project.deleteLayer(layerId);
+                setState(() => updatedLayers = widget.project.layers);
+
+                if (context.mounted) Navigator.of(context).pop();
               },
             ),
             ElevatedButton(
@@ -558,8 +534,31 @@ class _MapPageState extends State<MapPage>
         zoneNumber: widget.project.utmZone, 
         isSouthernHemisphere: widget.project.isSouthernHemisphere
     );
-    double? width;
-    double? height;
+
+    coord_converter.UTMCoordinates topRightUtm = 
+      coord_converter.UTMCoordinates(
+        x: 0, 
+        y: 0, 
+        zoneNumber: widget.project.utmZone, 
+        isSouthernHemisphere: widget.project.isSouthernHemisphere
+    );
+
+    coord_converter.UTMCoordinates bottomLeftUtm = 
+      coord_converter.UTMCoordinates(
+        x: 0, 
+        y: 0, 
+        zoneNumber: widget.project.utmZone, 
+        isSouthernHemisphere: widget.project.isSouthernHemisphere
+    );
+
+    coord_converter.UTMCoordinates bottomRightUtm = 
+      coord_converter.UTMCoordinates(
+        x: 0, 
+        y: 0, 
+        zoneNumber: widget.project.utmZone, 
+        isSouthernHemisphere: widget.project.isSouthernHemisphere
+    );
+    
     double? pointInterval;
 
     showDialog(
@@ -601,6 +600,8 @@ class _MapPageState extends State<MapPage>
                       unitDescription = value!;
                     },
                   ),
+
+                  // top left corner
                   TextFormField(
                     decoration: InputDecoration(
                       labelText: 'Top-left X Coordinate:'
@@ -629,34 +630,98 @@ class _MapPageState extends State<MapPage>
                       topLeftUtm.y = double.parse(value.toString());
                     },
                   ),
+
+                  // top right corner
                   TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: "Enter unit width in m:",
+                    decoration: InputDecoration(
+                      labelText: 'Top-right X Coordinate:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter a width for the unit.';
+                        return 'Please enter the top-right X Coordinate';
                       }
                       return null;
                     },
-                    onSaved: (value) async {
-                        width = double.parse(value!);
+                    onSaved: (value) {
+                      topRightUtm.x = double.parse(value.toString());
                     },
                   ),
                   TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: "Enter unit height in m:",
+                    decoration: InputDecoration(
+                      labelText: 'Top-right Y Coordinate:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter a height for the unit.';
+                        return 'Please enter the top-right Y Coordinate';
                       }
                       return null;
                     },
-                    onSaved: (value) async {
-                      height = double.parse(value!);
+                    onSaved: (value) {
+                      topRightUtm.y = double.parse(value.toString());
                     },
                   ),
+
+                  // bottom left corner
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-left X Coordinate:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the bottom-left X Coordinate';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      bottomLeftUtm.x = double.parse(value.toString());
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-left Y Coordinate:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the bottom-left Y Coordinate';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      bottomLeftUtm.y = double.parse(value.toString());
+                    },
+                  ),
+  
+                  // bottom
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-right X Coordinate:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the bottom-right X Coordinate';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      bottomRightUtm.x = double.parse(value.toString());
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-right Y Coordinate:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the bottom-right Y Coordinate';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      bottomRightUtm.y = double.parse(value.toString());
+                    },
+                  ),
+
+                  // point interval
                   TextFormField(
                     decoration: const InputDecoration(
                       labelText: "Enter unit point interval in cm:",
@@ -682,32 +747,51 @@ class _MapPageState extends State<MapPage>
               // to project dashboard.
               onPressed: () async {
                 formKey.currentState!.save();
-                ({double latitude, double longitude}) topLeftCoords = (
-                  latitude: 
-                    coord_converter.DDCoordinates.fromUTM(topLeftUtm).latitude, 
-                  longitude: 
-                    coord_converter.DDCoordinates.fromUTM(topLeftUtm).longitude
-                );
-                api.ProjectController projectController = 
-                  await api.ProjectController.getInstance();
-                int projectIndex = projectController.userProjects.indexWhere(
-                  (project) => project.id == widget.project.id);
-                projectController.userProjects[projectIndex].createUnit(
+                final List<({double latitude, double longitude})> corners = [
+                  (
+                    latitude: coord_converter.DDCoordinates
+                      .fromUTM(topLeftUtm)
+                      .latitude, 
+                    longitude: coord_converter.DDCoordinates
+                      .fromUTM(topLeftUtm)
+                      .longitude
+                  ),
+                  (
+                    latitude: coord_converter.DDCoordinates
+                      .fromUTM(topRightUtm)
+                      .latitude, 
+                    longitude: coord_converter.DDCoordinates
+                      .fromUTM(topRightUtm)
+                      .longitude
+                  ),
+                  (
+                    latitude: coord_converter.DDCoordinates
+                      .fromUTM(bottomLeftUtm)
+                      .latitude, 
+                    longitude: coord_converter.DDCoordinates
+                      .fromUTM(bottomLeftUtm)
+                      .longitude
+                  ),
+                  (
+                    latitude: coord_converter.DDCoordinates
+                      .fromUTM(bottomRightUtm)
+                      .latitude, 
+                    longitude: coord_converter.DDCoordinates
+                      .fromUTM(bottomRightUtm)
+                      .longitude
+                  ),
+                ];
+
+                await widget.project.createUnit(
                   unitName!, 
                   unitDescription!, 
-                  topLeftCoords, 
-                  width!,
-                  height!, 
+                  corners,
                   pointInterval!
                 );
-                setState(() {
-                  updatedUnits = 
-                    projectController.userProjects[projectIndex].units;
-                });
-                if (context.mounted)
-                {
-                  Navigator.of(context).pop();
-                }
+
+                setState(() => updatedUnits = widget.project.units);
+
+                if (context.mounted) Navigator.of(context).pop();
               },
             ),
             ElevatedButton(
@@ -723,7 +807,7 @@ class _MapPageState extends State<MapPage>
   /// Displays a form filled in with the fields for the corresponding unit that
   /// the user can choose to edit, registers which if any of the fields have 
   /// been changed, and updates information for the unit accordingly.
-  void editUnit(api.UnitSpec unit)
+  void editUnit(api.Unit unit)
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
@@ -733,13 +817,14 @@ class _MapPageState extends State<MapPage>
 
     String unitName = unit.name;
     String unitDescription = unit.description;
-    coord_converter.UTMCoordinates topLeftUtm = 
-      coord_converter.UTMCoordinates.fromDD(coord_converter.DDCoordinates(
-        latitude: unit.topLeftCoords.latitude, 
-        longitude: unit.topLeftCoords.longitude
-      ));
-    double width = unit.width;
-    double height = unit.height;
+    List<coord_converter.UTMCoordinates> unitCorners = unit.corners.map(
+      (coord) => coord_converter.UTMCoordinates.fromDD(
+        coord_converter.DDCoordinates(
+          latitude:  coord.latitude, 
+          longitude: coord.longitude
+        )
+      ),
+    ).toList();
     double pointInterval = unit.pointInterval;
 
     showDialog(
@@ -773,15 +858,17 @@ class _MapPageState extends State<MapPage>
                       }
                     },
                   ),
+
+                  // top left corner
                   TextFormField(
                     decoration: InputDecoration(
                       labelText: 'Top-left X Coordinate:'
                     ),
-                    initialValue: topLeftUtm.x as String,
+                    initialValue: "${unitCorners[0].x}",
                     onSaved: (value) {
-                      if (double.parse(value!) != topLeftUtm.x) 
+                      if (double.parse(value!) != unitCorners[0].x) 
                       {
-                        topLeftUtm.x = double.parse(value);
+                        unitCorners[0].x = double.parse(value);
                         positioningChanged = true;
                       }
                     },
@@ -790,46 +877,106 @@ class _MapPageState extends State<MapPage>
                     decoration: InputDecoration(
                       labelText: 'Top-left Y Coordinate:'
                     ),
-                    initialValue: topLeftUtm.y as String,
+                    initialValue: "${unitCorners[0].y}",
                     onSaved: (value) {
-                      if (double.parse(value!) != topLeftUtm.y) 
+                      if (double.parse(value!) != unitCorners[0].y) 
                       {
-                        topLeftUtm.y = double.parse(value);
+                        unitCorners[0].y = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+
+                  // top right corner
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-right X Coordinate:'
+                    ),
+                    initialValue: "${unitCorners[1].x}",
+                    onSaved: (value) {
+                      if (double.parse(value!) != unitCorners[1].x) 
+                      {
+                        unitCorners[1].x = double.parse(value);
                         positioningChanged = true;
                       }
                     },
                   ),
                   TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: "Unit Width (m):",
+                    decoration: InputDecoration(
+                      labelText: 'Top-right Y Coordinate:'
                     ),
-                    initialValue: unit.width as String,
+                    initialValue: "${unitCorners[1].y}",
                     onSaved: (value) {
-                      if (double.parse(value!) != unit.width) 
+                      if (double.parse(value!) != unitCorners[1].y) 
                       {
-                        width = double.parse(value);
+                        unitCorners[1].y = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+
+                  // bottom left corner
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-left X Coordinate:'
+                    ),
+                    initialValue: "${unitCorners[2].x}",
+                    onSaved: (value) {
+                      if (double.parse(value!) != unitCorners[2].x) 
+                      {
+                        unitCorners[2].x = double.parse(value);
                         positioningChanged = true;
                       }
                     },
                   ),
                   TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: "Unit Height (m):",
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-left Y Coordinate:'
                     ),
-                    initialValue: unit.height as String,
+                    initialValue: "${unitCorners[2].y}",
                     onSaved: (value) {
-                      if (double.parse(value!) != unit.height) 
+                      if (double.parse(value!) != unitCorners[2].y) 
                       {
-                        height = double.parse(value);
+                        unitCorners[2].y = double.parse(value);
                         positioningChanged = true;
                       }
                     },
                   ),
+
+                  // bottom right corner
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-right X Coordinate:'
+                    ),
+                    initialValue: "${unitCorners[3].x}",
+                    onSaved: (value) {
+                      if (double.parse(value!) != unitCorners[3].x) 
+                      {
+                        unitCorners[3].x = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-right Y Coordinate:'
+                    ),
+                    initialValue: "${unitCorners[3].y}",
+                    onSaved: (value) {
+                      if (double.parse(value!) != unitCorners[3].y) 
+                      {
+                        unitCorners[3].y = double.parse(value);
+                        positioningChanged = true;
+                      }
+                    },
+                  ),
+
+                  // point interval
                   TextFormField(
                     decoration: const InputDecoration(
                       labelText: "Unit Point Interval (cm):",
                     ),
-                    initialValue: unit.pointInterval as String,
+                    initialValue: "${unit.pointInterval}",
                     onSaved: (value) {
                       if (double.parse(value!) != unit.pointInterval) 
                       {
@@ -849,48 +996,40 @@ class _MapPageState extends State<MapPage>
               // to project dashboard.
               onPressed: () async {
                 formKey.currentState!.save();
-                ({double latitude, double longitude}) topLeftCoords = (
-                  latitude: 
-                    coord_converter.DDCoordinates.fromUTM(topLeftUtm).latitude, 
-                  longitude: 
-                    coord_converter.DDCoordinates.fromUTM(topLeftUtm).longitude
-                );
-                api.ProjectController projectController = 
-                  await api.ProjectController.getInstance();
-                int projectIndex = projectController.userProjects.indexWhere(
-                  (project) => project.id == widget.project.id);
-                
+                List<({double latitude, double longitude})> corners = 
+                  unitCorners.map((coord) => (
+                    latitude: coord_converter.DDCoordinates
+                      .fromUTM(coord)
+                      .latitude, 
+                    longitude: coord_converter.DDCoordinates
+                      .fromUTM(coord)
+                      .longitude,
+                  )).toList();
+
                 // Check to see which, if any, of the fields has been changed
                 // by the user and make updates accordingly.
                 if (nameChanged) {
-                  projectController.userProjects[projectIndex].setUnitName(
-                    unit.id!, 
-                    unitName
-                  );
-                }
-                if (descriptionChanged) {
-                  projectController.userProjects[projectIndex].
-                    setUnitDescription(unit.id!, unitDescription);
-                }
-                if (positioningChanged) {
-                  projectController.userProjects[projectIndex].
-                    repositionUnit(
-                      unit.id!, 
-                      topLeftCoords, 
-                      width, 
-                      height, 
-                      pointInterval
-                    );
+                  await widget.project.updateUnit(unit.id, name: unitName);
                 }
 
-                setState(() {
-                  updatedUnits = 
-                    projectController.userProjects[projectIndex].units;
-                });
-                if (context.mounted)
-                {
-                  Navigator.of(context).pop();
+                if (descriptionChanged) {
+                  await widget.project.updateUnit(
+                    unit.id,
+                    description: unitDescription,
+                  );
                 }
+
+                if (positioningChanged) {
+                  await widget.project.updateUnit(
+                    unit.id, 
+                    corners: corners,
+                    pointInterval: pointInterval,
+                  );
+                }
+
+                setState(() => updatedUnits = widget.project.units);
+
+                if (context.mounted) Navigator.of(context).pop();
               },
             ),
             ElevatedButton(
@@ -919,20 +1058,9 @@ class _MapPageState extends State<MapPage>
             ElevatedButton(
               child: const Text("Confirm Deletion"),
               onPressed: () async {
-                api.ProjectController projectController = 
-                  await api.ProjectController.getInstance();
-                int projectIndex = projectController.userProjects.indexWhere(
-                  (project) => project.id == widget.project.id);
-                projectController.userProjects[projectIndex].
-                  deleteUnit(unitId);
-                setState(() {
-                  updatedUnits = 
-                    projectController.userProjects[projectIndex].units;
-                });
-                if (context.mounted)
-                {
-                  Navigator.of(context).pop();
-                }
+                await widget.project.deleteUnit(unitId);
+                setState(() => widget.project.units);
+                if (context.mounted) Navigator.of(context).pop();
               },
             ),
             ElevatedButton(
@@ -946,29 +1074,23 @@ class _MapPageState extends State<MapPage>
   }
 
   /// Fetches the image corresponding to a layer from the database for display.
-  Future<String> fetchImage(String layerId) async
-  {
-    String? loadedImage;
-
-    api.ProjectController projectController = 
-      await api.ProjectController.getInstance();
-    int projectIndex = projectController.userProjects.indexWhere(
-      (project) => project.id == widget.project.id);
-
-    loadedImage = 
-      await projectController.userProjects[projectIndex].getLayerImage(layerId);
-
-    return loadedImage!;
-  }
+  Future<String> fetchImage(String layerId)
+    => widget.project.getLayerImage(layerId);
 
   @override
   Widget build(BuildContext context) 
   {
-    List<api.LayerSpec> layers;
-    List<api.UnitSpec> units;
+    List<api.Layer> layers;
+    List<api.Unit> units;
+
     updatedLayers.isEmpty 
-      ? layers = widget.project.layers : layers = updatedLayers;
-    updatedUnits.isEmpty ? units = widget.project.units : units = updatedUnits;
+      ? layers = widget.project.layers
+      : layers = updatedLayers;
+
+    updatedUnits.isEmpty 
+      ? units = widget.project.units
+      : units = updatedUnits;
+
     return ListView(
       children: [
         Padding(
@@ -1025,7 +1147,7 @@ class _MapPageState extends State<MapPage>
                         ),
                       ),
                       FutureBuilder(
-                        future: fetchImage(layers[index].id!),
+                        future: fetchImage(layers[index].id),
                         builder: (
                           BuildContext ctx, 
                           AsyncSnapshot<String> snapshot
@@ -1044,7 +1166,7 @@ class _MapPageState extends State<MapPage>
                         style: TextStyle(fontSize: 15)
                       ),
                       Text(
-                        "Corner Coordinates: ${layers[index].cornerCoordinates}",
+                        "Corner Coordinates: ${layers[index].corners}",
                         style: TextStyle(fontSize: 15)
                       ),
                       Text(
@@ -1065,7 +1187,7 @@ class _MapPageState extends State<MapPage>
                       Padding(
                         padding: EdgeInsets.all(20),
                         child: ElevatedButton(
-                          onPressed: () => deleteLayer(layers[index].id!),
+                          onPressed: () => deleteLayer(layers[index].id),
                           child: Text("Delete Layer")
                         ),
                       )
@@ -1122,15 +1244,7 @@ class _MapPageState extends State<MapPage>
                         style: TextStyle(fontSize: 15)
                       ),
                       Text(
-                        "Top Left Coordinates: ${units[index].topLeftCoords}",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Width: ${units[index].width} m",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Height: ${units[index].height} m",
+                        "Corners: ${units[index].corners}",
                         style: TextStyle(fontSize: 15)
                       ),
                       Text(
@@ -1155,7 +1269,7 @@ class _MapPageState extends State<MapPage>
                       Padding(
                         padding: EdgeInsets.all(20),
                         child: ElevatedButton(
-                          onPressed: () => deleteUnit(units[index].id!),
+                          onPressed: () => deleteUnit(units[index].id),
                           child: Text("Delete Unit")
                         ),
                       )

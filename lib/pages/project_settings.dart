@@ -36,9 +36,10 @@ class _ProjectSettingsState extends State<ProjectSettings>
             ElevatedButton(
               child: const Text("Confirm Deletion"),
               onPressed: () async {
-                api.ProjectController projectController = 
+                final projectController = 
                   await api.ProjectController.getInstance();
-                projectController.deleteProject(widget.projectId);
+
+                await projectController.deleteProject(widget.projectId);
                 if (context.mounted)
                 {
                   Navigator.push(context, MaterialPageRoute<void>(

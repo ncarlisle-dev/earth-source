@@ -25,11 +25,9 @@ class _PredictionsPageState extends State<PredictionsPage>
   /// project.
   Future<List<api.PredictionJob>> fetchPredictions() async
   {
-    api.ProjectController projectController = 
-      await api.ProjectController.getInstance();
-    int projectIndex = projectController.userProjects.indexWhere(
-      (project) => project.id == widget.projectId);
-    return projectController.userProjects[projectIndex].predictions;
+    final projectController = await api.ProjectController.getInstance();
+    final project = await projectController.getProjectById(widget.projectId);
+    return project.predictions;
   }
 
   @override
@@ -88,7 +86,7 @@ class _PredictionsPageState extends State<PredictionsPage>
                       child: Column(
                         children: [
                           Text(
-                            snapshot.data![index].name!,
+                            snapshot.data![index].name,
                             style: TextStyle(
                               fontSize: 30,
                               color: Colors.indigo,
@@ -98,7 +96,7 @@ class _PredictionsPageState extends State<PredictionsPage>
                           Text(
                           "Status: "
                           "${possibleJobStatuses[snapshot.data![index].status.index]}"
-                          "\nDescription: ${snapshot.data![index].name!}\n"
+                          "\nDescription: ${snapshot.data![index].name}\n"
                           "Date Created: ${snapshot.data![index].createdAt}",
                             style: TextStyle(
                               fontSize: 15,

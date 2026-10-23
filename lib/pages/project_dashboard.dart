@@ -21,7 +21,7 @@ class ProjectDashboard extends StatefulWidget
 /// The mutable state of the project dashboard page.
 class _ProjectDashboardState extends State<ProjectDashboard> 
 {
-  /// New description of the project, if changed.
+  /// Description of the project, if changed.
   String? projectDescription;
 
   /// Boolean variable to track whether the description of the project has
@@ -56,16 +56,8 @@ class _ProjectDashboardState extends State<ProjectDashboard>
                       return null;
                     },
                     onSaved: (value) async {
-                      // Find the appropriate project in the project controller
-                      // and change the description of the corresponding 
-                      // prediction job.
-                      api.ProjectController projectController = 
-                        await api.ProjectController.getInstance();
-                      int projectIndex = 
-                        projectController.userProjects.indexWhere(
-                        (project) => project.id == widget.project.id);
-                      projectController.userProjects[projectIndex].
-                        changeDescription(value!);
+                      await widget.project.setDescription(value!);
+
                       setState(() {
                         projectDescription = value;
                       });
@@ -78,11 +70,15 @@ class _ProjectDashboardState extends State<ProjectDashboard>
           actions: [
             ElevatedButton(
               child: const Text("Submit"),
-              onPressed: () {
+              onPressed: () async {
                 formKey.currentState!.save();
+                await widget.project.setDescription(projectDescription!);
+
                 setState(() {
                   isDescriptionChanged = true;
                 });
+
+                if (!context.mounted) return;
                 Navigator.of(context).pop();
               },
             ),
@@ -110,10 +106,9 @@ class _ProjectDashboardState extends State<ProjectDashboard>
           ),
         ), 
         Center(
-          child:
-            isDescriptionChanged
-            ? Text(widget.project.description)
-            : Text(projectDescription!)
+          child: isDescriptionChanged
+            ? Text(projectDescription!)
+            : Text(widget.project.description)
         ),
         Center(
             child: Text("Date Created: ${widget.project.createdAt}")
@@ -135,6 +130,7 @@ class _ProjectDashboardState extends State<ProjectDashboard>
               builder: 
                 (context) => MapPage(project: widget.project),
             )),
+            heroTag: "mapPage",
             child: Text("Site Map")
           )
         ),
@@ -145,6 +141,7 @@ class _ProjectDashboardState extends State<ProjectDashboard>
               builder: 
                 (context) => DataPage(project: widget.project),
             )),
+            heroTag: "dataPage",
             child: Text("Sample Data")
           )
         ),
@@ -152,9 +149,10 @@ class _ProjectDashboardState extends State<ProjectDashboard>
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
             onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
-              builder: 
-                (context) => PredictionsPage(projectId: widget.project.id!),
+              builder:
+                (context) => PredictionsPage(projectId: widget.project.id),
             )),
+            heroTag: "predictionsPage",
             child: Text("Predictions")
           )
         ),
@@ -162,9 +160,10 @@ class _ProjectDashboardState extends State<ProjectDashboard>
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
             onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
-              builder: 
-                (context) => ProjectSettings(projectId: widget.project.id!),
+              builder:
+                (context) => ProjectSettings(projectId: widget.project.id),
             )),
+            heroTag: "settingsPage",
             child: Text("Settings")
           )
         ),

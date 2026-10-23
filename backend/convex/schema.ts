@@ -26,10 +26,14 @@ const zCoordinate = z.object({
   longitude: zLongitude
 });
 
-/** Zod type defining a valid width value. Must be a number > 0 and <= 360. */
-const zWidth = z.number().gt(0).lte(360);
-/** Zod type defining a valid height value. Must be a number > 0 and <= 180. */
-const zHeight= z.number().gt(0).lte(180);
+export const zJobStatus = z.union([
+  z.literal("starting"),
+  z.literal("running"),
+  z.literal("complete"),
+  z.literal("failed"),
+]);
+
+export type JobStatus = z.infer<typeof zJobStatus>;
 
 /**
  * Zod type defining a valid timestamp. Must be an integer >= 0. Represents
@@ -47,17 +51,20 @@ type DbFields<S extends TableNames> = SystemFields & { _id: Id<S> };
 
 /** Zod type defining a user in the database. */
 export const zDbUser = z.object({
-  name: z.string().nonempty(),
+  name:  z.string().nonempty(),
   token: z.string().nonempty(),
 });
 /** A user in the database, derived from {@link zDbUser}. */
 export type DbUser = z.infer<typeof zDbUser> & DbFields<"users">;
 
+
 /** Zod type defining a connection spec in the database. */
 export const zDbConnectionSpec = z.object({
-  userId: zid("users"),
-  ipAddress: z.string().regex(/^(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/), // IPv4 regex
-  port: z.int().gte(0).lte(65535),
+  userId:    zid("users"),
+  port:      z.int().gte(0).lte(65535),
+  ipAddress: z.string().regex(
+    /^(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
+  ), // IPv4 regex
 });
 /** A connection spec in the database, derived from {@link zDbConnectionSpec}. */
 export type DbConnectionSpec = z.infer<typeof zDbConnectionSpec> & DbFields<"connectionSpecs">;
@@ -65,13 +72,11 @@ export type DbConnectionSpec = z.infer<typeof zDbConnectionSpec> & DbFields<"con
 
 /** Zod type defining a unit in the database. */
 export const zDbUnit = z.object({
-  projectId: zid("projects"),
-  name: z.string(),
-  description: z.string(),
-  lastUpdated: zTimestamp,
-  topLeftCoords: zCoordinate,
-  width: zWidth,
-  height: zHeight,
+  projectId:     zid("projects"),
+  name:          z.string(),
+  description:   z.string(),
+  lastUpdated:   zTimestamp,
+  corners:       zCoordinate.array().length(4),
   pointInterval: z.number().gt(0),
 });
 /** A unit in the database derived from {@link zDbUnit}. */
@@ -80,10 +85,17 @@ export type DbUnit = z.infer<typeof zDbUnit> & DbFields<"units">;
 
 /** Zod type defining a layer in the database. */
 export const zDbLayer = z.object({
-  projectId: zid("projects"),
-  name: z.string(),
-  description: z.string(),
-  lastUpdated: zTimestamp,
+  projectId:      zid("projects"),
+  name:           z.string(),
+  description:    z.string(),
+  corners:        zCoordinate.array().length(4),
+  image:          z.object({
+                    name:       z.string(),
+                    size:       z.int().gte(0),
+                    storageId:  zid("_storage"),
+                    uploadedAt: zTimestamp,
+                  }).nullable(),
+  lastUpdated:    zTimestamp,
 });
 /** A layer in the database, derived from {@link zDbLayer}. */
 export type DbLayer = z.infer<typeof zDbLayer> & DbFields<"layers">;
@@ -94,14 +106,15 @@ export type DbLayer = z.infer<typeof zDbLayer> & DbFields<"layers">;
  * database.
  */
 const zDbBaseDataSpec = z.object({
-  projectId: zid("projects"),
-  storageId: zid("_storage"),
-  fileName: z.string().nonempty(),
+  projectId:   zid("projects"),
+  storageId:   zid("_storage"),
+  fileName:    z.string().nonempty(),
   description: z.string(),
   lastUpdated: zTimestamp,
-  numPoints: z.int().gte(0),
-  size: z.int().gte(0),
+  numPoints:   z.int().gte(0),
+  size:        z.int().gte(0),
 });
+
 
 /** Zod type defining a pXRF data spec in the database. */
 export const zDbPxrfDataSpec = zDbBaseDataSpec.extend({
@@ -110,12 +123,14 @@ export const zDbPxrfDataSpec = zDbBaseDataSpec.extend({
 /** A pXRF data spec in the database, derived from {@link zDbPxrfDataSpec}. */
 export type DbPxrfDataSpec = z.infer<typeof zDbPxrfDataSpec> & DbFields<"dataSpecs">;
 
+
 /** Zod type defining a training data spec in the database. */
 export const zDbTrainingDataSpec = zDbBaseDataSpec.extend({
   kind: z.literal("training"),
 });
 /** A training data spec in the database, derived from {@link zDbTrainingDataSpec}. */
 export type DbTrainingDataSpec = z.infer<typeof zDbTrainingDataSpec> & DbFields<"dataSpecs">;
+
 
 /**
  * Zod type defining a data spec in the database. A discriminated union on the
@@ -128,36 +143,34 @@ export type DbDataSpec = z.infer<typeof zDbDataSpec> & DbFields<"dataSpecs">;
 
 /** Zod type defining the minimum fields required for a job in the database. */
 const zDbBaseJob = z.object({
-  projectId: zid("projects"),
+  projectId:       zid("projects"),
   outputStorageId: zid("_storage").nullable(),
-  name: z.string(),
-  description: z.string(),
-  lastUpdated: zTimestamp,
-  status: z.union([
-    z.literal("starting"),
-    z.literal("running"),
-    z.literal("complete"),
-    z.literal("failed"),
-  ]),
+  name:            z.string(),
+  description:     z.string(),
+  lastUpdated:     zTimestamp,
+  status:          zJobStatus,
 });
+
 
 /** Zod type defining a prediction job in the database. */
 export const zDbPredictionJob = zDbBaseJob.extend({
-  kind: z.literal("prediction"),
-  layerId: zid("layers"),
-  modelId: zid("jobs"),
+  kind:            z.literal("prediction"),
+  layerId:         zid("layers"),
+  modelId:         zid("jobs").nullable(),
   dataAssignments: z.record(zid("units"), zid("dataSpecs").nullable()),
 });
 /** A prediction job in the database, dervied from {@link zDbPredictionJob}. */
 export type DbPredictionJob = z.infer<typeof zDbPredictionJob> & DbFields<"jobs">;
 
+
 /** Zod type defining a training job in the database. */
 export const zDbTrainingJob = zDbBaseJob.extend({
-  kind: z.literal("training"),
+  kind:               z.literal("training"),
   trainingDataSpecId: zid("dataSpecs"),
 });
 /** A training job in the database, dervied from {@link zDbTrainingJob}. */
 export type DbTrainingJob = z.infer<typeof zDbTrainingJob> & DbFields<"jobs">;
+
 
 /**
  * Zod type defining a job in the database. A discriminated union on the "kind"
@@ -173,61 +186,87 @@ export type DbJob = z.infer<typeof zDbJob> & DbFields<"jobs">
 
 /** Zod type defining a project in the database. */
 export const zDbProject = z.object({
-  userId: zid("users"),
-  name: z.string(),
-  description: z.string(),
-  lastUpdated: zTimestamp,
-  topLeftCoords: zCoordinate,
-  width: zWidth,
-  height: zHeight,
-  layerIds: z.array(zid("layers")),
-  unitIds: z.array(zid("units")),
-  pxrfDataSpecIds: z.array(zid("dataSpecs")),
-  trainingDataSpecIds: z.array(zid("dataSpecs")),
-  dataAssignments: z.record(zid("layers"), z.record(zid("units"), zid("dataSpecs").nullable())), 
-  predictionJobIds: z.array(zid("jobs")),
-  trainingJobIds: z.array(zid("jobs")),
+  userId:               zid("users"),
+  name:                 z.string(),
+  description:          z.string(),
+  utmZone:              z.int().gte(0).lte(60),
+  isSouthernHemisphere: z.boolean(),
+  lastUpdated:          zTimestamp,
+  corners:              zCoordinate.array().length(4),
+  layerIds:             z.array(zid("layers")),
+  unitIds:              z.array(zid("units")),
+  pxrfDataSpecIds:      z.array(zid("dataSpecs")),
+  trainingDataSpecIds:  z.array(zid("dataSpecs")),
+  dataAssignments:      z.record(
+                          zid("layers"),
+                          z.record(
+                            zid("units"),
+                            zid("dataSpecs").nullable()
+                          )
+                        ),
+  predictionJobIds:     z.array(zid("jobs")),
+  trainingJobIds:       z.array(zid("jobs")),
 });
 /** A project in the database, derived from {@link zDbProject}. */
 export type DbProject = z.infer<typeof zDbProject> & DbFields<"projects">;
 
-/* =========================== Frontend types =========================== */
+/* =============================== API types =============================== */
 
 /** Zod type defining a user to be returned by the API. */
-export const zUser = zDbUser
+export const zApiUser = zDbUser
   .omit({ token: true })
   .extend({ id: zid("users") });
-/** A user as returned by the API. Derived from {@link zUser}. */
-export type User = z.infer<typeof zUser>;
+/** A user as returned by the API. Derived from {@link zApiUser}. */
+export type ApiUser = z.infer<typeof zApiUser>;
+
+
+/** Zod type defining a connection spec to be returned by the API. */
+export const zApiConnectionSpec = zDbConnectionSpec
+  .omit({
+    userId: true,
+  })
+  .extend({
+    id:        zid("connectionSpecs"),
+    createdAt: zTimestamp,
+  });
+/** A connection spec returned by the API, derived from {@link zDbConnectionSpec}. */
+export type ApiConnectionSpec = z.infer<typeof zApiConnectionSpec>;
+
 
 /** Zod type defining a layer to be returned by the API. */
-export const zLayer = zDbLayer
+export const zApiLayer = zDbLayer
+  .omit({
+    projectId: true,
+    image: true,
+  })
+  .extend({
+    id:         zid("layers"),
+    createdAt:  zTimestamp,
+    image:      zDbLayer.shape.image.unwrap().omit({
+                  storageId: true,
+                }).nullable(),
+  });
+/** A layer as returned by the API. Derived from {@link zApiLayer}. */
+export type ApiLayer = z.infer<typeof zApiLayer>;
+
+
+/** Zod type defining a layer to be returned by the API. */
+export const zApiUnit = zDbUnit
   .omit({
     projectId: true,
   })
   .extend({
-    id: zid("layers"),
+    id:        zid("units"),
     createdAt: zTimestamp,
   });
-/** A layer as returned by the API. Derived from {@link zLayer}. */
-export type Layer = z.infer<typeof zLayer>;
+/** A unit as returned by the API. Derived from {@link zApiUnit}. */
+export type ApiUnit = z.infer<typeof zApiUnit>;
 
-/** Zod type defining a layer to be returned by the API. */
-export const zUnit = zDbUnit
-  .omit({
-    projectId: true,
-  })
-  .extend({
-    id: zid("units"),
-    createdAt: zTimestamp,
-  });
-/** A unit as returned by the API. Derived from {@link zUnit}. */
-export type Unit = z.infer<typeof zUnit>;
 
 /** Zod type defining a pXRF data spec to be returned by the API. */
-export const zPxrfDataSpec = zDbPxrfDataSpec
+export const zApiPxrfDataSpec = zDbPxrfDataSpec
   .omit({
-    kind: true,
+    kind:      true,
     projectId: true,
     storageId: true,
   })
@@ -237,86 +276,90 @@ export const zPxrfDataSpec = zDbPxrfDataSpec
   });
 /**
  * A pXRF data spec as returned by the API. Derived from
- * {@link zPxrfDataSpec}.
+ * {@link zApiPxrfDataSpec}.
  */
-export type PxrfDataSpec = z.infer<typeof zPxrfDataSpec>;
+export type ApiPxrfDataSpec = z.infer<typeof zApiPxrfDataSpec>;
+
 
 /** Zod type defining a training data spec to be returned by the API. */
-export const zTrainingDataSpec = zDbTrainingDataSpec
+export const zApiTrainingDataSpec = zDbTrainingDataSpec
   .omit({
-    kind: true,
+    kind:      true,
     projectId: true,
     storageId: true,
   })
   .extend({
-    id: zid("dataSpecs"),
+    id:        zid("dataSpecs"),
     createdAt: zTimestamp,
   });
 /**
  * A training data spec as returned by the API. Derived from
- * {@link zTrainingDataSpec}.
+ * {@link zApiTrainingDataSpec}.
  */
-export type TrainingDataSpec = z.infer<typeof zTrainingDataSpec>;
+export type ApiTrainingDataSpec = z.infer<typeof zApiTrainingDataSpec>;
+
 
 /** Zod type defining a prediction job to be returned by the API. */
-export const zPredictionJob = zDbPredictionJob
+export const zApiPredictionJob = zDbPredictionJob
   .omit({
-    projectId: true,
-    kind: true,
+    projectId:       true,
+    kind:            true,
     outputStorageId: true,
   })
   .extend({
-    id: zid("jobs"),
+    id:        zid("jobs"),
     createdAt: zTimestamp,
   });
 /**
  * A prediction job as returned by the API. Derived from
- * {@link zPredictionJob}.
+ * {@link zApiPredictionJob}.
  */
-export type PredictionJob = z.infer<typeof zPredictionJob>;
+export type ApiPredictionJob = z.infer<typeof zApiPredictionJob>;
+
 
 /** Zod type defining a training job to be returned by the API. */
-export const zTrainingJob = zDbTrainingJob
+export const zApiTrainingJob = zDbTrainingJob
   .omit({
-    projectId: true,
-    kind: true,
+    projectId:       true,
+    kind:            true,
     outputStorageId: true,
   })
   .extend({
-    id: zid("jobs"),
+    id:        zid("jobs"),
     createdAt: zTimestamp,
   });
 /**
- * A training job as returned by the API. Derived from {@link zTrainingJob}.
+ * A training job as returned by the API. Derived from {@link zApiTrainingJob}.
  */
-export type TrainingJob = z.infer<typeof zTrainingJob>;
+export type ApiTrainingJob = z.infer<typeof zApiTrainingJob>;
+
 
 /**
  * Zod type defining a project to be returned by the API. The primary
  * difference is that ID fields are replaced with actual DB instances.
  */
-export const zProject = zDbProject
+export const zApiProject = zDbProject
   .pick({
-    name: true,
-    description: true,
-    lastUpdated: true,
-    width: true,
-    height: true,
-    topLeftCoords: true,
-    dataAssignments: true,
+    name:                 true,
+    description:          true,
+    utmZone:              true,
+    isSouthernHemisphere: true,
+    lastUpdated:          true,
+    corners:              true,
+    dataAssignments:      true,
   })
   .extend({
     id: zid("projects"),
-    createdAt: zTimestamp,
-    layers: z.array(zLayer),
-    units: z.array(zUnit),
-    pxrfData: z.array(zPxrfDataSpec),
-    trainingData: z.array(zTrainingDataSpec),
-    predictions: z.array(zPredictionJob),
-    models: z.array(zTrainingJob),
+    createdAt:    zTimestamp,
+    layers:       z.array(zApiLayer),
+    units:        z.array(zApiUnit),
+    pxrfData:     z.array(zApiPxrfDataSpec),
+    trainingData: z.array(zApiTrainingDataSpec),
+    predictions:  z.array(zApiPredictionJob),
+    models:       z.array(zApiTrainingJob),
   })
-/** A project as returned by the API. Derived from {@link zProject}. */
-export type Project = z.infer<typeof zProject>;
+/** A project as returned by the API. Derived from {@link zApiProject}. */
+export type ApiProject = z.infer<typeof zApiProject>;
 
 /* ============================ Begin schema ============================ */
 
@@ -335,14 +378,14 @@ export default defineSchema({
     .index("by_projectId", ["projectId"]),
   
   dataSpecs: defineTable(zodOutputToConvex(zDbDataSpec))
-    .index("by_projectId", ["projectId"])
+    .index("by_projectId",      ["projectId"])
     .index("by_projectId_kind", ["projectId", "kind"]),
 
   connectionSpecs: defineTable(zodOutputToConvex(zDbConnectionSpec))
     .index("by_userId", ["userId"]),
   
   jobs: defineTable(zodOutputToConvex(zDbJob))
-    .index("by_projectId", ["projectId"])
+    .index("by_projectId",        ["projectId"])
     .index("by_projectId_status", ["projectId", "status"])
-    .index("by_projectId_kind", ["projectId", "kind"])
+    .index("by_projectId_kind",   ["projectId", "kind"])
 });

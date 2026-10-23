@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 
 import { zid } from "convex-helpers/server/zod4";
 import * as z from "zod";
-import { zPxrfDataSpec, zTrainingDataSpec } from "./schema";
+import { ApiPxrfDataSpec, zApiPxrfDataSpec, zApiTrainingDataSpec } from "./schema";
 import { ApiError } from "./errors";
 import { authenticateUser } from "./auth";
 
@@ -14,7 +14,7 @@ const http = httpRouter();
 /** Zod object defining the shape of arguments for uploading pXRF data. */
 const zUploadPxrfDataArgs = z.object({
   projectId: zid("projects"),
-  description: zPxrfDataSpec.shape.description,
+  description: zApiPxrfDataSpec.shape.description,
   file: z
     .file()
     .refine(
@@ -66,7 +66,7 @@ http.route({
 
     // write to database and return
     try {
-      const specId = await ctx.runMutation(
+      const apiSpec = await ctx.runMutation(
         internal.projects.finalizePxrfFileUpload,
         {
           projectId: args.projectId,
@@ -79,7 +79,7 @@ http.route({
         }
       );
 
-      return Response.json({ specId, timestamp }, { status: 201 });
+      return Response.json(apiSpec, { status: 201 });
     } catch (e) {
       await ctx.storage.delete(storageId);
 
@@ -93,7 +93,7 @@ http.route({
 /** Zod object defining the shape of arguments for uploading training data. */
 const zUploadTrainingDataArgs = z.object({
   projectId: zid("projects"),
-  description: zTrainingDataSpec.shape.description,
+  description: zApiTrainingDataSpec.shape.description,
   file: z
     .file()
     .refine(
@@ -159,6 +159,85 @@ http.route({
       );
 
       return Response.json({ specId, timestamp }, { status: 201 });
+    } catch (e) {
+      await ctx.storage.delete(storageId);
+
+      return e instanceof ApiError
+        ? new Response(e.data.message, { status: e.data.code })
+        : new Response(`Unknown error occurred:\n${e}`, { status: 500 });
+    }
+  }),
+});
+
+/** Zod object defining the shape of arguments for uploading pXRF data. */
+const zUploadLayerImageArgs = z.object({
+  projectId: zid("projects"),
+  layerId: zid("layers"),
+  file: z
+    .file()
+    .refine(
+      (file) => file.size > 0,
+      { message: "File must be non-empty." }
+    )
+    .refine(
+      (file) => {
+        // TODO: add image format validation, size limits, etc.
+        return true;
+      },
+      { message: "File must be a valid image." }
+    ),
+});
+
+
+/**
+ * POST endpoint that adds pXRF data to a project. Returns the resulting data
+ * spec's ID and the update timestamp.
+ */
+http.route({
+  path: "/uploadLayerImage",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    // get args
+    const formData = Object.fromEntries(await request.formData());
+    const { success, error, data: args } = zUploadLayerImageArgs.safeParse(formData);
+    if (!success)
+      return new Response(
+        `Invalid argument(s) given:\n${error}`,
+        { status: 400, }
+      );
+    
+    // authenticate user and verify the project may be referenced
+    try {
+      const userId = await authenticateUser(ctx);
+      await ctx.runQuery(
+        internal.projects.getDbProjectQuery,
+        { userId, projectId: args.projectId, }
+      );
+    } catch (e) {
+      return e instanceof ApiError
+        ? new Response(e.data.message, { status: e.data.code, })
+        : new Response(`Unknown error occurred:\n${e}`, { status: 500, });
+    }
+    
+    // put into storage
+    const storageId = await ctx.storage.store(args.file);
+    const timestamp = Date.now();
+
+    // write to database and return
+    try {
+      const apiImage = await ctx.runMutation(
+        internal.projects.finalizeProjectLayerImageUpload,
+        {
+          projectId: args.projectId,
+          layerId: args.layerId,
+          storageId,
+          filename: args.file.name,
+          fileSize: args.file.size,
+          timestamp,
+        }
+      );
+
+      return Response.json(apiImage, { status: 201 });
     } catch (e) {
       await ctx.storage.delete(storageId);
 

@@ -105,7 +105,7 @@ List<coord_converter.UTMCoordinates> convertCoordsLatLng(
 )
 {
   List<coord_converter.UTMCoordinates> utmCoords = [];
-  for (var i = 0; i < utmCoords.length; i++) {
+  for (var i = 0; i < latLongCoords.length; i++) {
     coord_converter.DDCoordinates ddCoords = coord_converter.DDCoordinates(
       latitude: latLongCoords[i].latitude, 
       longitude: latLongCoords[i].longitude
@@ -126,7 +126,7 @@ class Visualizer extends StatelessWidget
   /// Filepath to the image to be displayed.
   final String imageFile;
   /// List of decimal coordinates for the four corners of the image.
-  final List<latlong.LatLng> cornerCoordinates;
+  final List<latlong.LatLng> corners;
   /// Threshold for the minimum value at which prediction points are displayed
   /// on the map, set by the user in the prediction page UI.
   final double threshold;
@@ -152,10 +152,10 @@ class Visualizer extends StatelessWidget
             mapController: mapController,
             options: map.MapOptions(
               initialCenter: latlong.LatLng(
-                (cornerCoordinates[0].latitude + 
-                cornerCoordinates[1].latitude) / 2, 
-                (cornerCoordinates[0].longitude + 
-                cornerCoordinates[2].longitude) / 2
+                (corners[0].latitude + 
+                corners[1].latitude) / 2, 
+                (corners[0].longitude + 
+                corners[2].longitude) / 2
               ),
               initialZoom: 22.0,
             ),
@@ -181,16 +181,16 @@ class Visualizer extends StatelessWidget
                 overlayImages: [
                   map.RotatedOverlayImage(
                     topLeftCorner: latlong.LatLng(
-                      cornerCoordinates[0].latitude, 
-                      cornerCoordinates[0].longitude
+                      corners[0].latitude, 
+                      corners[0].longitude
                     ),
                     bottomLeftCorner: latlong.LatLng(
-                      cornerCoordinates[1].latitude, 
-                      cornerCoordinates[1].longitude
+                      corners[1].latitude, 
+                      corners[1].longitude
                     ),
                     bottomRightCorner: latlong.LatLng(
-                      cornerCoordinates[3].latitude, 
-                      cornerCoordinates[3].longitude
+                      corners[3].latitude, 
+                      corners[3].longitude
                     ),
                     imageProvider: MemoryImage(convert.base64Decode(imageFile)),
                   )
@@ -218,16 +218,16 @@ class Visualizer extends StatelessWidget
                 overlayImages: [
                   map.RotatedOverlayImage(
                     topLeftCorner: latlong.LatLng(
-                      cornerCoordinates[0].latitude, 
-                      cornerCoordinates[0].longitude
+                      corners[0].latitude, 
+                      corners[0].longitude
                     ),
                     bottomLeftCorner: latlong.LatLng(
-                      cornerCoordinates[1].latitude, 
-                      cornerCoordinates[1].longitude
+                      corners[1].latitude, 
+                      corners[1].longitude
                     ),
                     bottomRightCorner: latlong.LatLng(
-                      cornerCoordinates[3].latitude, 
-                      cornerCoordinates[3].longitude
+                      corners[3].latitude, 
+                      corners[3].longitude
                     ),
                     imageProvider: MemoryImage(convert.base64Decode(imageFile)),
                     opacity: 0.5,
