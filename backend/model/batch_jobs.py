@@ -13,8 +13,6 @@ from ebk_predict import dataframe_to_grid
 from gbdt_model_renewed import PXRFMaterialClassifier
 from tempfile import TemporaryDirectory
 
-GATEWAY_URL = ""
-GATEWAY_TOKEN = ""
 logger = logging.getLogger(__name__)
 
 #Get Job Function
