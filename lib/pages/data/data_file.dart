@@ -20,12 +20,7 @@ class DataView extends StatelessWidget {
     List<String> headers = [];
     List<String> data = [];
 
-    api.ProjectController projectController = 
-      await api.ProjectController.getInstance();
-    int projectIndex = projectController.userProjects.indexWhere(
-      (projectFound) => projectFound.id == project.id);
-    String? fileString = await 
-      projectController.userProjects[projectIndex].getPxrfData(dataSpec.id!);
+    String? fileString = await project.getPxrfData(dataSpec.id!);
 
     if (fileString == null) return (headers, data);
 
