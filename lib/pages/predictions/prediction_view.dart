@@ -288,6 +288,13 @@ class _PredictionViewState extends State<PredictionView> {
     
     return ListView(
       children: [
+      Padding(
+          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+          child: FloatingActionButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Icon(Icons.arrow_circle_left)
+          )
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: Center(

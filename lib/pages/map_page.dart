@@ -1095,6 +1095,13 @@ class _MapPageState extends State<MapPage>
       children: [
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+          child: FloatingActionButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Icon(Icons.arrow_circle_left)
+          )
+        ),
+        Padding(
+          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: Center(
             child: Text(
               "Site Map", 

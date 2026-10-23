@@ -38,6 +38,13 @@ class _PredictionsPageState extends State<PredictionsPage>
       children: [
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+          child: FloatingActionButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Icon(Icons.arrow_circle_left)
+          )
+        ),
+        Padding(
+          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: Center(
             child: Text(
               "Predictions", 
