@@ -6,7 +6,7 @@ import '../../services/network_service.dart';
 
 /// Helper regex expression to match against IPv4 addresses.
 final _ipv4AddrRegex = RegExp(
-  r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[09][0-9]?)\.){3}'
+  r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
   r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
 );
 
@@ -53,7 +53,7 @@ class AirdroidController
 
   /// Returns the singleton [AirdroidController] instance, creating a new one
   /// if it is not yet initialized.
-  Future<AirdroidController> getInstance() async
+  static Future<AirdroidController> getInstance() async
   {
     if (_instance != null) return _instance!;
 
@@ -90,7 +90,7 @@ class AirdroidController
   /// 
   /// Throws a [common.ApiNetworkException] if uploading the connection spec 
   /// fails.
-  Future<void> connect(String ipAddress, int port) async
+  Future<common.ConnectionSpec> connect(String ipAddress, int port) async
   {
     // check params
     assert(_isValidIpAddress(ipAddress), "IP address is invalid.");
@@ -120,11 +120,13 @@ class AirdroidController
 
     // connect to the server
     try {
-      await client.connect(ipAddress, port);
+      client.connect(ipAddress, port);
     } on common.AirdroidNetworkException {
       client.setStatusListener(null);
       connectionSpec.status = .disconnected;
     }
+
+    return connectionSpec;
   }
 
 
