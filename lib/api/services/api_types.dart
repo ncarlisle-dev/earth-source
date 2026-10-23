@@ -247,8 +247,8 @@ final _zApiDataSpec = _z.object({
   'id':          zId,
   'fileName':    _z.string().nonempty(),
   'description': _z.string(),
-  'numPoints':   _z.integer().min(0),
-  'size':        _z.integer().min(0),
+  'numPoints':   _zCount,
+  'size':        _zCount,
   'lastUpdated': zTimestamp,
   'createdAt':   zTimestamp,
 });
