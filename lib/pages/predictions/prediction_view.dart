@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../mapping/visualizer.dart' as visualizer;
 import '../../api/api.dart' as api;
 import '../home_page.dart';
+import 'package:coordinate_converter/coordinate_converter.dart' as 
+  coord_converter;
 
 /// A stateful widget for the prediction view page, which takes the id for the
 /// current project and a prediction job object as required fields.
@@ -245,9 +247,11 @@ class _PredictionViewState extends State<PredictionView> {
 
   /// Loads both the image and the prediction results for display on the 
   /// prediction view page.
-  Future<(String, List<List<visualizer.MappedPoint>>)> loadPredictionData() async
+  Future<(String, List<coord_converter.UTMCoordinates>, List<double>)> 
+    loadPredictionData() async
   {
-    List<List<visualizer.MappedPoint>> mappedData = [];
+    List<coord_converter.UTMCoordinates> predictionPoints = [];
+    List<double> predictionValues = [];
 
     api.ProjectController projectController = 
       await api.ProjectController.getInstance();
@@ -261,10 +265,18 @@ class _PredictionViewState extends State<PredictionView> {
       );
 
     for (var i = 0; i < results!.length; i++) {
-      visualizer.MappedPoint point = visualizer.MappedPoint();
+      coord_converter.UTMCoordinates coords = coord_converter.UTMCoordinates(
+        x: results[i][0], 
+        y: results[i][1], 
+        zoneNumber: projectController.userProjects[projectIndex].utmZone,
+        isSouthernHemisphere: projectController.userProjects[projectIndex].
+          isSouthernHemisphere
+      );
+      predictionPoints.add(coords);
+      predictionValues.add(results[i][2]);
     }
 
-    return (imageContents!, results!);
+    return (imageContents!, predictionPoints, predictionValues);
   }
 
   @override
@@ -392,22 +404,25 @@ class _PredictionViewState extends State<PredictionView> {
             future: loadPredictionData(),
             builder: (
               BuildContext ctx, 
-              AsyncSnapshot<(String, List)> snapshot
+              AsyncSnapshot<(String, List, List)> snapshot
             ) 
             => snapshot.hasData
             ?
             mapDisplay 
               ? 
               visualizer.Visualizer(
-                predictionData: snapshot.data!.$2 as List<List<double>>, 
-                imageFilePath: snapshot.data!.$1,
+                predictionCoords: 
+                  snapshot.data!.$2 as List<coord_converter.UTMCoordinates>,
+                predictionValues: snapshot.data!.$3 as List<double>, 
+                imageFile: snapshot.data!.$1,
                 cornerCoordinates: widget.predictionJob.layer.cornerCoordinates,
                 threshold: 0.5
               )
               :
               visualizer.TextDisplay(
-                cornerCoordinates: widget.predictionJob.layer.cornerCoordinates, 
-                predictionData: snapshot.data!.$2 as List<List<double>>, 
+                predictionCoords: 
+                  snapshot.data!.$2 as List<coord_converter.UTMCoordinates>, 
+                predictionValues: snapshot.data!.$3 as List<double>,  
                 threshold: 0.5
               )
             :
