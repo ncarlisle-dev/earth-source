@@ -1,6 +1,5 @@
 import '../services/network_service.dart';
-import '../common/project.dart';
-import '../common/network.dart' as network;
+import '../common/common.dart' as common;
 
 /// A controller that bridges the frontend and backend, allowing user projects 
 /// to be accessed and manipulated by means of the network service
@@ -12,8 +11,8 @@ class ProjectController {
   /// Static instance of the project controller
   static ProjectController? instance;
 
-  /// List of user projects stored in the project controller
-  List<Project> userProjects = [];
+  /// User projects stored in the project controller, keyed by ID
+  final Map<String, common.Project> _cachedProjects = {};
 
   /// Retrieves the ProjectController instance if already initialized; if not, 
   /// creates an instance and fetches the user's projects from the database
@@ -22,49 +21,64 @@ class ProjectController {
   /// projects fails.
   static Future<ProjectController> getInstance() async
   {
-    NetworkService networkService = NetworkService.getInstance();
     if (instance != null) return instance!;
 
     instance = ProjectController._();
-    try {
-      instance!.userProjects = await networkService.getProjects();
-    }
-    on network.ApiNetworkException catch (error) {
-      throw network.ApiNetworkException(
-        "Failed to upload user projects due to the following error:\n$error", 
-        error.statusCode
-      );
-    }
     return instance!;
   }
 
   /// Creates a project using a given name and description, uploads it to the 
   /// server, and returns it.
   /// 
-  /// Throws a [network.ApiNetworkException] if the server request to upload a 
+  /// Throws a [common.ApiNetworkException] if the server request to upload a 
   /// new project fails.
-  Future<Project> createProject(
+  Future<common.Project> createProject(
     String name, 
     String description, 
-    int utmZone, 
-    bool isSouthernHemisphere
+    int utmZone,
+    bool isSouthernHemisphere,
+    List<common.Coordinate> corners,
   ) async
   {
-    NetworkService networkService = NetworkService.getInstance();
-    Project createdProject = 
-      Project(name, description, DateTime.now(), utmZone, isSouthernHemisphere);
-    createdProject.lastUpdated = DateTime.now();
+    // TODO: create a PushProject type or similar so that we're not forwarding
+    //       arguments like this so much.
+    final networkService = await NetworkService.getInstance();
+    final common.Project createdProject;
+
     try {
-      await networkService.uploadProject(createdProject);
-      userProjects.add(createdProject);
+      createdProject = await networkService.createProject(
+        name,
+        description,
+        utmZone,
+        isSouthernHemisphere,
+        corners
+      );
     }
-    on network.ApiNetworkException catch (error) {
-      throw network.ApiNetworkException(
+    on common.ApiNetworkException catch (error) {
+      throw common.ApiNetworkException(
         "Project upload failed with the following error:\n$error", 
         error.statusCode
       );
     }
+
+    _cachedProjects[createdProject.id] = createdProject;
     return createdProject;
+  }
+
+  Future<common.Project> getProjectById(String id) async {
+    if (_cachedProjects.containsKey(id)) return _cachedProjects[id]!;
+
+    final networkService = await NetworkService.getInstance();
+
+    final project = await networkService.getProjectById(id);
+    _cachedProjects[id] = project;
+    return project;
+  }
+
+  Future<List<common.ProjectSpec>> getUserProjectSpecs() async
+  {
+    final networkService = await NetworkService.getInstance();
+    return await networkService.getUserProjectSpecs();
   }
 
   /// Finds and deletes a project with the given id.
@@ -73,18 +87,18 @@ class ProjectController {
   /// project fails.
   Future<void> deleteProject(String id) async
   {
-    NetworkService networkService = NetworkService.getInstance();
-    int deleteIndex = userProjects.indexWhere((project) => project.id == id);
-    assert(deleteIndex != -1);
+    final networkService = await NetworkService.getInstance();
+
     try {
       await networkService.deleteProject(id);
-      userProjects.removeAt(deleteIndex);
     }
-    on network.ApiNetworkException catch (error) {
-      throw network.ApiNetworkException(
+    on common.ApiNetworkException catch (error) {
+      throw common.ApiNetworkException(
         "Project deletion failed with the following error:\n$error", 
         error.statusCode
       );
     }
+
+    _cachedProjects.remove(id);
   }
 }

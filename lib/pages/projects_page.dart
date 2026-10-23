@@ -1,3 +1,4 @@
+import 'package:archaeo_sight_2/api/controllers/project_controller.dart';
 import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
 import './project_dashboard.dart';
@@ -28,11 +29,12 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   List<String> hemispheres = ["Southern", "Northern"];
 
   /// Fetches a list of all the user's projects.
-  Future<List<api.Project>> fetchProjects() async
+  Future<List<api.ProjectSpec>> fetchProjects() async
   {
     api.ProjectController projectController = 
       await api.ProjectController.getInstance();
-    return projectController.userProjects;
+    
+    return await projectController.getUserProjectSpecs();
   }
 
   /// Displays a dialogue box containing forms for the user to fill out for
@@ -138,11 +140,18 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                 formKey.currentState!.save();
                 api.ProjectController projectController = 
                   await api.ProjectController.getInstance();
+                
                 api.Project newProject = await projectController.createProject(
                   projectName!, 
                   projectDescription!,
                   utmZone!,
-                  isSouthernHemisphere
+                  isSouthernHemisphere,
+                  [
+                    (latitude: 0, longitude: 0), // TODO: add input for this field
+                    (latitude: 0, longitude: 0),
+                    (latitude: 0, longitude: 0),
+                    (latitude: 0, longitude: 0),
+                  ]
                 );
                 if (context.mounted)
                 {
@@ -195,82 +204,109 @@ class _UserProjectsPageState extends State<UserProjectsPage>
             future: fetchProjects(),
             builder: (
               BuildContext ctx, 
-              AsyncSnapshot<List<api.Project>> snapshot
-            ) 
-            => !(snapshot.hasData)
-            ?
-            Center(child:Text("No projects created so far!"))
-            :
-            ListView.builder(
-              itemCount: snapshot.data!.length, 
-              itemBuilder: (BuildContext context, int index) {
-                return Card(
-                  elevation: 50,
-                  shadowColor: Colors.black,
-                  child: SizedBox(
-                    child: Padding(
-                      padding: EdgeInsets.all(20.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            snapshot.data![index].name,
-                            style: TextStyle(
-                              fontSize: 30,
-                              color: Colors.indigo,
-                              fontWeight: FontWeight.w500,
+              AsyncSnapshot<List<api.ProjectSpec>> snapshot
+            ) {
+              if (snapshot.hasError) {
+                print(snapshot.error.toString());
+                return Center(child: Text("Error occurred fetching data."));
+              }
+
+              if (!snapshot.hasData) {
+                return Center(child: Text("Loading data..."));
+              }
+
+              if (snapshot.data!.isEmpty) {
+                return Center(child: Text(
+                  "No projects to show. Create one with the button above!"
+                ));
+              }
+
+              return ListView.builder(
+                itemCount: snapshot.data!.length, 
+                itemBuilder: (BuildContext context, int index) {
+                  return Card(
+                    elevation: 50,
+                    shadowColor: Colors.black,
+                    child: SizedBox(
+                      child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Column(
+                          children: [
+                            Text(
+                              snapshot.data![index].name,
+                              style: TextStyle(
+                                fontSize: 30,
+                                color: Colors.indigo,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                          Text(
-                            "Description: ${snapshot.data![index].description}",
-                            style: TextStyle(fontSize: 15)
-                          ),
-                          Text(
-                            "Date Created: ${snapshot.data![index].createdAt}",
-                            style: TextStyle(fontSize: 15)
-                          ),
-                          Text(
-                            "Last Updated: ${snapshot.data![index].lastUpdated}"
-                            ,
-                            style: TextStyle(fontSize: 15)
-                          ),
-                          Text(
-                            "Number of Layers: "
-                            "${snapshot.data![index].layers.length}",
-                            style: TextStyle(fontSize: 15)
-                          ),
-                          Text(
-                            "Number of Units: "
-                            "${snapshot.data![index].units.length}",
-                            style: TextStyle(fontSize: 15)
-                          ),
-                          Text(
-                            "Number of Predictions: "
-                            "${snapshot.data![index].predictions.length}",
-                            style: TextStyle(fontSize: 15)
-                          ),
-                          // Button which navigates to the project dashboard
-                          // page for the selected project.
-                          Padding(
-                            padding: EdgeInsets.all(20),
-                            child: ElevatedButton(
-                              onPressed: () => Navigator.push(
-                                  context, 
-                                  MaterialPageRoute<void>(builder: 
-                                    (context) => ProjectDashboard(
-                                      project: snapshot.data![index]
+                            Text(
+                              "Description: "
+                                "${snapshot.data![index].description}",
+                              style: TextStyle(fontSize: 15)
+                            ),
+                            Text(
+                              "Date Created: "
+                                "${snapshot.data![index].createdAt}",
+                              style: TextStyle(fontSize: 15)
+                            ),
+                            Text(
+                              "Last Updated: "
+                                "${snapshot.data![index].lastUpdated}",
+                              style: TextStyle(fontSize: 15)
+                            ),
+                            Text(
+                              "Number of Layers: "
+                                "${snapshot.data![index].numLayers}",
+                              style: TextStyle(fontSize: 15)
+                            ),
+                            Text(
+                              "Number of Units: "
+                                "${snapshot.data![index].numUnits}",
+                              style: TextStyle(fontSize: 15)
+                            ),
+                            Text(
+                              "Number of Predictions: "
+                                "${snapshot.data![index].numPredictions}",
+                              style: TextStyle(fontSize: 15)
+                            ),
+
+                            // Button which navigates to the project 
+                            // dashboard page for the selected project.
+                            Padding(
+                              padding: EdgeInsets.all(20),
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  final projectController = 
+                                    await ProjectController.getInstance();
+                                  final project = await projectController
+                                    .getProjectById(
+                                      snapshot.data![index].id
+                                    );
+
+                                  if (!context.mounted) return;
+
+                                  Navigator.push(
+                                    context, 
+                                    MaterialPageRoute<void>(
+                                      builder: (context) 
+                                        => ProjectDashboard(
+                                          project: project
+                                        )
                                     )
-                                  )
-                                ),
-                              child: Text("View Project")
-                            ),
-                          )
-                        ],
+                                  );
+                                },
+                                child: Text("View Project")
+                              ),
+                            )
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              }
-            )
+                  );
+                }
+              );
+            }
           ),
         ),
       ],

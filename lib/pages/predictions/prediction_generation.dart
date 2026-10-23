@@ -23,8 +23,6 @@ class PredictionGenerationState extends State<PredictionGeneration>
   String? jobName;
   /// Given description of the job.
   String? jobDescription;
-  /// Given name of the corresponding layer.
-  String? layerName;
   /// Id of the corresponding layer.
   String? layerId;
 
@@ -33,28 +31,26 @@ class PredictionGenerationState extends State<PredictionGeneration>
 
   /// Obtains the names of all the layers within the current project that have
   /// data attached.
-  Future<List<String>> getLayerNames() async
+  Future<List<api.Layer>> getLayersWithAssignments() async
   {
-    List<String> layerNames = [];
-    api.ProjectController projectController = 
-      await api.ProjectController.getInstance();
-    int projectIndex = projectController.userProjects.indexWhere(
-      (project) => project.id == widget.projectId);
+    final List<api.Layer> layers = [];
+    final projectController = await api.ProjectController.getInstance();
+    final project = await projectController.getProjectById(widget.projectId);
+
     // Check to make sure that a layer is only displayed in the dropdown if it
     // has assigned data.
-    for (var layer in projectController.userProjects[projectIndex].layers) {
-      if (projectController.userProjects[projectIndex].dataAssignments.
-      containsKey(layer.id)) {
-        layerNames.add(layer.name);
+    for (var layer in project.layers) {
+      if (project.dataAssignments.containsKey(layer.id)) {
+        layers.add(layer);
       }
     }
-    return layerNames;
+
+    return layers;
   }
 
   @override
   Widget build(BuildContext context)
   {
-
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Form(
@@ -97,33 +93,35 @@ class PredictionGenerationState extends State<PredictionGeneration>
               child: Text("Select layer:")
             ),
             FutureBuilder(
-                future: getLayerNames(),
+                future: getLayersWithAssignments(),
                 builder: (
                   BuildContext ctx, 
-                  AsyncSnapshot<List> snapshot
+                  AsyncSnapshot<List<api.Layer>> snapshot
                 ) 
-                => snapshot.hasData
-              ?
-              DropdownButton(
-                value: snapshot.data![0] as String,
-                icon: const Icon(Icons.keyboard_arrow_down),
-                items:
-                    (snapshot.data! as List<String>).
-                      map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>
-                      (value: value, child: Text(value));
-                    }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    layerName = newValue!;
-                  });
-                },
-              )
-              :
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: Text("Project layers cannot currently be accessed.")
-              ),
+                  => snapshot.hasData && snapshot.data != null
+                    ? DropdownButton(
+                        value: snapshot.data![0] as String,
+                        icon: const Icon(Icons.keyboard_arrow_down),
+                        items: snapshot.data!
+                          .map<DropdownMenuItem<String>>((layer) {
+                            return DropdownMenuItem<String>(
+                              value: layer.id,
+                              child: Text(layer.name)
+                            );
+                          })
+                          .toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            layerId = newValue!;
+                          });
+                        },
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: Text(
+                          "Project layers cannot currently be accessed."
+                        ),
+                      ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -134,35 +132,19 @@ class PredictionGenerationState extends State<PredictionGeneration>
                 // to the overridden build function.
                 onPressed: () async {
                   _formKey.currentState!.save();
-                  api.ProjectController projectController = 
-                    await api.ProjectController.getInstance();
-                  int projectIndex = projectController.userProjects.indexWhere(
-                    (project) => project.id == widget.projectId);
-
-                  // Find the id of the layer corresponding to the layer name
-                  // selected by the user.
-                  String? layerId;
-                  for (var layer in projectController.
-                  userProjects[projectIndex].layers) {
-                    if (layer.name == layerName) {
-                      layerId = layer.id;
-                    }
-                  }
+                  final projectController = await api.ProjectController
+                    .getInstance();
+                  
+                  final project = await projectController
+                    .getProjectById(widget.projectId);
 
                   // Create a prediction job with the appropriate fields
                   // assigned.
-                  api.PredictionJob predictionJob = await
-                  projectController.userProjects[projectIndex].runPredictionJob(
-                    layerId!, ""
-                  );
-                  projectController.userProjects[projectIndex].setJobName(
-                    predictionJob.id!, 
-                    jobName!
-                  );
-                  projectController.userProjects[projectIndex].
-                  setJobDescription(
-                    predictionJob.id!, 
-                    jobDescription!
+                  final predictionJob = await project.runPredictionJob(
+                    jobName!,
+                    jobDescription!,
+                    layerId!,
+                    null
                   );
 
                   // Navigate to the prediction view page, passing along the
@@ -171,7 +153,7 @@ class PredictionGenerationState extends State<PredictionGeneration>
                     Navigator.push(context, MaterialPageRoute<void>(
                       builder: (context) => PredictionView(
                         projectId: widget.projectId, 
-                        predictionJob: predictionJob
+                        predictionJob: predictionJob,
                       ),
                     ));
                   }

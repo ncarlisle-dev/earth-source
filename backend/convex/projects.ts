@@ -1,6 +1,6 @@
 import { QueryCtx, MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 
 import * as z from "zod";
 import { zid } from "convex-helpers/server/zod4";
@@ -23,9 +23,9 @@ import {
 } from "./errors";
 
 import {
+  zTimestamp,
+  Timestamp,
   zDbProject,
-  zLayer,
-  zUnit,
   zDbPxrfDataSpec,
   zDbTrainingDataSpec,
   zDbPredictionJob,
@@ -35,11 +35,17 @@ import {
   DbPxrfDataSpec,
   DbPredictionJob,
   DbTrainingJob,
-  Project,
-  Timestamp,
-  PredictionJob,
-  TrainingJob,
-  zTimestamp,
+  zApiLayer,
+  zApiUnit,
+  ApiPredictionJob,
+  ApiTrainingJob,
+  ApiProject,
+  ApiPxrfDataSpec,
+  ApiLayer,
+  ApiUnit,
+  DbLayer,
+  DbUnit,
+  zDbLayer,
 } from "./schema";
 
 
@@ -82,7 +88,7 @@ async function getDbProject(
  * @param updates The update object.
  * @returns The non-empty update fields.
  */
-async function validateUpdates(updates: Record<string, any>) {
+async function validateUpdates<R extends Record<string, any>>(updates: R): Promise<R> {
     for (const key of Object.keys(updates)) {
       if (updates[key] === undefined)
         delete updates[key];
@@ -97,41 +103,44 @@ async function validateUpdates(updates: Record<string, any>) {
 /* ======================== Create/delete endpoints ======================== */
 
 /**
- * Mutation that creates a project given its name, description, top left
- * coordinates, width, and height. Returns the created project's ID.
+ * Mutation that creates a project given its name, description, and corner 
+ * points. Returns the created project.
  */
 export const createProject = zodMutation({
   args: {
-    name: zDbProject.shape.name,
-    description: zDbProject.shape.description,
-    topLeftCoords: zDbProject.shape.topLeftCoords,
-    width: zDbProject.shape.width,
-    height: zDbProject.shape.height,
+    name:                 zDbProject.shape.name,
+    description:          zDbProject.shape.description,
+    corners:              zDbProject.shape.corners,
+    utmZone:              zDbProject.shape.utmZone,
+    isSouthernHemisphere: zDbProject.shape.isSouthernHemisphere,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<ApiProject> => {
     const userId = await authenticateUser(ctx);
     const timestamp = Date.now();
 
     const projectId = await ctx.db.insert("projects", {
-      userId,
-      name: args.name,
-      description: args.description,
-      lastUpdated: timestamp,
-      topLeftCoords: args.topLeftCoords,
-      width: args.width,
-      height: args.height,
-      layerIds: [],
-      unitIds: [],
-      pxrfDataSpecIds: [],
-      trainingDataSpecIds: [],
-      dataAssignments: {}, 
-      predictionJobIds: [],
-      trainingJobIds: [],
+      userId:               userId,
+      name:                 args.name,
+      description:          args.description,
+      utmZone:              args.utmZone,
+      isSouthernHemisphere: args.isSouthernHemisphere,
+      lastUpdated:          timestamp,
+      corners:              args.corners,
+      dataAssignments:      {}, 
+      layerIds:             [],
+      unitIds:              [],
+      pxrfDataSpecIds:      [],
+      trainingDataSpecIds:  [],
+      predictionJobIds:     [],
+      trainingJobIds:       [],
     });
 
-    return projectId;
+    return await ctx.runQuery(
+      api.projects.getProjectById,
+      { id: projectId },
+    );
   }
-})
+});
 
 /** Mutation that deletes a project given its ID. */
 export const deleteProject = zodMutation({
@@ -172,20 +181,20 @@ export const getUserProjectSpecs = zodQuery({
       .collect();
     
     return projects.map((dbProject) => ({
-      id: dbProject._id,
-      name: dbProject.name,
-      description: dbProject.description,
-      topLeft: dbProject.topLeftCoords,
-      width: dbProject.width,
-      height: dbProject.height,
-      lastUpdated: dbProject.lastUpdated,
-      createdAt: dbProject._creationTime,
-      numLayers: dbProject.layerIds.length,
-      numUnits: dbProject.unitIds.length,
-      numPxrfData: dbProject.pxrfDataSpecIds.length,
-      numTrainingData: dbProject.trainingDataSpecIds.length,
-      numPredictions: dbProject.predictionJobIds.length,
-      numModels: dbProject.trainingJobIds.length,
+      id:                   dbProject._id,
+      name:                 dbProject.name,
+      description:          dbProject.description,
+      utmZone:              dbProject.utmZone,
+      isSouthernHemisphere: dbProject.isSouthernHemisphere,
+      corners:              dbProject.corners,
+      lastUpdated:          dbProject.lastUpdated,
+      createdAt:            dbProject._creationTime,
+      numLayers:            dbProject.layerIds.length,
+      numUnits:             dbProject.unitIds.length,
+      numPxrfData:          dbProject.pxrfDataSpecIds.length,
+      numTrainingData:      dbProject.trainingDataSpecIds.length,
+      numPredictions:       dbProject.predictionJobIds.length,
+      numModels:            dbProject.trainingJobIds.length,
     }));
   },
 });
@@ -195,26 +204,26 @@ export const getProjectById = zodQuery({
   args: {
     id: zid("projects"),
   },
-  handler: async (ctx, args): Promise<Project> => {
+  handler: async (ctx, args): Promise<ApiProject> => {
     const userId = await authenticateUser(ctx);
     const dbProject = await getDbProject(ctx, args.id, userId);
 
-    const project: Project = {
-      id: dbProject._id,
-      name: dbProject.name,
-      description: dbProject.description,
-      topLeftCoords: dbProject.topLeftCoords,
-      width: dbProject.width,
-      height: dbProject.height,
-      lastUpdated: dbProject.lastUpdated,
-      createdAt: dbProject._creationTime,
-      layers: [],
-      units: [],
-      pxrfData: [],
-      trainingData: [],
-      dataAssignments: dbProject.dataAssignments,
-      predictions: [],
-      models: [],
+    const project: ApiProject = {
+      id:                   dbProject._id,
+      name:                 dbProject.name,
+      description:          dbProject.description,
+      utmZone:              dbProject.utmZone,
+      isSouthernHemisphere: dbProject.isSouthernHemisphere,
+      corners:              dbProject.corners,
+      lastUpdated:          dbProject.lastUpdated,
+      createdAt:            dbProject._creationTime,
+      dataAssignments:      dbProject.dataAssignments,
+      layers:               [],
+      units:                [],
+      pxrfData:             [],
+      trainingData:         [],
+      predictions:          [],
+      models:               [],
     };
 
     // fetch layers
@@ -223,13 +232,24 @@ export const getProjectById = zodQuery({
       .withIndex("by_projectId", (q) => q.eq("projectId", args.id))
       .collect();
     
-    project.layers = layers.map(dbLayer => ({
-      id: dbLayer._id,
-      name: dbLayer.name,
-      description: dbLayer.description,
-      createdAt: dbLayer._creationTime,
-      lastUpdated: dbLayer.lastUpdated,
-    }))
+    project.layers = layers.map(dbLayer => {
+      let apiImage: ApiLayer["image"] | null = null;
+
+      if (dbLayer.image !== null) {
+        const { storageId: storageId, ...extractedFields } = dbLayer.image ?? { storageId: "" };
+        apiImage = extractedFields;
+      }
+
+      return {
+        id:            dbLayer._id,
+        name:          dbLayer.name,
+        description:   dbLayer.description,
+        corners:       dbLayer.corners,
+        image:         apiImage,
+        createdAt:     dbLayer._creationTime,
+        lastUpdated:   dbLayer.lastUpdated,
+      }
+    });
 
     // fetch units
     const units = await ctx.db
@@ -238,14 +258,12 @@ export const getProjectById = zodQuery({
       .collect();
     
     project.units = units.map(dbUnit => ({
-      id: dbUnit._id,
-      name: dbUnit.name,
-      description: dbUnit.description,
-      createdAt: dbUnit._creationTime,
-      lastUpdated: dbUnit.lastUpdated,
-      topLeftCoords: dbUnit.topLeftCoords,
-      width: dbUnit.width,
-      height: dbUnit.height,
+      id:            dbUnit._id,
+      name:          dbUnit.name,
+      description:   dbUnit.description,
+      createdAt:     dbUnit._creationTime,
+      lastUpdated:   dbUnit.lastUpdated,
+      corners:       dbUnit.corners,
       pointInterval: dbUnit.pointInterval,
     }));
 
@@ -350,6 +368,8 @@ export const setProjectMetadata = zodMutation({
     id: zid("projects"),
     name: zDbProject.shape.name.optional(),
     description: zDbProject.shape.description.optional(),
+    utmZone: zDbProject.shape.utmZone.optional(),
+    isSoutherHemisphere: zDbProject.shape.isSouthernHemisphere.optional(),
   },
   handler: async (ctx, args) => {
     const userId = await authenticateUser(ctx);
@@ -369,21 +389,18 @@ export const setProjectMetadata = zodMutation({
 })
 
 /**
- * Action that updates a project's location, width, height, units, and
- * layers given its ID. Deletes any jobs and files associated with deleted
- * layers. Returns the created units' IDs, created layers' IDs, and the update
- * timestamp.
+ * Action that updates a project's location, units, and layers. Deletes any
+ * jobs and files associated with deleted layers. Returns the created units' 
+ * IDs, created layers' IDs, and the update timestamp.
  */
 export const configureProjectSite = zodAction({
   args: {
-    projectId: zid("projects"),
+    id: zid("projects"),
 
-    siteTopLeftCoords: zDbProject.shape.topLeftCoords.optional(),
-    siteWidth: zDbProject.shape.width.optional(),
-    siteHeight: zDbProject.shape.height.optional(),
+    siteCorners: zDbProject.shape.corners.optional(),
 
     newUnits: z.array(
-      zUnit.omit({
+      zApiUnit.omit({
         createdAt: true,
         lastUpdated: true,
         id: true
@@ -392,7 +409,7 @@ export const configureProjectSite = zodAction({
 
     unitUpdates: z.record(
       zid("units"),
-      zUnit.omit({
+      zApiUnit.omit({
         id: true,
         createdAt: true,
         lastUpdated: true,
@@ -402,19 +419,21 @@ export const configureProjectSite = zodAction({
     unitsToDelete: z.array(zid("units")).optional(),
 
     newLayers: z.array(
-      zLayer.omit({
+      zApiLayer.omit({
         createdAt: true,
         lastUpdated: true,
         id: true,
+        image: true,
       })
     ).optional(),
 
     layerUpdates: z.record(
       zid("layers"),
-      zLayer.omit({
+      zApiLayer.omit({
         createdAt: true,
         lastUpdated: true,
         id: true,
+        image: true,
       }).partial(),
     ).optional(),
 
@@ -424,38 +443,33 @@ export const configureProjectSite = zodAction({
     // authenticate user
     const userId = await authenticateUser(ctx);
 
+    const { id, ...siteUpdates } = args;
+
     // handle database transactions
     const dbUpdateResult = await ctx.runMutation(
       internal.projects.configureProjectSiteDb,
       {
-        ...args,
+        ...siteUpdates,
+        projectId: id,
         userId,
       }
     ) as ConfigureProjectSiteDbResult;
 
-    // delete files indicated by database
-    const deleteFilePromises: Promise<void>[] = [];
-    for (const storageId of dbUpdateResult.storageIdsToDelete)
-      deleteFilePromises.push(ctx.storage.delete(storageId));
-
     // TODO: Resize all prediction output files
 
-    // await and return the updates
-    await Promise.all(deleteFilePromises);
-
+    // return
     return {
-      createdUnitIds: dbUpdateResult.createdUnitIds,
-      createdLayerIds: dbUpdateResult.createdLayerIds,
-      timestamp: dbUpdateResult.timestamp,
+      createdUnits:  dbUpdateResult.createdUnits,
+      createdLayers: dbUpdateResult.createdLayers,
+      timestamp:     dbUpdateResult.timestamp,
     };
   }
 });
 
 /** The return type of {@link configureProjectSiteDb}. */
 interface ConfigureProjectSiteDbResult {
-  createdLayerIds: Id<"layers">[];
-  createdUnitIds: Id<"units">[];
-  storageIdsToDelete: Id<"_storage">[];
+  createdLayers: ApiLayer[];
+  createdUnits: ApiUnit[];
   timestamp: Timestamp;
 }
 
@@ -467,12 +481,10 @@ export const configureProjectSiteDb = zodInternalMutation({
     userId: zid("users"),
     projectId: zid("projects"),
 
-    siteTopLeftCoords: zDbProject.shape.topLeftCoords.optional(),
-    siteWidth: zDbProject.shape.width.optional(),
-    siteHeight: zDbProject.shape.height.optional(),
+    siteCorners: zDbProject.shape.corners.optional(),
 
     newUnits: z.array(
-      zUnit.omit({
+      zApiUnit.omit({
         createdAt: true,
         lastUpdated: true,
         id: true
@@ -481,7 +493,7 @@ export const configureProjectSiteDb = zodInternalMutation({
 
     unitUpdates: z.record(
       zid("units"),
-      zUnit.omit({
+      zApiUnit.omit({
         id: true,
         createdAt: true,
         lastUpdated: true,
@@ -491,19 +503,21 @@ export const configureProjectSiteDb = zodInternalMutation({
     unitsToDelete: z.array(zid("units")).optional(),
 
     newLayers: z.array(
-      zLayer.omit({
+      zApiLayer.omit({
         createdAt: true,
         lastUpdated: true,
+        image: true,
         id: true,
       })
     ).optional(),
 
     layerUpdates: z.record(
       zid("layers"),
-      zLayer.omit({
+      zApiLayer.omit({
         createdAt: true,
         lastUpdated: true,
         id: true,
+        image: true,
       }).partial(),
     ).optional(),
 
@@ -569,7 +583,7 @@ export const configureProjectSiteDb = zodInternalMutation({
     // TODO: find a different way of storing predictions to make this 
     //       check unnecessary
 
-    if (args.siteWidth !== undefined || args.siteHeight !== undefined) {
+    if (args.siteCorners !== undefined) {
       const incompleteJob = await ctx.db
         .query("jobs")
         .withIndex(
@@ -634,9 +648,10 @@ export const configureProjectSiteDb = zodInternalMutation({
         "layers",
         {
           ...newLayer,
-          projectId: args.projectId,
+          projectId:   args.projectId,
           lastUpdated: timestamp,
-        }
+          image:       null,
+        },
       ));
     }
 
@@ -655,22 +670,20 @@ export const configureProjectSiteDb = zodInternalMutation({
 
     // delete layers
     const deleteLayerPromises: Promise<void>[] = [];
+    const deleteLayerImagePromises: Promise<void>[] = [];
 
     for (const layerId of args.layersToDelete ?? []) {
+      // TODO: optimize this by putting this process in a promise array
+      const layer = await ctx.db.get("layers", layerId);
+
+      if (layer!.image !== null) 
+        deleteLayerImagePromises.push(
+          ctx.storage.delete(layer!.image.storageId)
+        );
+      
       deleteLayerPromises.push(ctx.db.delete("layers", layerId));
       projectLayerIds.delete(layerId);
       delete dataAssignments[layerId];
-    }
-
-    const deletePredictionJobPromises: Promise<void>[] = [];
-    const projectPredictionJobIds = new Set<Id<"jobs">>(
-      project.predictionJobIds
-    );
-
-    for (const { _id: jobId, outputStorageId } of predictionJobsToDelete) {
-      deletePredictionJobPromises.push(ctx.db.delete("jobs", jobId));
-      projectPredictionJobIds.delete(jobId);
-      storageIdsToDelete.push(outputStorageId!);
     }
 
     // create units
@@ -722,7 +735,6 @@ export const configureProjectSiteDb = zodInternalMutation({
     const createdUnitIds = await Promise.all(createUnitPromises);
 
     const newLayerIds = [...projectLayerIds, ...createdLayerIds];
-    const newPredictionIds = [...projectPredictionJobIds];
     const newUnitIds = [...projectUnitIds, ...createdUnitIds];
     
     for (const layerId of projectLayerIds)
@@ -740,34 +752,172 @@ export const configureProjectSiteDb = zodInternalMutation({
       "projects",
       args.projectId,
       {
-        topLeftCoords: args.siteTopLeftCoords,
-        width: args.siteWidth,
-        height: args.siteHeight,
+        corners: args.siteCorners ?? project.corners,
         dataAssignments,
         layerIds: newLayerIds,
-        predictionJobIds: newPredictionIds,
         unitIds: newUnitIds,
         lastUpdated: timestamp,
       }
     );
 
+    // get the created layers and units
+    const createdDbLayerPromises: Promise<DbLayer>[] = createdLayerIds.map(async (id) => {
+      const dbLayer = await ctx.db.get("layers", id)
+      if (dbLayer === null)
+        throw new UnknownServerError("Couldn't get created layer.");
+
+      return dbLayer;
+    });
+
+    const createdDbUnitPromises: Promise<DbUnit>[] = createdUnitIds.map(async (id) => {
+      const dbUnit = await ctx.db.get("units", id)
+      if (dbUnit === null)
+        throw new UnknownServerError("Couldn't get created unit.");
+
+      return dbUnit;
+    });
+
     // wait for any remaining updates to finish
     await Promise.all(patchLayerPromises);
     await Promise.all(deleteLayerPromises);
-    await Promise.all(deletePredictionJobPromises);
+    await Promise.all(deleteLayerImagePromises);
     await Promise.all(patchUnitPromises);
     await Promise.all(deleteUnitPromises);
 
+    const createdDbLayers = await Promise.all(createdDbLayerPromises)
+    const createdDbUnits = await Promise.all(createdDbUnitPromises)
+
     // return
     return {
-      createdLayerIds,
-      createdUnitIds,
-      storageIdsToDelete: predictionJobsToDelete
-        .map(job => job.outputStorageId)
-        .filter(id => id !== undefined) as Id<"_storage">[],
+      createdLayers: createdDbLayers.map(dbLayer => ({
+        id:            dbLayer._id,
+        name:          dbLayer.name,
+        description:   dbLayer.description,
+        corners:       dbLayer.corners,
+        image:         dbLayer.image,
+        createdAt:     dbLayer._creationTime,
+        lastUpdated:   dbLayer.lastUpdated,
+      })),
+      createdUnits: createdDbUnits.map(dbUnit => ({
+        id:            dbUnit._id,
+        name:          dbUnit.name,
+        description:   dbUnit.description,
+        corners:       dbUnit.corners,
+        pointInterval: dbUnit.pointInterval,
+        createdAt:     dbUnit._creationTime,
+        lastUpdated:   dbUnit.lastUpdated,
+      })),
       timestamp,
     };
   }
+});
+
+export const finalizeProjectLayerImageUpload = zodInternalMutation({
+  args: {
+    projectId: zid("projects"),
+    layerId: zid("layers"),
+    storageId: zid("_storage"),
+    filename: zDbLayer.shape.image.unwrap().shape.name,
+    fileSize: zDbLayer.shape.image.unwrap().shape.size,
+    timestamp: zTimestamp,
+  },
+  handler: async (ctx, args): Promise<NonNullable<ApiLayer["image"]>> => {
+    const image: NonNullable<DbLayer["image"]> = {
+      name:       args.filename,
+      size:       args.fileSize,
+      storageId:  args.storageId,
+      uploadedAt: args.timestamp,
+    };
+
+    await ctx.db.patch(
+      "layers",
+      args.layerId,
+      {
+        image: {
+          name:       args.filename,
+          size:       args.fileSize,
+          storageId:  args.storageId,
+          uploadedAt: args.timestamp,
+        },
+        lastUpdated:    args.timestamp,
+      },
+    );
+
+    await ctx.db.patch(
+      "projects",
+      args.projectId,
+      { lastUpdated: args.timestamp },
+    )
+
+    return {
+      name:       image.name,
+      size:       image.size,
+      uploadedAt: image.uploadedAt,
+    };
+  },
+});
+
+export const getProjectLayerImageDownloadUrl = zodQuery({
+  args: {
+    projectId: zid("projects"),
+    layerId: zid("layers"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    if (project.layerIds.find(id => id === args.layerId) === undefined)
+      throw new InvalidRequestError(`Project does not have layer with ID '${args.layerId}'.`);
+
+    const layer = await ctx.db.get("layers", args.layerId);
+    if (layer === null)
+      throw new ResourceNotFoundError(`Layer with ID '${args.layerId}' not found.`);
+
+    if (layer.image === null)
+      throw new ResourceNotFoundError(`Layer with ID '${args.layerId}' doesn't have an image.`);
+
+    const url = await ctx.storage.getUrl(layer.image.storageId);
+    if (url === null)
+      throw new UnknownServerError("File couldn't be found.");
+    
+    return url;
+  },
+});
+
+export const deleteProjectLayerImage = zodMutation({
+  args: {
+    projectId: zid("projects"),
+    layerId: zid("layers"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    if (project.layerIds.find(id => id === args.layerId) === undefined)
+      throw new InvalidRequestError(
+        `Project does not have layer with ID '${args.layerId}'.`
+      );
+
+    const layer = await ctx.db.get("layers", args.layerId);
+    if (layer === null)
+      throw new ResourceNotFoundError(
+        `Layer with ID '${args.layerId}' not found.`
+      );
+    
+    if (layer.image === null)
+      throw new ResourceNotFoundError(
+        `Layer with ID '${args.layerId}' doesn't have an image.`
+      );
+
+    const timestamp = Date.now();
+    await ctx.storage.delete(layer.image.storageId);
+    await ctx.db.patch(
+      "layers",
+      args.layerId,
+      { image: null, lastUpdated: timestamp },
+    );
+    await ctx.db.patch("projects", args.projectId, { lastUpdated: timestamp });
+
+    return timestamp;
+  },
 });
 
 /* ========================= File endpoint helpers ========================= */
@@ -859,7 +1009,22 @@ export const finalizePxrfFileUpload = zodInternalMutation({
       { pxrfDataSpecIds, lastUpdated: args.timestamp }
     );
 
-    return specId;
+    const dbSpec = await ctx.db.get("dataSpecs", specId);
+
+    if (dbSpec === null)
+      throw new UnknownServerError("Couldn't get created pXRF data spec.");
+
+    const apiSpec: ApiPxrfDataSpec = {
+      id:          dbSpec._id,
+      fileName:    dbSpec.fileName,
+      description: dbSpec.description,
+      numPoints:   dbSpec.numPoints,
+      size:        dbSpec.size,
+      createdAt:   dbSpec._creationTime,
+      lastUpdated: dbSpec.lastUpdated,
+    };
+
+    return apiSpec;
   }
 });
 
@@ -1216,12 +1381,6 @@ async function assertProjectHasTrainingJob(
   return { job, jobIndex };
 }
 
-/** The return type of {@link createDbPredictionJob}. */
-interface CreateDbPredictionJobResult {
-  jobId: Id<"jobs">;
-  timestamp: Timestamp;
-};
-
 /**
  * Helper mutation used by {@link runPredictionJob} that handles database
  * transactions for creating a prediction job. Returns a
@@ -1236,7 +1395,7 @@ export const createDbPredictionJob = zodInternalMutation({
     layerId: zDbPredictionJob.shape.layerId,
     modelId: zDbPredictionJob.shape.modelId,
   },
-  handler: async (ctx, args): Promise<CreateDbPredictionJobResult> => {
+  handler: async (ctx, args): Promise<DbPredictionJob> => {
     const { predictionJobIds, dataAssignments } = await getDbProject(
       ctx,
       args.projectId,
@@ -1268,10 +1427,11 @@ export const createDbPredictionJob = zodInternalMutation({
       { predictionJobIds, lastUpdated: timestamp }
     );
 
-    return {
-      jobId,
-      timestamp,
-    };
+    const createdJob = await ctx.db.get("jobs", jobId);
+    if (createdJob === null)
+      throw new UnknownServerError("Couldn't fetch created prediction job.");
+
+    return createdJob as DbPredictionJob;
   }
 });
 
@@ -1288,21 +1448,28 @@ export const runPredictionJob = zodAction({
     layerId: zDbPredictionJob.shape.layerId,
     modelId: zDbPredictionJob.shape.modelId,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<ApiPredictionJob> => {
     const userId = await authenticateUser(ctx);
-    const dbUpdateResult = await ctx.runMutation(
+    const createdJob = await ctx.runMutation(
       internal.projects.createDbPredictionJob,
       {
         userId,
         ...args
       }
-    ) as CreateDbPredictionJobResult;
+    );
 
     // TODO: send HTTP request with job ID
 
     return {
-      id: dbUpdateResult.jobId,
-      timestamp: dbUpdateResult.timestamp,
+      id:              createdJob._id,
+      name:            createdJob.name,
+      description:     createdJob.description,
+      layerId:         createdJob.layerId,
+      modelId:         createdJob.modelId,
+      dataAssignments: createdJob.dataAssignments,
+      status:          createdJob.status,
+      createdAt:       createdJob._creationTime,
+      lastUpdated:     createdJob.lastUpdated,
     };
   },
 });
@@ -1345,12 +1512,12 @@ export const setPredictionJobMetadata = zodMutation({
 });
 
 /** Query that fetches a project's {@link PredictionJob}. */
-export const getPredictionJob = zodQuery({
+export const getPredictionJobStatus = zodQuery({
   args: {
     projectId: zid("projects"),
     jobId: zid("jobs"),
   },
-  handler: async (ctx, args): Promise<PredictionJob> => {
+  handler: async (ctx, args) => {
     const userId = await authenticateUser(ctx);
     const project = await getDbProject(ctx, args.projectId, userId);
     const { job } = await assertProjectHasPredictionJob(
@@ -1359,19 +1526,9 @@ export const getPredictionJob = zodQuery({
       args.jobId
     );
 
-    return {
-      id: job._id,
-      name: job.name,
-      description: job.description,
-      createdAt: job._creationTime,
-      lastUpdated: job.lastUpdated,
-      dataAssignments: job.dataAssignments,
-      status: job.status,
-      layerId: job.layerId,
-      modelId: job.modelId,
-    };
+    return job.status;
   }
-})
+});
 
 /** Mutation that deletes a prediction job and its associated files. */
 export const deletePredictionJob = zodMutation({
@@ -1411,15 +1568,38 @@ export const deletePredictionJob = zodMutation({
   },
 });
 
-/** The return type of {@link createDbPredictionJob}. */
-interface CreateDbTrainingJobResult {
-  jobId: Id<"jobs">;
-  timestamp: Timestamp;
-};
+export const getPredictionJobResultsDownloadUrl = zodQuery({
+  args: {
+    projectId: zid("projects"),
+    jobId: zid("jobs"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    const { job } = await assertProjectHasPredictionJob(
+      ctx,
+      project,
+      args.jobId
+    );
+
+    if (job.status !== 'complete')
+      throw new InvalidRequestError("Job isn't complete.");
+
+    if (job.outputStorageId === null)
+      throw new UnknownServerError("Job is complete but doesn't have an output storage ID.");
+
+    const url = await ctx.storage.getUrl(job.outputStorageId);
+
+    if (url === null)
+      throw new UnknownServerError("Job file couldn't be found.");
+    
+    return url;
+  },
+})
 
 /**
  * Helper mutation used by {@link runTrainingJob} that handles database
- * transactions for creating a training job. Returns a 
+ * transactions for creating a training job. Returns a
  * {@link CreateDbTrainingJobResult}.
  */
 export const createDbTrainingJob = zodInternalMutation({
@@ -1428,10 +1608,10 @@ export const createDbTrainingJob = zodInternalMutation({
     projectId: zid("projects"),
     name: zDbTrainingJob.shape.name,
     description: zDbTrainingJob.shape.description,
-    trainingDataSpecId: zDbTrainingJob.shape.trainingDataSpecId,
+    trainingDataSpecId: zid("dataSpecs"),
   },
-  handler: async (ctx, args): Promise<CreateDbTrainingJobResult> => {
-    const { trainingJobIds, dataAssignments } = await getDbProject(
+  handler: async (ctx, args): Promise<DbTrainingJob> => {
+    const { trainingJobIds } = await getDbProject(
       ctx,
       args.projectId,
       args.userId
@@ -1460,10 +1640,11 @@ export const createDbTrainingJob = zodInternalMutation({
       { trainingJobIds, lastUpdated: timestamp }
     );
 
-    return {
-      jobId,
-      timestamp,
-    };
+    const createdJob = await ctx.db.get("jobs", jobId);
+    if (createdJob === null)
+      throw new UnknownServerError("Couldn't fetch created training job.");
+
+    return createdJob as DbTrainingJob;
   }
 });
 
@@ -1477,36 +1658,41 @@ export const runTrainingJob = zodAction({
     projectId: zid("projects"),
     name: zDbTrainingJob.shape.name,
     description: zDbTrainingJob.shape.description,
-    trainingDataSpecId: zDbTrainingJob.shape.trainingDataSpecId,
+    trainingDataSpecId: zid("dataSpecs"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<ApiTrainingJob> => {
     const userId = await authenticateUser(ctx);
-    const dbUpdateResult = await ctx.runMutation(
+    const createdJob = await ctx.runMutation(
       internal.projects.createDbTrainingJob,
       {
         userId,
         ...args
       }
-    ) as CreateDbTrainingJobResult;
+    );
 
     // TODO: send HTTP request with job ID
 
     return {
-      id: dbUpdateResult.jobId,
-      timestamp: dbUpdateResult.timestamp,
+      id:                 createdJob._id,
+      name:               createdJob.name,
+      description:        createdJob.description,
+      trainingDataSpecId: createdJob.trainingDataSpecId,
+      status:             createdJob.status,
+      createdAt:          createdJob._creationTime,
+      lastUpdated:        createdJob.lastUpdated,
     };
   },
 });
 
 /**
  * Mutation that sets a training job's name and description. Returns the
- * update's timestamp.
+ * update timestamp.
  */
 export const setTrainingJobMetadata = zodMutation({
   args: {
-    projectId: zid("projects"),
-    jobId: zid("jobs"),
-    name: zDbTrainingJob.shape.name.optional(),
+    projectId:   zid("projects"),
+    jobId:       zid("jobs"),
+    name:        zDbTrainingJob.shape.name.optional(),
     description: zDbTrainingJob.shape.description.optional(),
   },
   handler: async (ctx, args) => {
@@ -1535,38 +1721,26 @@ export const setTrainingJobMetadata = zodMutation({
   },
 });
 
-
 /** Query that fetches a project's {@link TrainingJob}. */
-export const getTrainingJob = zodQuery({
+export const getTrainingJobStatus = zodQuery({
   args: {
     projectId: zid("projects"),
     jobId: zid("jobs"),
   },
-  handler: async (ctx, args): Promise<TrainingJob> => {
+  handler: async (ctx, args) => {
     const userId = await authenticateUser(ctx);
     const project = await getDbProject(ctx, args.projectId, userId);
     const { job } = await assertProjectHasTrainingJob(
       ctx,
       project,
-      args.jobId
+      args.jobId,
     );
 
-    return {
-      id: job._id,
-      name: job.name,
-      description: job.description,
-      createdAt: job._creationTime,
-      lastUpdated: job.lastUpdated,
-      trainingDataSpecId: job.trainingDataSpecId,
-      status: job.status,
-    };
+    return job.status;
   }
 });
 
-/**
- * Mutation that deletes a training job and its associated files. Returns the
- * deletion timestamp.
- */
+/** Mutation that deletes a training job and its associated files. */
 export const deleteTrainingJob = zodMutation({
   args: {
     projectId: zid("projects"),
@@ -1581,7 +1755,7 @@ export const deleteTrainingJob = zodMutation({
       args.jobId
     );
 
-    if (job.status !== "complete")
+    if (job.status !== "complete" && job.status !== "failed")
       throw new InvalidRequestError(
         `Training job with ID '${args.jobId}' is still ongoing.`
       );
@@ -1596,10 +1770,39 @@ export const deleteTrainingJob = zodMutation({
       args.projectId,
       { 
         trainingJobIds: project.trainingJobIds.toSpliced(jobIndex, 1),
-        lastUpdated: timestamp
+        lastUpdated: timestamp,
       }
     );
 
     return timestamp;
+  },
+});
+
+export const getTrainingJobResultsDownloadUrl = zodQuery({
+  args: {
+    projectId: zid("projects"),
+    jobId: zid("jobs"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+    const { job } = await assertProjectHasTrainingJob(
+      ctx,
+      project,
+      args.jobId
+    );
+
+    if (job.status !== 'complete')
+      throw new InvalidRequestError("Job isn't complete.");
+
+    if (job.outputStorageId === null)
+      throw new UnknownServerError("Job is complete but doesn't have an output storage ID.");
+
+    const url = await ctx.storage.getUrl(job.outputStorageId);
+
+    if (url === null)
+      throw new UnknownServerError("Job file couldn't be found.");
+    
+    return url;
   },
 });

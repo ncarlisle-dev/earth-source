@@ -14,19 +14,29 @@ enum JobStatus {
 abstract class Job 
 {
   /// The id of the job.
-  String? id;
+  final String id;
   /// The name of the job.
-  String? name;
+  String name;
   /// The description of the job.
-  String? description;
-  /// Time at which the job was created.
-  DateTime createdAt = DateTime.now();
+  String description;
   /// Current status of the job.
-  JobStatus status = JobStatus.starting;
+  JobStatus status;
+  /// Time at which the job was created.
+  final DateTime createdAt;
+  /// Time at which the job was last updated.
+  DateTime lastUpdated;
+
   /// A collection of status listeners called when the job's status changes.
   final List<void Function(JobStatus)> _statusListeners = [];
 
-  Job();
+  Job({
+    required this.id,
+    required this.createdAt,
+    required this.lastUpdated,
+    required this.name,
+    required this.description,
+    required this.status,
+  });
 
   /// Sets a callback to be run every time the status of a given job changes
   Future<void> watchStatus(void Function(JobStatus status) callback) async
@@ -38,7 +48,17 @@ abstract class Job
 /// An extension of the job class used specifically for model training.
 class TrainingJob extends Job 
 {
-  TrainingJob();
+  final String trainingDataSpecId;
+
+  TrainingJob({
+    required super.id,
+    required super.name,
+    required super.description,
+    required super.createdAt,
+    required super.lastUpdated,
+    required super.status,
+    required this.trainingDataSpecId,
+  });
 }
 
 /// An extension of the job class used specifically for predictions, with a 
@@ -46,41 +66,44 @@ class TrainingJob extends Job
 class PredictionJob extends Job 
 {
   /// Layer over which the current predictions should run.
-  specs.LayerSpec layer;
-  /// Model id if a newly trained model is being used (defaults to base model
-  /// if not.)
-  String? modelId;
+  final String layerId;
+  /// Model id if a newly trained model is being used (defaults to base model if 
+  /// empty).
+  final String? modelId;
+  final Map<String, String?> dataAssignments;
 
-  PredictionJob(this.layer);
+  PredictionJob({
+    required super.id,
+    required super.name,
+    required super.description,
+    required super.createdAt,
+    required super.lastUpdated,
+    required this.layerId,
+    required this.modelId,
+    this.dataAssignments = const {},
+    super.status = .starting,
+  });
 
   /// Obtains the results of generating a prediction and returns them formatted
   /// as a 2D list of doubles. If results are not yet available, returns an 
   /// empty list.
   /// 
   /// Throws a [network.ApiNetworkException] if results file cannot be fetched.
-  Future<List<List<double>>>? getResults() async
+  /// 
+  /// TODO: make this not required projectId
+  Future<List<List<double>>> getResults(String projectId) async
   {
-    List<List<double>> results = [];
-    NetworkService networkService = NetworkService.getInstance();
-    if (status != JobStatus.complete) return [];
-    // TODO: Construct filepath to where prediction file will actually be 
-    // stored on the backend using presumably job id or name.
-    String filePath = "";
-    String? fileContents = "";
-    try {
-      bool fileCreated = await networkService.fileExists(filePath);
-      if (!fileCreated) return [];
-    }
-    on network.ApiNetworkException catch (error) {
-      throw network.ApiNetworkException(
-        "Network service failed to check if predictions file was created due"
-        " to the following error: $error",
-        error.statusCode
-      );
-    }
+    final List<List<double>> results = [];
+    NetworkService networkService = await NetworkService.getInstance();
+    assert(status == JobStatus.complete, "Job isn't complete.");
+
+    final String fileContents;
 
     try {
-      fileContents = await networkService.fetchFile(filePath);
+      fileContents = await networkService.fetchPredictionJobResults(
+        projectId,
+        id,
+      );
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -92,7 +115,7 @@ class PredictionJob extends Job
 
     // Parse file contents into a 2D list of strings, then convert strings to 
     // doubles.
-    if (fileContents == "" || fileContents == null) return [];
+    if (fileContents == "") return [];
 
     List<List<String>> resultsAsString = [];
     List<String> fileLines = fileContents.split('\n');

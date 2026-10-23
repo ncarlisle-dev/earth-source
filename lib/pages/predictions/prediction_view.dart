@@ -8,7 +8,7 @@ import '../home_page.dart';
 class PredictionView extends StatefulWidget {
   const PredictionView({
     super.key, 
-    required this.projectId, 
+    required this.projectId,
     required this.predictionJob
   });
 
@@ -44,6 +44,9 @@ class _PredictionViewState extends State<PredictionView> {
   bool isNameChanged = false;
   /// Tracks whether the description of a prediction has been changed.
   bool isDescriptionChanged = false;
+  /// The job's layer. TODO: attach actual layer instance to the job
+  api.Layer? jobLayer;
+
 
   /// Displays a pop-up dialogue box that allows the user to set a new name for
   /// the prediction job and changes the name of the job within the appropriate
@@ -77,14 +80,15 @@ class _PredictionViewState extends State<PredictionView> {
                       // Find the appropriate project in the project controller
                       // and change the name of the corresponding prediction 
                       // job.
-                      api.ProjectController projectController = 
-                        await api.ProjectController.getInstance();
-                      int projectIndex = 
-                        projectController.userProjects.indexWhere(
-                        (project) => project.id == widget.projectId);
-                      projectController.userProjects[projectIndex].setJobName(
-                        widget.predictionJob.id!, 
-                        value!
+                      final projectController = await api.ProjectController
+                        .getInstance();
+
+                      final project = await projectController
+                        .getProjectById(widget.projectId);
+
+                      await project.setPredictionJobMetadata(
+                        widget.predictionJob.id,
+                        name: value!,
                       );
 
                       setState(() {
@@ -145,15 +149,15 @@ class _PredictionViewState extends State<PredictionView> {
                       // Find the appropriate project in the project controller
                       // and change the description of the corresponding 
                       // prediction job.
-                      api.ProjectController projectController = 
-                        await api.ProjectController.getInstance();
-                      int projectIndex = 
-                        projectController.userProjects.indexWhere(
-                        (project) => project.id == widget.projectId);
-                      projectController.userProjects[projectIndex].
-                        setJobDescription(
-                          widget.predictionJob.id!, 
-                          value!
+                      final projectController = await api.ProjectController
+                        .getInstance();
+
+                      final project = await projectController
+                        .getProjectById(widget.projectId);
+
+                      await project.setPredictionJobMetadata(
+                        widget.predictionJob.id,
+                        description: value!,
                       );
 
                       setState(() {
@@ -201,15 +205,15 @@ class _PredictionViewState extends State<PredictionView> {
               onPressed: () async {
                 // Find the appropriate project in the project controller
                 // and delete the corresponding prediction job.
-                api.ProjectController projectController = 
-                  await api.ProjectController.getInstance();
-                int projectIndex = 
-                  projectController.userProjects.indexWhere(
-                  (project) => project.id == widget.projectId);
-                projectController.userProjects[projectIndex].
-                  deleteJob(widget.predictionJob.id!);
-                if (context.mounted)
-                {
+                final projectController = await api.ProjectController
+                  .getInstance();
+
+                final project = await projectController
+                  .getProjectById(widget.projectId);
+
+                await project.deletePredictionJob(widget.predictionJob.id);
+
+                if (context.mounted) {
                   Navigator.push(context, MaterialPageRoute<void>(
                     builder: (context) => const HomePage(),
                     ),
@@ -229,41 +233,41 @@ class _PredictionViewState extends State<PredictionView> {
 
   /// Fetches the unit and data file assignments corresponding to the layer
   /// for the current prediction.
-  Future<Map<String, String>> getLayerAssignments() async
+  Future<Map<String, String?>> getLayerAssignments() async
   {
-    api.ProjectController projectController = 
-      await api.ProjectController.getInstance();
-    int projectIndex = projectController.userProjects.indexWhere(
-      (project) => project.id == widget.projectId);
-
-    Map<String, String>? layerAssignments = 
-      projectController.userProjects[projectIndex].
-      dataAssignments[widget.predictionJob.layer.id];
-
-    return layerAssignments!;
+    final projectController = await api.ProjectController.getInstance();
+    final project = await projectController.getProjectById(widget.projectId);
+    return project.dataAssignments[widget.predictionJob.layerId]!;
   }
 
   /// Loads both the image and the prediction results for display on the 
   /// prediction view page.
   Future<(String, List<List<double>>)> loadPredictionData() async
   {
-    api.ProjectController projectController = 
-      await api.ProjectController.getInstance();
-    int projectIndex = projectController.userProjects.indexWhere(
-      (project) => project.id == widget.projectId);
+    final projectController = await api.ProjectController.getInstance();
+    final project = await projectController.getProjectById(widget.projectId);
 
-    List<List<double>>? results = await widget.predictionJob.getResults();
-    String? imageContents = 
-      await projectController.userProjects[projectIndex].getLayerImage(
-        widget.predictionJob.layer.id!
-      );
+    final List<List<double>> results = await widget.predictionJob.getResults(
+      widget.projectId
+    );
 
-    return (imageContents!, results!);
+    final String imageContents = await project
+      .getLayerImage(widget.predictionJob.layerId);
+
+    return (imageContents, results);
   }
 
   @override
   Widget build(BuildContext context) {
     String jobStatus = jobStatusList[widget.predictionJob.status.index];
+
+    api.ProjectController.getInstance()
+      .then((controller) => controller.getProjectById(widget.projectId))
+      .then((fetchedProject) {
+        setState(() => jobLayer = fetchedProject.layers.singleWhere(
+          (layer) => layer.id == widget.predictionJob.layerId
+        ));
+      });
     
     return ListView(
       children: [
@@ -282,7 +286,7 @@ class _PredictionViewState extends State<PredictionView> {
               )
             :
               Text(
-                "${widget.predictionJob.name}", 
+                widget.predictionJob.name, 
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   fontWeight: FontWeight.bold, 
                   color: Colors.indigo
@@ -336,7 +340,9 @@ class _PredictionViewState extends State<PredictionView> {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: Center(
-            child: Text("Job Status: $jobStatus"))),
+            child: Text("Job Status: $jobStatus")
+          )
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: Center(
@@ -344,28 +350,27 @@ class _PredictionViewState extends State<PredictionView> {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: Center(
-            child: Text("Layer: ${widget.predictionJob.layer.name}"))),
+            child: Text(
+              "Layer: ${jobLayer != null ? jobLayer!.name : "Loading..."}"
+            )
+          )
+        ), 
         FutureBuilder(
             future: getLayerAssignments(),
-            builder: (
-              BuildContext ctx, 
-              AsyncSnapshot<Map> snapshot
-            ) 
-            => snapshot.hasData
-            ?
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: Center(
-                child: Text("Layer Assignments: ${snapshot.data!}")
-              )
-            )
-            :
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: Center(
-                child: Text("Layer assignments could not be retrieved.")
-              )
-            )
+            builder: (BuildContext ctx, AsyncSnapshot<Map> snapshot) 
+              => snapshot.hasData
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(
+                      child: Text("Layer Assignments: ${snapshot.data!}")
+                    )
+                  )
+                : Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(
+                      child: Text("Layer assignments could not be retrieved.")
+                    )
+                  )
         ),
         Padding(
           padding: const EdgeInsets.all(16.0),
@@ -386,26 +391,24 @@ class _PredictionViewState extends State<PredictionView> {
             future: loadPredictionData(),
             builder: (
               BuildContext ctx, 
-              AsyncSnapshot<(String, List)> snapshot
+              AsyncSnapshot<(String, List<List<double>>)> snapshot
             ) 
-            => snapshot.hasData
-            ?
-            mapDisplay 
-              ? 
-              visualizer.Visualizer(
-                predictionData: snapshot.data!.$2 as List<List<double>>, 
-                imageFilePath: snapshot.data!.$1,
-                cornerCoordinates: widget.predictionJob.layer.cornerCoordinates,
-                threshold: 0.5
-              )
-              :
-              visualizer.TextDisplay(
-                cornerCoordinates: widget.predictionJob.layer.cornerCoordinates, 
-                predictionData: snapshot.data!.$2 as List<List<double>>, 
-                threshold: 0.5
-              )
-            :
-            Center(child: Text("Prediction data failed to load."))
+              => !snapshot.hasData
+                ? Center(child: Text("Prediction data failed to load."))
+                : jobLayer == null
+                  ? Center(child: Text("Loading..."))
+                  : mapDisplay 
+                    ? visualizer.Visualizer(
+                        predictionData: snapshot.data!.$2, 
+                        imageFilePath: snapshot.data!.$1,
+                        corners: jobLayer!.corners,
+                        threshold: 0.5
+                      )
+                    : visualizer.TextDisplay(
+                        corners: jobLayer!.corners, 
+                        predictionData: snapshot.data!.$2, 
+                        threshold: 0.5
+                      )
           ),
         ),
       ]
