@@ -128,7 +128,7 @@ def process_job(model, job_id):
     raise ValueError(
       "Job must be in starting status"
     )
-  #TODO: Initialize claim_job to retrieve the job
+  #TODO: Initialize claim_job to change job status
   claim_job(job_id)
   
   try:
@@ -153,7 +153,7 @@ def process_job(model, job_id):
         kind,
         outs))
     #Mark as Complete and Log
-    complete_job(uploads, job_id)
+    #complete_job(uploads, job_id)
     
     logger.info("Job %s completed successfully",job_id)
     
@@ -175,8 +175,8 @@ def process_job(model, job_id):
 
   
 #Update the Job to Finished
-def complete_job(uploaded_files, job_id):
-  client.mutation("batch:completeJob",{"jobId": job_id,"outputs": uploaded_files})
+#def complete_job(uploaded_files, job_id):
+# client.mutation("batch:completeJob",{"jobId": job_id,"outputs": uploaded_files})
 
 #Add job_failed function for failed jobs
 
