@@ -10,3 +10,6 @@ pykrige==1.7.3
 fastapi
 uvicorn[standard]
 python-multipart
+convex
+python-dotenv
+requests
