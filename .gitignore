@@ -1,16 +1,16 @@
 # Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+src/*.class
+src/*.log
+src/*.pyc
+src/*.swp
+src/.DS_Store
+src/.atom/
+src/.build/
+src/.buildlog/
+src/.history
+src/.svn/
+src/.swiftpm/
+src/migrate_working_dir/
 
 # IntelliJ related
 *.iml
@@ -24,30 +24,30 @@ migrate_working_dir/
 #.vscode/
 
 # Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
+src/**/doc/api/
+src/**/ios/Flutter/.last_build_id
+src/.dart_tool/
+src/.flutter-plugins-dependencies
+src/.pub-cache/
+src/.pub/
+src/build/
+src/coverage/
 
 # Symbolication related
-app.*.symbols
+src/app.*.symbols
 
 # Obfuscation related
-app.*.map.json
+src/app.*.map.json
 
 # Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+src/android/app/debug
+src/android/app/profile
+src/android/app/release
 
 # Widget Preview related
-.widget_preview/
+src/.widget_preview/
 
-# Project-specific
+# Backend files
 /backend/node_modules
 /backend/.env.local
 /backend/.gitignore

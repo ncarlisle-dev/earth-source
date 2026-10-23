@@ -18,15 +18,17 @@ backend-write:
 # backend-list:
 #     curl "https://api.convex.dev/v1/projects/YOUR_PROJECT_ID/list_deployments" -d "includeLocal=true" -H "Authorization: Bearer YOUR_TOKEN"
 
+[working-directory: './src']
 setup: backend-setup
     flutter pub get
 
 [group('execution')]
 [working-directory: './backend']
 dev:
-    npx convex dev --start "cd .. && flutter run"
+    npx convex dev --start "cd ../src && flutter run"
 
 [group('execution')]
+[working-directory: './src']
 frontend-dev:
     flutter run
 
