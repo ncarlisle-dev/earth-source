@@ -39,7 +39,7 @@ class DataView extends StatelessWidget {
   @override
   Widget build(BuildContext context)
   {
-    return ListView(
+    return Material(child:ListView(
       children: [
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
@@ -85,6 +85,6 @@ class DataView extends StatelessWidget {
           ),
         ),
       ],
-    );
+    ));
   }
 }
