@@ -879,6 +879,7 @@ export const getProjectLayerImageDownloadUrl = zodQuery({
     if (url === null)
       throw new UnknownServerError("File couldn't be found.");
     
+    console.log(url);
     return url;
   },
 });
