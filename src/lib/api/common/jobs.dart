@@ -40,7 +40,18 @@ abstract class Job
   /// Sets a callback to be run every time the status of a given job changes
   Future<void> watchStatus(void Function(JobStatus status) callback) async
   {
+    NetworkService networkService = await NetworkService.getInstance();
+    networkService.watchPredictionJobStatus(id, id, callback);
     _statusListeners.add(callback);
+  }
+
+
+  /// Helper function that sets the the client's [_status] and subsequently 
+  /// calls its [_statusListener], if it exists.
+  void _setStatus(JobStatus status)
+  {
+    if (_statusListener != null && status != _status) _statusListener!(status);
+    _status = status;
   }
 }
 

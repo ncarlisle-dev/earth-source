@@ -272,7 +272,6 @@ class _PredictionViewState extends State<PredictionView> {
         predictionValues.add(results[i][2]);
       }
     }
-    print("here");
     return imageContents;
   }
 
@@ -411,6 +410,19 @@ class _PredictionViewState extends State<PredictionView> {
                       child: Text("Layer assignments could not be retrieved.")
                     )
                   )
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: (() => setState(() {
+              mapDisplay ? mapDisplay = false : mapDisplay = true;
+            })),
+            child: Text(
+              mapDisplay 
+              ? "Toggle text-formatted predictions" 
+              : "Toggle map display"
+            ),
+          )
         ),
         Padding(
           padding: const EdgeInsets.all(16.0),
