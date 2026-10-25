@@ -100,23 +100,32 @@ class PredictionGenerationState extends State<PredictionGeneration>
                     AsyncSnapshot<List<api.Layer>> snapshot
                   ) 
                     => snapshot.hasData && snapshot.data != null
-                      ? DropdownButton(
-                          value: snapshot.data![0].id,
-                          icon: const Icon(Icons.keyboard_arrow_down),
-                          items: snapshot.data!
-                            .map<DropdownMenuItem<String>>((layer) {
-                              return DropdownMenuItem<String>(
-                                value: layer.id,
-                                child: Text(layer.name)
-                              );
-                            })
-                            .toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              layerId = newValue!;
-                            });
-                          },
+                      ? 
+                        snapshot.data!.isEmpty
+                        ?
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16.0),
+                          child: Text(
+                            "No layers have been created yet!"
+                          ),
                         )
+                        : DropdownButton(
+                            value: snapshot.data![0].id,
+                            icon: const Icon(Icons.keyboard_arrow_down),
+                            items: snapshot.data!
+                              .map<DropdownMenuItem<String>>((layer) {
+                                return DropdownMenuItem<String>(
+                                  value: layer.id,
+                                  child: Text(layer.name)
+                                );
+                              })
+                              .toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                layerId = newValue!;
+                              });
+                            },
+                          )
                       : Padding(
                           padding: const EdgeInsets.only(top: 16.0),
                           child: Text(
@@ -160,6 +169,17 @@ class PredictionGenerationState extends State<PredictionGeneration>
                     }
                   },
                   child: Text("Generate Predictions"),
+                )
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: ElevatedButton(
+                  // Note that I tried to make the below its own function so
+                  // there wouldn't be so much indentation here, but it gave me
+                  // issues due to not having access to the context passed in
+                  // to the overridden build function.
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text("Cancel"),
                 )
               ),
             ]
