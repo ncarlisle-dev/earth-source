@@ -133,6 +133,7 @@ class PredictionGenerationState extends State<PredictionGeneration>
                           ),
                         ),
               ),
+              // TODO: Disable generate predictions button if no layers are present for the project
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
                 child: ElevatedButton(
