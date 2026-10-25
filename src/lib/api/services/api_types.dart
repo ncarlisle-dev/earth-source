@@ -62,6 +62,18 @@ final zJobStatus = _z
   .enum_(common.JobStatus.values.map((val) => val.name).toList())
   .transform((val) => common.JobStatus.values.byName(val));
 
+/// dzod type for defining a type URL. The string() schema automatically
+/// removes any surrounding double quotes.
+final zDownloadUrl = _z.string().transform((val) => val);
+
+// final zDownloadUrl = _z
+//   .string()
+//   .refine(
+//     (val) => val.startsWith('"') && val.endsWith('"'),
+//     message: 'Download URL must be wrapped in double quotes (").'
+//   )
+//   .transform((val) => val.substring(1, val.length - 1));
+
 /* ================================== User ================================== */
 
 class ApiUser
