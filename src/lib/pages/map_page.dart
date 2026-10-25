@@ -57,32 +57,8 @@ class _MapPageState extends State<MapPage>
 
     String? layerName;
     String? layerDescription;
-    List<coord_converter.UTMCoordinates> cornerCoords = [
-      coord_converter.UTMCoordinates(
-        x: 0, 
-        y: 0, 
-        zoneNumber: widget.project.utmZone, 
-        isSouthernHemisphere: widget.project.isSouthernHemisphere
-      ),
-      coord_converter.UTMCoordinates(
-        x: 0, 
-        y: 0, 
-        zoneNumber: widget.project.utmZone, 
-        isSouthernHemisphere: widget.project.isSouthernHemisphere
-      ), 
-      coord_converter.UTMCoordinates(
-        x: 0, 
-        y: 0, 
-        zoneNumber: widget.project.utmZone, 
-        isSouthernHemisphere: widget.project.isSouthernHemisphere
-      ), 
-      coord_converter.UTMCoordinates(
-        x: 0, 
-        y: 0, 
-        zoneNumber: widget.project.utmZone, 
-        isSouthernHemisphere: widget.project.isSouthernHemisphere
-      ), 
-    ];
+    List<double> latitudes = [];
+    List<double> longitudes = [];
 
     showDialog(
       context: context,
@@ -125,35 +101,35 @@ class _MapPageState extends State<MapPage>
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Top-left X Coordinate:'
+                      labelText: 'Top-left Latitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter the top-left X Coordinate';
+                        return 'Please enter the top-left latitude';
                       }
                       return null;
                     },
                     onSaved: (value) {
-                      cornerCoords[0].x = double.parse(value.toString());
+                      latitudes.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Top-left Y Coordinate:'
+                      labelText: 'Top-left Longitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter the top-left Y Coordinate';
+                        return 'Please enter the top-left longitude';
                       }
                       return null;
                     },
                     onSaved: (value) {
-                      cornerCoords[0].y = double.parse(value.toString());
+                      longitudes.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Bottom-left X Coordinate:'
+                      labelText: 'Bottom-left Latitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -162,12 +138,12 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      cornerCoords[1].x = double.parse(value.toString());
+                      latitudes.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Bottom-left Y Coordinate:'
+                      labelText: 'Bottom-left Longitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -176,12 +152,12 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      cornerCoords[1].y = double.parse(value.toString());
+                      longitudes.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Top-right X Coordinate:'
+                      labelText: 'Top-right Latitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -190,12 +166,12 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      cornerCoords[2].x = double.parse(value.toString());
+                      latitudes.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Top-right Y Coordinate:'
+                      labelText: 'Top-right Longitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -204,12 +180,12 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      cornerCoords[2].y = double.parse(value.toString());
+                      longitudes.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Bottom-right X Coordinate:'
+                      labelText: 'Bottom-right Latitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -218,12 +194,12 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      cornerCoords[3].x = double.parse(value.toString());
+                      latitudes.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Bottom-right Y Coordinate:'
+                      labelText: 'Bottom-right Longitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -232,7 +208,7 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      cornerCoords[3].y = double.parse(value.toString());
+                      longitudes.add(double.parse(value.toString()));
                     },
                   ),
                   Padding(
@@ -253,8 +229,12 @@ class _MapPageState extends State<MapPage>
                 formKey.currentState!.save();
 
                 // Convert corner coordinates to lat/long.
-                final List<latlong.LatLng> layerCorners = 
-                  visualizer.convertCoordsUTM(cornerCoords);
+                final List<latlong.LatLng> layerCorners = [
+                  latlong.LatLng(latitudes[0], longitudes[0]),
+                  latlong.LatLng(latitudes[1], longitudes[1]),
+                  latlong.LatLng(latitudes[2], longitudes[2]),
+                  latlong.LatLng(latitudes[3], longitudes[3])
+                ];
 
                 // Access project controller and add new layer to the project.
                 final createdLayer = await widget.project.createLayer(
@@ -527,37 +507,9 @@ class _MapPageState extends State<MapPage>
 
     String? unitName;
     String? unitDescription;
-    coord_converter.UTMCoordinates topLeftUtm = 
-      coord_converter.UTMCoordinates(
-        x: 0, 
-        y: 0, 
-        zoneNumber: widget.project.utmZone, 
-        isSouthernHemisphere: widget.project.isSouthernHemisphere
-    );
-
-    coord_converter.UTMCoordinates topRightUtm = 
-      coord_converter.UTMCoordinates(
-        x: 0, 
-        y: 0, 
-        zoneNumber: widget.project.utmZone, 
-        isSouthernHemisphere: widget.project.isSouthernHemisphere
-    );
-
-    coord_converter.UTMCoordinates bottomLeftUtm = 
-      coord_converter.UTMCoordinates(
-        x: 0, 
-        y: 0, 
-        zoneNumber: widget.project.utmZone, 
-        isSouthernHemisphere: widget.project.isSouthernHemisphere
-    );
-
-    coord_converter.UTMCoordinates bottomRightUtm = 
-      coord_converter.UTMCoordinates(
-        x: 0, 
-        y: 0, 
-        zoneNumber: widget.project.utmZone, 
-        isSouthernHemisphere: widget.project.isSouthernHemisphere
-    );
+    
+    List<double> latitudes = [];
+    List<double> longitudes = [];
     
     double? pointInterval;
 
@@ -604,7 +556,7 @@ class _MapPageState extends State<MapPage>
                   // top left corner
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Top-left X Coordinate:'
+                      labelText: 'Top-left Latitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -613,12 +565,12 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      topLeftUtm.x = double.parse(value.toString());
+                      latitudes.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Top-left Y Coordinate:'
+                      labelText: 'Top-left Longitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -627,14 +579,14 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      topLeftUtm.y = double.parse(value.toString());
+                      longitudes.add(double.parse(value.toString()));
                     },
                   ),
 
                   // top right corner
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Top-right X Coordinate:'
+                      labelText: 'Top-right Latitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -643,12 +595,12 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      topRightUtm.x = double.parse(value.toString());
+                      latitudes.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Top-right Y Coordinate:'
+                      labelText: 'Top-right Longitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -657,14 +609,14 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      topRightUtm.y = double.parse(value.toString());
+                      longitudes.add(double.parse(value.toString()));
                     },
                   ),
 
                   // bottom left corner
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Bottom-left X Coordinate:'
+                      labelText: 'Bottom-left Latitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -673,12 +625,12 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      bottomLeftUtm.x = double.parse(value.toString());
+                      latitudes.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Bottom-left Y Coordinate:'
+                      labelText: 'Bottom-left Longitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -687,14 +639,14 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      bottomLeftUtm.y = double.parse(value.toString());
+                      longitudes.add(double.parse(value.toString()));
                     },
                   ),
   
                   // bottom
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Bottom-right X Coordinate:'
+                      labelText: 'Bottom-right Latitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -703,12 +655,12 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      bottomRightUtm.x = double.parse(value.toString());
+                      latitudes.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Bottom-right Y Coordinate:'
+                      labelText: 'Bottom-right Longitude:'
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -717,7 +669,7 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      bottomRightUtm.y = double.parse(value.toString());
+                      longitudes.add(double.parse(value.toString()));
                     },
                   ),
 
@@ -749,36 +701,20 @@ class _MapPageState extends State<MapPage>
                 formKey.currentState!.save();
                 final List<({double latitude, double longitude})> corners = [
                   (
-                    latitude: coord_converter.DDCoordinates
-                      .fromUTM(topLeftUtm)
-                      .latitude, 
-                    longitude: coord_converter.DDCoordinates
-                      .fromUTM(topLeftUtm)
-                      .longitude
+                    latitude: latitudes[0], 
+                    longitude: longitudes[0]
                   ),
                   (
-                    latitude: coord_converter.DDCoordinates
-                      .fromUTM(topRightUtm)
-                      .latitude, 
-                    longitude: coord_converter.DDCoordinates
-                      .fromUTM(topRightUtm)
-                      .longitude
+                    latitude: latitudes[1], 
+                    longitude: longitudes[1]
                   ),
                   (
-                    latitude: coord_converter.DDCoordinates
-                      .fromUTM(bottomLeftUtm)
-                      .latitude, 
-                    longitude: coord_converter.DDCoordinates
-                      .fromUTM(bottomLeftUtm)
-                      .longitude
+                    latitude: latitudes[2], 
+                    longitude: longitudes[2]
                   ),
                   (
-                    latitude: coord_converter.DDCoordinates
-                      .fromUTM(bottomRightUtm)
-                      .latitude, 
-                    longitude: coord_converter.DDCoordinates
-                      .fromUTM(bottomRightUtm)
-                      .longitude
+                    latitude: latitudes[3], 
+                    longitude: longitudes[3]
                   ),
                 ];
 

@@ -260,7 +260,7 @@ class _PredictionViewState extends State<PredictionView> {
     final String imageContents = await project
       .getLayerImage(widget.predictionJob.layerId);
 
-    for (var i = 0; i < results!.length; i++) {
+    for (var i = 0; i < results.length; i++) {
       coord_converter.UTMCoordinates coords = coord_converter.UTMCoordinates(
         x: results[i][0], 
         y: results[i][1], 
