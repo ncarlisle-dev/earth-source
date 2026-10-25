@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
 import 'data_file.dart' as data_file;
 import 'data_upload.dart';
+import 'package:file_picker/file_picker.dart' as file_picker;
+import 'dart:io' as io;
 
 /// A stateful widget for the project predictions page, which takes the id for 
 /// the current project as a required field.
@@ -19,11 +21,57 @@ class DataPage extends StatefulWidget
 /// The mutable state of the project predictions page.
 class _DataPageState extends State<DataPage> 
 {
+  String unitAssignment = "";
+  String layerAssignment = "";
+
+  /// Loads an image from the local file system and encodes it as a base 64
+  /// string.
+  Future<void> loadCsv() async {
+    file_picker.PlatformFile? file = await file_picker.FilePicker.pickFile(
+      type: file_picker.FileType.custom,
+      allowedExtensions: ['csv'],
+    );
+
+    if (file != null) {
+      final filePath = file.path!;
+      io.File imageFile = io.File(filePath);
+      String fileString = await imageFile.readAsString();
+      widget.project.addPxrfData(fileString, filePath, "");
+    }
+  }
+
   void modifyData(String dataId) async
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    final dropdownStateLayer = GlobalKey<FormFieldState>();
+    final dropdownStateUnit = GlobalKey<FormFieldState>();
 
-    /*showDialog(
+    List<String> layerNames = [];
+    List<String> unitNames = [];
+
+    for (api.Layer layer in widget.project.layers) {
+      layerNames.add(layer.name);
+    }
+
+    for (api.Unit unit in widget.project.units) {
+      unitNames.add(unit.name);
+    }
+
+    String assignedLayer = layerNames[0];
+    String assignedUnit = unitNames[0];
+
+    widget.project.dataAssignments.forEach((layerId, assignment) => 
+      assignment.forEach((unitId, dataSpec) {
+        if (dataSpec == dataId) {
+          assignedLayer = (widget.project.layers.firstWhere(
+            (layer) => layer.id == layerId)).name;
+          assignedUnit = (widget.project.units.firstWhere(
+            (unit) => unit.id == unitId)).name;
+        }
+      })
+    );
+
+    showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -34,151 +82,42 @@ class _DataPageState extends State<DataPage>
               key: formKey,
               child: Column(
                 children: [
-                  TextFormField(
-                    initialValue: unit.name,
-                    onSaved: (value) async {
-                      if (value != unit.name)
-                      {
-                        unitName = value!;
-                        nameChanged = true;
-                      }
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0),
+                    child: Text("Change Layer Assignment:")
+                  ),
+                  DropdownButtonFormField(
+                    key: dropdownStateLayer,
+                    initialValue: assignedLayer,
+                    items: layerNames.map((value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        assignedLayer = value!;
+                      });
                     },
                   ),
-                  TextFormField(
-                    initialValue: unit.description,
-                    onSaved: (value) async {
-                      if (value != unit.description)
-                      {
-                        unitDescription = value!;
-                        descriptionChanged = true;
-                      }
-                    },
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0),
+                    child: Text("Change Unit Assignment:")
                   ),
-
-                  // top left corner
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-left X Coordinate:'
-                    ),
-                    initialValue: "${unitCorners[0].x}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != unitCorners[0].x) 
-                      {
-                        unitCorners[0].x = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-left Y Coordinate:'
-                    ),
-                    initialValue: "${unitCorners[0].y}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != unitCorners[0].y) 
-                      {
-                        unitCorners[0].y = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-
-                  // top right corner
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-right X Coordinate:'
-                    ),
-                    initialValue: "${unitCorners[1].x}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != unitCorners[1].x) 
-                      {
-                        unitCorners[1].x = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-right Y Coordinate:'
-                    ),
-                    initialValue: "${unitCorners[1].y}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != unitCorners[1].y) 
-                      {
-                        unitCorners[1].y = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-
-                  // bottom left corner
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-left X Coordinate:'
-                    ),
-                    initialValue: "${unitCorners[2].x}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != unitCorners[2].x) 
-                      {
-                        unitCorners[2].x = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-left Y Coordinate:'
-                    ),
-                    initialValue: "${unitCorners[2].y}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != unitCorners[2].y) 
-                      {
-                        unitCorners[2].y = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-
-                  // bottom right corner
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-right X Coordinate:'
-                    ),
-                    initialValue: "${unitCorners[3].x}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != unitCorners[3].x) 
-                      {
-                        unitCorners[3].x = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-right Y Coordinate:'
-                    ),
-                    initialValue: "${unitCorners[3].y}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != unitCorners[3].y) 
-                      {
-                        unitCorners[3].y = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-
-                  // point interval
-                  TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: "Unit Point Interval (cm):",
-                    ),
-                    initialValue: "${unit.pointInterval}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != unit.pointInterval) 
-                      {
-                        pointInterval = double.parse(value);
-                        positioningChanged = true;
-                      }
+                  DropdownButtonFormField(
+                    key: dropdownStateUnit,
+                    initialValue: assignedUnit,
+                    items: unitNames.map((value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        assignedUnit = value!;
+                      });
                     },
                   ),
                 ],
@@ -187,43 +126,17 @@ class _DataPageState extends State<DataPage>
           ),
           actions: [
             ElevatedButton(
-              child: Text("Submit Edits"),
+              child: Text("Submit Assignment"),
               // Access project controller and add new project before navigating
               // to project dashboard.
               onPressed: () async {
                 formKey.currentState!.save();
-                List<({double latitude, double longitude})> corners = 
-                  unitCorners.map((coord) => (
-                    latitude: coord_converter.DDCoordinates
-                      .fromUTM(coord)
-                      .latitude, 
-                    longitude: coord_converter.DDCoordinates
-                      .fromUTM(coord)
-                      .longitude,
-                  )).toList();
+                String layerId = (widget.project.layers.firstWhere(
+                  (layer) => layer.name == assignedLayer)).id;
+                String unitId = (widget.project.units.firstWhere(
+                  (unit) => unit.name == assignedUnit)).id;
 
-                // Check to see which, if any, of the fields has been changed
-                // by the user and make updates accordingly.
-                if (nameChanged) {
-                  await widget.project.updateUnit(unit.id, name: unitName);
-                }
-
-                if (descriptionChanged) {
-                  await widget.project.updateUnit(
-                    unit.id,
-                    description: unitDescription,
-                  );
-                }
-
-                if (positioningChanged) {
-                  await widget.project.updateUnit(
-                    unit.id, 
-                    corners: corners,
-                    pointInterval: pointInterval,
-                  );
-                }
-
-                setState(() => updatedUnits = widget.project.units);
+                widget.project.assignData(layerId, unitId, dataId);
 
                 if (context.mounted) Navigator.of(context).pop();
               },
@@ -235,7 +148,7 @@ class _DataPageState extends State<DataPage>
           ]
         );
       }
-    );*/
+    );
   }
   /// Deletes the given data spec from the project and updates what is 
   /// displayed.
@@ -298,7 +211,14 @@ class _DataPageState extends State<DataPage>
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
             onPressed: () => {},
-            child: const Icon(Icons.add)
+            child: Text("Upload data via AirDroid")
+          )
+        ),
+        Padding(
+          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+          child: FloatingActionButton(
+            onPressed: () => loadCsv(),
+            child: Text("Upload data from local files")
           )
         ),
         SizedBox(
@@ -362,11 +282,20 @@ class _DataPageState extends State<DataPage>
                             child: Text("View Data File")
                           ),
                         ),
+                        widget.project.layers.isEmpty || 
+                        widget.project.units.isEmpty
+                        ?
+                        Center(child: 
+                          Text("Add layers and units to the project to be able "
+                            "to assign data specs!"
+                          )
+                        )
+                        :
                         Padding(
                           padding: EdgeInsets.all(8),
                           child: ElevatedButton(
                             onPressed: () => modifyData(data[index].id),
-                            child: Text("Modify Data Assignments"),
+                            child: Text("Assign Layers/Units"),
                           ),
                         ), 
                         Padding(
