@@ -1094,15 +1094,24 @@ class _MapPageState extends State<MapPage>
                         builder: (
                           BuildContext ctx, 
                           AsyncSnapshot<String> snapshot
-                        ) 
-                        => !(snapshot.hasData)
-                        ?
-                        Center(child: Text("Layer image cannot be uploaded."))
-                        :
-                        Image.memory(
-                          convert.base64Decode(snapshot.data!),
-                          height: 300
                         )
+                        {
+                          if (snapshot.hasError) {
+                            print(snapshot.error!.toString());
+                            return Center(
+                              child: Text("Error fetching layer image.")
+                            );
+                          }
+
+                          if (!snapshot.hasData) {
+                            return Center(child: Text("Loading image..."));
+                          }
+
+                          return Image.memory(
+                            convert.base64Decode(snapshot.data!),
+                            height: 300
+                          );
+                        }
                       ),
                       Text(
                         "Description: ${layers[index].description}",
