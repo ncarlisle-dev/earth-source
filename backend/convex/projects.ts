@@ -379,6 +379,7 @@ export const setProjectMetadata = zodMutation({
     const safeUpdates = validateUpdates(updates);
     const timestamp = Date.now();
 
+    // TODO: this line of code doesn't seem to do anything even though it runs????
     await ctx.db.patch("projects", args.id, {
       ...safeUpdates,
       lastUpdated: timestamp,
