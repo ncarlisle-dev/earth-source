@@ -91,8 +91,7 @@ List<latlong.LatLng> convertCoordsUTM(
 {
   List<latlong.LatLng> latLngCoords = [];
   for (var i = 0; i < utmCoords.length; i++) {
-    coord_converter.DDCoordinates ddCoords = 
-      coord_converter.DDCoordinates.fromUTM(utmCoords[i]);
+    coord_converter.DDCoordinates ddCoords = utmCoords[i].toDD();
     latLngCoords.add(latlong.LatLng(ddCoords.latitude, ddCoords.longitude));
   }
   return latLngCoords;
