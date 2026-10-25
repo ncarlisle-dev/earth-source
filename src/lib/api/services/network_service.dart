@@ -129,8 +129,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
     )).toList(),
   );
 }
-const _cloudUrl = "https://standing-eel-607.convex.cloud";
-const _httpActionsUrl = "https://standing-eel-607.convex.site";
+const _cloudUrl = "https://original-ptarmigan-119.convex.cloud";
+const _httpActionsUrl = "https://original-ptarmigan-119.convex.site";
 
 class NetworkService {
   static NetworkService? instance;
