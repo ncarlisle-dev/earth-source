@@ -58,7 +58,7 @@ class Project
   final List<specs.PxrfDataSpec> pxrfData;
   /// List of training data files corresponding to the project.
   final List<specs.TrainingDataSpec> trainingData;
-  /// Map of layer and unit names to file names.
+  /// Map of layer and unit ids to file ids.
   final Map<String, Map <String, String?>> dataAssignments;
   /// List of batch jobs for generating predictions.
   final List<jobs.PredictionJob> predictions;

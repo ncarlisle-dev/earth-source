@@ -129,8 +129,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
     )).toList(),
   );
 }
-const _cloudUrl = "https://standing-eel-607.convex.cloud";
-const _httpActionsUrl = "https://standing-eel-607.convex.site";
+const _cloudUrl = "https://original-ptarmigan-119.convex.cloud";
+const _httpActionsUrl = "https://original-ptarmigan-119.convex.site";
 
 class NetworkService {
   static NetworkService? instance;
@@ -519,7 +519,11 @@ class NetworkService {
 
     final http.Response response;
     try {
-      response = await http.get(Uri.parse(downloadUrl));
+      response = await http.get(Uri.parse(
+        downloadUrl, 
+        1, 
+        downloadUrl.length - 1
+      ));
     } catch (e) {
       throw common.ApiNetworkException('pXRF data download failed: $e', null);
     }
@@ -603,7 +607,11 @@ class NetworkService {
 
     final http.Response response;
     try {
-      response = await http.get(Uri.parse(downloadUrl, 1, downloadUrl.length - 1));
+      response = await http.get(Uri.parse(
+        downloadUrl, 
+        1, 
+        downloadUrl.length - 1
+      ));
     } catch (e) {
       throw common.ApiNetworkException('Image download failed: $e', null);
     }

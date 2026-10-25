@@ -46,6 +46,8 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   void createProject()
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    final dropdownStateZone = GlobalKey<FormFieldState>();
+    final dropdownStateHemisphere = GlobalKey<FormFieldState>();
 
     showDialog(
       context: context,
@@ -94,19 +96,19 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     padding: const EdgeInsets.only(top: 16.0),
                     child: Text("Select UTM Zone:")
                   ),
-                  DropdownButton(
-                    value: zoneValue,
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                    items:
-                        utmZones.map<DropdownMenuItem<String>>(
-                          (String value) {
-                          return DropdownMenuItem<String>
-                          (value: value, child: Text(value));
-                        }).toList(),
-                    onChanged: (String? newValue) {
+                  DropdownButtonFormField(
+                    key: dropdownStateZone,
+                    initialValue: zoneValue,
+                    items: utmZones.map((value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
                       setState(() {
-                        utmZone = int.parse(newValue!);
-                        zoneValue = newValue;
+                        zoneValue = value!;
+                        utmZone = int.parse(value);
                       });
                     },
                   ),
@@ -114,22 +116,20 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     padding: const EdgeInsets.only(top: 16.0),
                     child: Text("Select hemisphere:")
                   ),
-                  DropdownButton(
-                    value: hemisphere,
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                    items:
-                        hemispheres.map<DropdownMenuItem<String>>(
-                          (String value) {
-                          return DropdownMenuItem<String>
-                          (value: value, child: Text(value));
-                        }).toList(),
-                    onChanged: (String? newValue) {
+                  DropdownButtonFormField(
+                    key: dropdownStateHemisphere,
+                    initialValue: hemisphere,
+                    items: hemispheres.map((value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
                       setState(() {
-                        if (newValue == hemispheres[0]) {
-                          isSouthernHemisphere = true;
-                        }
-                        hemisphere = newValue!;
+                        hemisphere = value!;
                       });
+                      if (value! == "Southern") isSouthernHemisphere = true;
                     },
                   ),
                 ],

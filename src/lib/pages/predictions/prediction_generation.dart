@@ -100,23 +100,32 @@ class PredictionGenerationState extends State<PredictionGeneration>
                     AsyncSnapshot<List<api.Layer>> snapshot
                   ) 
                     => snapshot.hasData && snapshot.data != null
-                      ? DropdownButton(
-                          value: snapshot.data![0].id,
-                          icon: const Icon(Icons.keyboard_arrow_down),
-                          items: snapshot.data!
-                            .map<DropdownMenuItem<String>>((layer) {
-                              return DropdownMenuItem<String>(
-                                value: layer.id,
-                                child: Text(layer.name)
-                              );
-                            })
-                            .toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              layerId = newValue!;
-                            });
-                          },
+                      ? 
+                        snapshot.data!.isEmpty
+                        ?
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16.0),
+                          child: Text(
+                            "No layers have been created yet!"
+                          ),
                         )
+                        : DropdownButton(
+                            value: snapshot.data![0].id,
+                            icon: const Icon(Icons.keyboard_arrow_down),
+                            items: snapshot.data!
+                              .map<DropdownMenuItem<String>>((layer) {
+                                return DropdownMenuItem<String>(
+                                  value: layer.id,
+                                  child: Text(layer.name)
+                                );
+                              })
+                              .toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                layerId = newValue!;
+                              });
+                            },
+                          )
                       : Padding(
                           padding: const EdgeInsets.only(top: 16.0),
                           child: Text(
@@ -124,6 +133,7 @@ class PredictionGenerationState extends State<PredictionGeneration>
                           ),
                         ),
               ),
+              // TODO: Disable generate predictions button if no layers are present for the project
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
                 child: ElevatedButton(
