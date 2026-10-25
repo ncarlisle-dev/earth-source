@@ -1109,7 +1109,27 @@ class _MapPageState extends State<MapPage>
                         style: TextStyle(fontSize: 15)
                       ),
                       Text(
-                        "Corner Coordinates: ${layers[index].corners}",
+                        "Top Left Coordinate: ("
+                        "${layers[index].corners[0].latitude}, "
+                        "${layers[index].corners[0].longitude})",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Top Right Coordinate: ("
+                        "${layers[index].corners[1].latitude}, "
+                        "${layers[index].corners[1].longitude})",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Bottom Left Coordinate: ("
+                        "${layers[index].corners[2].latitude}, "
+                        "${layers[index].corners[2].longitude})",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Bottom Right Coordinate: ("
+                        "${layers[index].corners[3].latitude}, "
+                        "${layers[index].corners[3].longitude})",
                         style: TextStyle(fontSize: 15)
                       ),
                       Text(
@@ -1187,7 +1207,27 @@ class _MapPageState extends State<MapPage>
                         style: TextStyle(fontSize: 15)
                       ),
                       Text(
-                        "Corners: ${units[index].corners}",
+                        "Top Left Coordinate: ("
+                        "${units[index].corners[0].latitude}, "
+                        "${units[index].corners[0].longitude})",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Top Right Coordinate: ("
+                        "${units[index].corners[1].latitude}, "
+                        "${units[index].corners[1].longitude})",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Bottom Left Coordinate: ("
+                        "${units[index].corners[2].latitude}, "
+                        "${units[index].corners[2].longitude})",
+                        style: TextStyle(fontSize: 15)
+                      ),
+                      Text(
+                        "Bottom Right Coordinate: ("
+                        "${units[index].corners[3].latitude}, "
+                        "${units[index].corners[3].longitude})",
                         style: TextStyle(fontSize: 15)
                       ),
                       Text(
