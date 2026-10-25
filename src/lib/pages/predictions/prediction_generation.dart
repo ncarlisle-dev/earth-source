@@ -162,6 +162,13 @@ class PredictionGenerationState extends State<PredictionGeneration>
                   child: Text("Generate Predictions"),
                 )
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text("Cancel"),
+                )
+              ),
             ]
           )
         )

@@ -244,7 +244,7 @@ class _PredictionViewState extends State<PredictionView> {
 
   /// Loads both the image and the prediction results for display on the 
   /// prediction view page.
-  Future<(String, List<coord_converter.UTMCoordinates>, List<double>)> 
+  Future<String> 
     loadPredictionData() async
   {
     List<coord_converter.UTMCoordinates> predictionPoints = [];
@@ -260,32 +260,48 @@ class _PredictionViewState extends State<PredictionView> {
     final String imageContents = await project
       .getLayerImage(widget.predictionJob.layerId);
 
-    for (var i = 0; i < results!.length; i++) {
-      coord_converter.UTMCoordinates coords = coord_converter.UTMCoordinates(
-        x: results[i][0], 
-        y: results[i][1], 
-        zoneNumber: project.utmZone,
-        isSouthernHemisphere: project.isSouthernHemisphere
-      );
-      predictionPoints.add(coords);
-      predictionValues.add(results[i][2]);
+    if (results.isNotEmpty) {
+      for (var i = 0; i < results.length; i++) {
+        coord_converter.UTMCoordinates coords = coord_converter.UTMCoordinates(
+          x: results[i][0], 
+          y: results[i][1], 
+          zoneNumber: project.utmZone,
+          isSouthernHemisphere: project.isSouthernHemisphere
+        );
+        predictionPoints.add(coords);
+        predictionValues.add(results[i][2]);
+      }
     }
+    print("here");
+    return imageContents;
+  }
 
-    return (imageContents, predictionPoints, predictionValues);
+  Future<void> _loadJobLayer() async {
+    final controller = await api.ProjectController.getInstance();
+
+    final project =
+        await controller.getProjectById(widget.projectId);
+
+    if (!mounted) return;
+
+    setState(() {
+      jobLayer = project.layers.singleWhere(
+        (layer) => layer.id == widget.predictionJob.layerId,
+      );
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadJobLayer();
   }
 
   @override
   Widget build(BuildContext context) {
     String jobStatus = jobStatusList[widget.predictionJob.status.index];
 
-    api.ProjectController.getInstance()
-      .then((controller) => controller.getProjectById(widget.projectId))
-      .then((fetchedProject) {
-        setState(() => jobLayer = fetchedProject.layers.singleWhere(
-          (layer) => layer.id == widget.predictionJob.layerId
-        ));
-      });
-    
     return Material(child: ListView(
       children: [
       Padding(
@@ -415,7 +431,7 @@ class _PredictionViewState extends State<PredictionView> {
             future: loadPredictionData(),
             builder: (
               BuildContext ctx, 
-              AsyncSnapshot<(String, List, List)> snapshot
+              AsyncSnapshot<String> snapshot
             ) 
             => !snapshot.hasData
               ? Center(child: Text("Prediction data failed to load."))
@@ -424,20 +440,17 @@ class _PredictionViewState extends State<PredictionView> {
                 : mapDisplay 
                     ? 
                     visualizer.Visualizer(
-                      predictionCoords: 
-                        snapshot.data!.$2 as 
-                        List<coord_converter.UTMCoordinates>,
-                      predictionValues: snapshot.data!.$3 as List<double>, 
-                      imageFile: snapshot.data!.$1,
+                      predictionCoords: [],
+                      predictionValues: [], 
+                      imageFile: snapshot.data!,
                       corners: jobLayer!.corners,
                       threshold: 0.5
                     )
                     :
                     visualizer.TextDisplay(
                       predictionCoords: 
-                        snapshot.data!.$2 as 
-                        List<coord_converter.UTMCoordinates>, 
-                      predictionValues: snapshot.data!.$3 as List<double>,  
+                        [], 
+                      predictionValues: [],  
                       threshold: 0.5
                     )
           ),

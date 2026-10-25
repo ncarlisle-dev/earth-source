@@ -603,7 +603,7 @@ class NetworkService {
 
     final http.Response response;
     try {
-      response = await http.get(Uri.parse(downloadUrl));
+      response = await http.get(Uri.parse(downloadUrl, 1, downloadUrl.length - 1));
     } catch (e) {
       throw common.ApiNetworkException('Image download failed: $e', null);
     }

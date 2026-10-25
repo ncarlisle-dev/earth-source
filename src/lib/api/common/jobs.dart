@@ -94,6 +94,7 @@ class PredictionJob extends Job
   {
     final List<List<double>> results = [];
     NetworkService networkService = await NetworkService.getInstance();
+    if (status != JobStatus.complete) return [];
     assert(status == JobStatus.complete, "Job isn't complete.");
 
     final String fileContents;
