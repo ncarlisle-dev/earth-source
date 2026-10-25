@@ -50,7 +50,7 @@ export const getPredictionJobParameters = zodQuery({
     const dataSpecs: Record<Id<"dataSpecs">, DbPxrfDataSpec> = {};
     const downloadUrls: Record<Id<"_storage">, string> = {};
 
-    for (const [unitId, specId] of Object.keys(job.dataAssignments)) {
+    for (const [unitId, specId] of Object.entries(job.dataAssignments)) {
       // check IDs
       if (specId === null) continue;
       const safeSpecId = specId as Id<"dataSpecs">;
