@@ -21,12 +21,8 @@ class ProjectDashboard extends StatefulWidget
 /// The mutable state of the project dashboard page.
 class _ProjectDashboardState extends State<ProjectDashboard> 
 {
-  /// Description of the project, if changed.
+  /// Description of the project
   String? projectDescription;
-
-  /// Boolean variable to track whether the description of the project has
-  /// been changed.
-  bool isDescriptionChanged = false;
 
   /// Displays a pop-up dialogue box that allows the user to set a new 
   /// description for the project.
@@ -56,10 +52,8 @@ class _ProjectDashboardState extends State<ProjectDashboard>
                       return null;
                     },
                     onSaved: (value) async {
-                      await widget.project.setDescription(value!);
-
                       setState(() {
-                        projectDescription = value;
+                        projectDescription = value!;
                       });
                     },
                   ),
@@ -73,10 +67,6 @@ class _ProjectDashboardState extends State<ProjectDashboard>
               onPressed: () async {
                 formKey.currentState!.save();
                 await widget.project.setDescription(projectDescription!);
-
-                setState(() {
-                  isDescriptionChanged = true;
-                });
 
                 if (!context.mounted) return;
                 Navigator.of(context).pop();
@@ -113,9 +103,10 @@ class _ProjectDashboardState extends State<ProjectDashboard>
           ),
         ), 
         Center(
-          child: isDescriptionChanged
-            ? Text(projectDescription!, style: TextStyle(fontSize: 15, color: Colors.indigo))
-            : Text(widget.project.description, style: TextStyle(fontSize: 15, color: Colors.indigo))
+          child: Text(
+            widget.project.description,
+            style: TextStyle(fontSize: 15, color: Colors.indigo)
+          ),
         ),
         Center(
             child: Text("Date Created: ${widget.project.createdAt}")

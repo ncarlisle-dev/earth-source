@@ -129,8 +129,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
     )).toList(),
   );
 }
-const _cloudUrl = "https://original-ptarmigan-119.convex.cloud";
-const _httpActionsUrl = "https://original-ptarmigan-119.convex.site";
+const _cloudUrl = "https://dutiful-dodo-113.convex.cloud";
+const _httpActionsUrl = "https://dutiful-dodo-113.convex.site";
 
 class NetworkService {
   static NetworkService? instance;
@@ -512,18 +512,19 @@ class NetworkService {
   Future<String> fetchPxrfData(String projectId, String specId) async
   {
     final client = _getClient();
-    final downloadUrl = await client.query(
+    final urlResponse = await client.query(
       "projects:getProjectPxrfDataUrl",
       { 'projectId': projectId, 'specId': specId }
     );
 
+    final downloadUrl = parseNetworkResponse<String>(
+      urlResponse,
+      api_types.zDownloadUrl
+    );
+
     final http.Response response;
     try {
-      response = await http.get(Uri.parse(
-        downloadUrl, 
-        1, 
-        downloadUrl.length - 1
-      ));
+      response = await http.get(Uri.parse(downloadUrl));
     } catch (e) {
       throw common.ApiNetworkException('pXRF data download failed: $e', null);
     }
@@ -600,18 +601,19 @@ class NetworkService {
   ) async
   {
    final client = _getClient();
-    final downloadUrl = await client.query(
+    final urlResponse = await client.query(
       "projects:getProjectLayerImageDownloadUrl",
       { 'projectId': projectId, 'layerId': layerId }
     );
 
+    final downloadUrl = parseNetworkResponse(
+      urlResponse,
+      api_types.zDownloadUrl,
+    );
+
     final http.Response response;
     try {
-      response = await http.get(Uri.parse(
-        downloadUrl, 
-        1, 
-        downloadUrl.length - 1
-      ));
+      response = await http.get(Uri.parse(downloadUrl));
     } catch (e) {
       throw common.ApiNetworkException('Image download failed: $e', null);
     }
@@ -787,9 +789,14 @@ class NetworkService {
   Future<String> fetchTrainingData(String projectId, String specId) async
   {
     final client = _getClient();
-    final downloadUrl = await client.query(
+    final urlResponse = await client.query(
       "projects:getProjectTrainingDataUrl",
       { 'projectId': projectId, 'specId': specId }
+    );
+
+    final downloadUrl = parseNetworkResponse(
+      urlResponse,
+      api_types.zDownloadUrl,
     );
 
     final http.Response response;
@@ -1034,9 +1041,14 @@ class NetworkService {
   Future<String> fetchPredictionJobResults(String projectId, String jobId) async
   {
     final client = _getClient();
-    final downloadUrl = await client.query(
+    final urlResponse = await client.query(
       "projects:getPredictionJobResultsDownloadUrl",
       { 'projectId': projectId, 'jobId': jobId }
+    );
+
+    final downloadUrl = parseNetworkResponse(
+      urlResponse,
+      api_types.zDownloadUrl
     );
 
     final http.Response response;
