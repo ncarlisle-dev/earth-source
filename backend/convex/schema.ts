@@ -9,22 +9,31 @@ import { Id, TableNames } from './_generated/dataModel';
  * Zod type defining a latitude value. Must be a number between -90 and 90,
  * inclusive.
  */
-const zLatitude = z.number().gte(-90).lte(90);
+export const zLatitude = z.number().gte(-90).lte(90);
 
 /**
  * Zod type defining a longitude value. Must be a number between -180 and 180
  * inclusive.
  */
-const zLongitude = z.number().gte(-180).lte(180);
+export const zLongitude = z.number().gte(-180).lte(180);
 
 /**
  * Zod type defining the shape of a coordinate object. Consists of a
  * {@link zLatitude} and {@link zLongitude} field.
  */
-const zCoordinate = z.object({
+export const zCoordinate = z.object({
   latitude: zLatitude,
   longitude: zLongitude
 });
+
+/** A coordinate, derived from {@link zCoordinate}. */
+export type Coordinate = z.infer<typeof zCoordinate>;
+
+/** Zod type defining the corners of an archaeological element. */
+export const zCorners = zCoordinate.array().length(4);
+
+/** The corners of an archaeological element, derived from {@link zCorners}. */
+export type Corners = z.infer<typeof zCorners>;
 
 export const zJobStatus = z.union([
   z.literal("starting"),
@@ -33,6 +42,7 @@ export const zJobStatus = z.union([
   z.literal("failed"),
 ]);
 
+/** A job's status, derived from {@link zJobStatus}. */
 export type JobStatus = z.infer<typeof zJobStatus>;
 
 /**
@@ -41,8 +51,18 @@ export type JobStatus = z.infer<typeof zJobStatus>;
  */
 export const zTimestamp = z.int().gte(0);
 
-/** The type of a timestamp, derived from {@link zTimestamp}. */
+/** A timestamp, derived from {@link zTimestamp}. */
 export type Timestamp = z.infer<typeof zTimestamp>;
+
+
+/**
+ * Zod type defining a valid timestamp. Must be an integer >= 0. Represents
+ * milliseconds since epoch.
+ */
+export const zPointInterval = z.number().gt(0);
+
+/** The type of a point interval, derived from {@link zPointInterval}. */
+export type PointInterval = z.infer<typeof zPointInterval>;
 
 /** Helper type that gets the Convex DB-only fields for the provided table. */
 type DbFields<S extends TableNames> = SystemFields & { _id: Id<S> };
@@ -76,8 +96,8 @@ export const zDbUnit = z.object({
   name:          z.string(),
   description:   z.string(),
   lastUpdated:   zTimestamp,
-  corners:       zCoordinate.array().length(4),
-  pointInterval: z.number().gt(0),
+  corners:       zCorners,
+  pointInterval: zPointInterval,
 });
 /** A unit in the database derived from {@link zDbUnit}. */
 export type DbUnit = z.infer<typeof zDbUnit> & DbFields<"units">;
@@ -88,7 +108,7 @@ export const zDbLayer = z.object({
   projectId:      zid("projects"),
   name:           z.string(),
   description:    z.string(),
-  corners:        zCoordinate.array().length(4),
+  corners:        zCorners,
   image:          z.object({
                     name:       z.string(),
                     size:       z.int().gte(0),
@@ -192,7 +212,7 @@ export const zDbProject = z.object({
   utmZone:              z.int().gte(0).lte(60),
   isSouthernHemisphere: z.boolean(),
   lastUpdated:          zTimestamp,
-  corners:              zCoordinate.array().length(4),
+  corners:              zCorners,
   layerIds:             z.array(zid("layers")),
   unitIds:              z.array(zid("units")),
   pxrfDataSpecIds:      z.array(zid("dataSpecs")),
