@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 import pandas as pd
 import io
+import numpy as np
 
 #testing import to prove Render Connection
 from client_convex import client
@@ -86,16 +87,77 @@ async def ebk(file: UploadFile = File(...)):
             status_code=422,
             detail=("EBK requires spatial coordinates: "
                     + ", ".join(sorted(missing))))
+
+    # Identify available chemical elements
+    available = [col for col in FEATURE_COLUMNS
+                 if col in df.columns]
+
+    if not available:
+        raise HTTPException(
+            status_code=422,
+            detail="No recognized pXRF element columns"
+        )
+
+    #Identify scans with actual chemical measurements
+    valid_scans = (
+        df[available]
+        .apply(pd.to_numeric, errors="coerce")
+        .notna()
+        .any(axis=1)
+    )
+
+    coords = df[["X_Coord", "Y_Coord"]
+    ].apply(pd.to_numeric, errors="coerce")
+
+    #Exclude invalid coordinates
+    valid_coords = np.isfinite(coords.to_numpy(dtype=float)
+                              ).all(axis=1)
+
+    valid = valid_scans & valid_coords
+
+    if not valid.any():
+        raise HTTPException(
+            status_code=422,
+            detail="No valid samples available for EBK")
+
     
-    # The EBK process needs the classifier probability first
+    #The EBK process needs the classifier probability first
     result_df = model.predict(df)
 
-    ebk_grid_df, original_points_df = dataframe_to_grid(
-        result_df,
-        x_col="X_Coord",
-        y_col="Y_Coord",
-        prob_col="non_soil_probability"
-    )
+    location_data = result_df.loc[valid].copy()
+
+    location_data[["X_Coord", "Y_Coord"]] = coords.loc[
+    valid, ["X_Coord", "Y_Coord"]]
+
+    if len(unique_points) < 10:
+        raise HTTPException(
+            status_code=422,
+            detail="EBK requires at more than 10 distinct sample locations")
+
+    #Verify that enough distinct locations exist
+    unique_points = location_data[["X_Coord", "Y_Coord"]
+    ].drop_duplicates()
+
+    #Verify that coordinates can span a 2D region
+    if (unique_points["X_Coord"].nunique() < 2
+        or unique_points["Y_Coord"].nunique() < 2):
+            raise HTTPException(
+                status_code=422,
+                detail="EBK requires variation in both coordinate axes")
+
+    try:
+        ebk_grid_df, original_points_df = dataframe_to_grid(
+            location_data,
+            x_col="X_Coord",
+            y_col="Y_Coord",
+            prob_col="non_soil_probability"
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"EBK interpolation failed: {exc}"
+        ) from exc
+
 
     output = io.StringIO()
 
@@ -118,6 +180,7 @@ async def ebk(file: UploadFile = File(...)):
 def run_job(
     jobId: str,
     projectId: str
+    outputName: str = "classification"
 ):
     return process_job(model, jobId, projectId, outputName)
 
