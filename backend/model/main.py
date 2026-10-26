@@ -25,14 +25,36 @@ async def predict(file: UploadFile = File(...)):
 
     df = pd.read_csv(io.BytesIO(contents))
 
+    df.columns = df.columns.str.strip()
+
+    available = [col for col in FEATURE_COLUMNS if col in df.columns]
+
+    if not available:
+        raise HTTPException(
+            status_code=422,
+            detail="No recognized pXRF element columns")
+
+    #Identify scans containing valid measurements
+    valid_scans = (
+        df[available]
+        .apply(pd.to_numeric, errors="coerce")
+        .notna()
+        .any(axis=1)
+    )
+    
     result_df = model.predict(df)
+    #Predictions will not be flagged for empty scans here
+    prediction_columns = [
+        "predicted_material",
+        "soil_probability",
+        "non_soil_probability",
+        "prediction_confidence"
+    ]
 
-    ebk_grid_df, original_points_df = dataframe_to_grid(
-        result_df,
-        x_col="X_Coord",
-        y_col="Y_Coord",
-        prob_col="non_soil_probability")
+    result_df.loc[~valid_scans, prediction_columns] = None
 
+    result_df["valid_pxrf_scan"] = valid_scans
+    
     output = io.StringIO()
     result_df.to_csv(output, index=False)
     output.seek(0)
