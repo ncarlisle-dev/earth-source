@@ -6,6 +6,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 import requests
+import numpy as np
 
 from client_convex import client
 from cloud_model import PXRFModel
@@ -16,9 +17,9 @@ from tempfile import TemporaryDirectory
 logger = logging.getLogger(__name__)
 
 #Get Job Function
-def get_job(job_id, project_id):
+def get_prediction_params(job_id, project_id):
 
-  job = client.query( "batch:getPredictionJobById", 
+  job = client.query( "batch:getPredictionJobParameters", 
                      {"jobId": job_id, "projectId": project_id})
 
   if job is None:
@@ -29,7 +30,7 @@ def get_job(job_id, project_id):
 #Upload URLS from the API
 def ret_upload_url(job_id):
   
-  uploadUrl = client.query("batch:getPredictionJobResultsUploadUrl", { "jobId": job_id })
+  uploadUrl = client.mutation("batch:getPredictionJobResultsUploadUrl", { "jobId": job_id })
   
   return uploadUrl
 
@@ -44,42 +45,63 @@ def download_csv(url):
 
 
 #Load the Data
-def load_data(job, project_id):
+def load_data(params):
   
-  assignments = job["dataAssignments"]
+  #assignments = job["dataAssignments"]
+  #TODO 107: Use the parameters given with the project
+  return_df = []
   
-  dataframes = []
-  
-  for unit_id, spec_id in assignments.items():
-    if spec_id is None:
-      continue
+  for index, unit in enumerate(params["unitMetadata"]):
+    df = download_csv(unit["dataDownloadUrl"])
 
-    url = client.query(
-      "projects:getProjectPxrfDataUrl",
-      {
-        "projectId": project_id,
-        "specId": spec_id
-      })
-    
-    dframe = download_csv(url)
-    
-    if dframe.empty:
-      raise ValueError(f"CSV for unit {unit_id} is empty")
+    if df.empty:
+      raise ValueError("pXRF CSV is Empty")
 
-    dataframes.append(dframe)
+    #Store which unit this came from
+    df["source_unit_index"] = index
     
-  if not dataframes:
-    raise ValueError("Prediction job has no assigned pXRF data")
+    coords = ["X_Coord", "Y_Coord"]
+    #ensure the coords are present in the file
+    if not all(col in df.columns for col in coords):
+      raise ValueError("CSV has no XY coordinates")
+    #Convert coords to actual numeric values
+    for col in coords:
+      df[col] = pd.to_numeric(df[col],errors="coerce")
 
-  return pd.concat( dataframes, ignore_index=True)
+    return_df.append(df)
+
+  if not return_df:
+    raise ValueError("No pXRF data assigned")
+
+  return pd.concat(return_df, ignore_index=True)
 
 #Run the Classifier and EBK
 def run_prediction(df, model):
+  #Run the classifieer
   result_data_frame = model.predict(df)
+  #Take in samples with validated coordinates
+  coords =  result_data_frame[["X_Coord", "Y_Coord"]]
+  #Make sure the coordinates are real and finite
+  valid = np.isfinite(coords.to_numpy(dtype=float)).all(axis=1)
+  #Use only the valid points in the EBK 
+  location_data = result_data_frame.loc[valid].copy()
+
+  if location_data.empty:
+    raise ValueError("No valid coordinates available for EBK")
+
+  unique_points = location_data[["X_Coord", "Y_Coord"]].drop_duplicates()
   
+  if len(unique_points) < 10:
+    raise ValueError("Need at least 10 distinct sample locations")
+
+  
+  print(f"Total Unit Samples: {len(result_data_frame)}")
+  print(f"Located Unit Samples: {len(location_data)}")
+
+  #Run the EBK interpolation
   ebk_grid_df, origin_points_df = (
         dataframe_to_grid(
-            result_data_frame,
+            location_data,
             x_col="X_Coord",
             y_col="Y_Coord",
             prob_col="non_soil_probability"
@@ -119,19 +141,31 @@ def upload_to_convex(job_id, output):
 
 #Process the Job Using previous functions
 def process_job(model, job_id, project_id, output_name="classification"):
-  #Ensure that what the user wants is specified
-  if output_name not in ["classification", "ebk"]:
-    raise ValueError("Output must be either classification or ebk")
+
+  #Validate the requested output name
+  if output_name not in ["ebk", "classification"]:
+        raise ValueError("Output must be classification or ebk")
   
-  job = get_job(job_id, project_id)
+  #Ensure the job is ready
+  job_ready = client.query("projects:getPredictionJobStatus",
+                           {
+                             "jobId": job_id,
+                              "projectId": project_id
+                           }
+                          )
+  
   #Ensure that only starting jobs are processed
-  if job["status"] != "starting":
+  if job_ready != "starting":
     raise ValueError("Job must be in starting status")
+
+  params = get_prediction_params(job_id,project_id)
+  
   #TODO: Initialize claim_job to change job status
   claim_job(job_id, project_id)
   
   try:
-    data_frame = load_data(job,project_id)
+    
+    data_frame = load_data(params)
     
     outputs = run_prediction(data_frame, model)
 
