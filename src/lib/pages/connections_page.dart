@@ -198,39 +198,11 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
                                 material.IconButton(
                                   icon: material.Icon(material.Icons.folder_open),
                                   onPressed: () async {
-                                    final selectedFilepath = await _showFileDownloadModal(
+                                    await _showFileDownloadModal(
                                       context,
-                                      spec.id
+                                      widget.project,
+                                      spec,
                                     );
-
-                                    if (selectedFilepath == null) return;
-
-                                    final airdroidController = 
-                                      await api.AirdroidController.getInstance();
-
-                                    final fileContents = await airdroidController
-                                      .getFileContents(
-                                        spec.id,
-                                        selectedFilepath
-                                      );
-                                    
-                                    final dataSpec = await widget.project.addPxrfData(
-                                      fileContents,
-                                      selectedFilepath,
-                                      "",
-                                    );
-
-                                    if (context.mounted) {
-                                      await material.Navigator.pushReplacement(
-                                        context,
-                                        material.MaterialPageRoute(
-                                          builder: (_) => DataView(
-                                            project: widget.project,
-                                            dataSpec: dataSpec,
-                                          )
-                                        ),
-                                      );
-                                    }
                                   },
                                 ),
 
@@ -418,16 +390,18 @@ Future<List<api.DirectoryItemSpec>> _getDirectoryItems(
   return await airdroidController.getDirectoryContents(specId, filePath);
 }
 
-Future<String?> _showFileDownloadModal(
-  material.BuildContext context,
-  String specId,
+Future<void> _showFileDownloadModal(
+  material.BuildContext pageContext,
+  api.Project           project,
+  api.ConnectionSpec    connectionSpec,
 ) async
 {
   String currFilePath = "/sdcard";
+  bool selectedFile = false;
 
   await material.showDialog(
-    barrierDismissible: true,
-    context: context,
+    barrierDismissible: !selectedFile,
+    context: pageContext,
     builder: (material.BuildContext context) => material.StatefulBuilder(
       builder: (
         material.BuildContext context,
@@ -436,60 +410,91 @@ Future<String?> _showFileDownloadModal(
       => material.AlertDialog(
         content: material.SingleChildScrollView(
           child: material.Column(
-                children: [
-                  material.Text(currFilePath),
-                  material.FutureBuilder(
-                    future: _getDirectoryItems(specId, currFilePath),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        print(snapshot.error.toString());
-                        return material.Center(child: material.Text(
-                          "Failed to fetch items."
-                        ));
-                      }
-
-                      if (!snapshot.hasData || snapshot.data == null) {
-                        return material.Center(child: material.Text(
-                          "Getting items..."
-                        ));
-                      }
-
-                      return material.Column(
-                        spacing: 15.0,
-                        crossAxisAlignment: .stretch,
-                        children: snapshot.data!.map((item) => material.InkWell(
-                          onTap: () {
-                            setModalState(() {
-                              currFilePath += "/${item.name}";
-                              if (item.isFile && context.mounted) {
-                                material.Navigator.of(context).pop();
-                              }
-                            });
-                          },
-                          child: material.Row(
-                            spacing: 10.0,
-                            children: [
-                              item.isFile
-                                ? material.Icon(material.Icons.description)
-                                : material.Icon(material.Icons.folder),
-                              material.Text(item.name),
-                              material.Text("${item.size} bytes"),
-                              material.Text(
-                                "${intl.DateFormat.yMMMEd().format(item.lastModified)}, "
-                                "${intl.DateFormat.jm().format(item.lastModified)}"
-                              ),
-                            ],
-                          ),
-                        )).toList()
-                      );
+            children: [
+              material.Text(currFilePath),
+              selectedFile
+              ? material.Center(
+                  child: material.Text("Fetching $currFilePath...")
+                )
+              : material.FutureBuilder(
+                  future: _getDirectoryItems(connectionSpec.id, currFilePath),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      print(snapshot.error.toString());
+                      return material.Center(child: material.Text(
+                        "Failed to fetch items."
+                      ));
                     }
-                  ),
-                ],
-              )
+
+                    if (!snapshot.hasData || snapshot.data == null) {
+                      return material.Center(child: material.Text(
+                        "Getting items..."
+                      ));
+                    }
+
+                    return material.Column(
+                      spacing: 15.0,
+                      crossAxisAlignment: .stretch,
+                      children: snapshot.data!.map((item) => material.InkWell(
+                        onTap: () async {
+                          setModalState(() {
+                            currFilePath += "/${item.name}";
+                            selectedFile = item.isFile;
+                          });
+
+                          if (!item.isFile) return;
+
+                          final airdroidController = 
+                            await api.AirdroidController.getInstance();
+
+                          final fileContents = await airdroidController
+                            .getFileContents(
+                              connectionSpec.id,
+                              currFilePath,
+                            );
+                          
+                          final dataSpec = await project.addPxrfData(
+                            fileContents,
+                            currFilePath,
+                            "",
+                          );
+
+                          if (pageContext.mounted) {
+                            material.Navigator.of(pageContext).pop();
+
+                            await material.Navigator.pushReplacement(
+                              pageContext,
+                              material.MaterialPageRoute(
+                                builder: (_) => DataView(
+                                  project: project,
+                                  dataSpec: dataSpec,
+                                )
+                              ),
+                            );
+                          }
+                        },
+                        child: material.Row(
+                          spacing: 10.0,
+                          children: [
+                            item.isFile
+                              ? material.Icon(material.Icons.description)
+                              : material.Icon(material.Icons.folder),
+                            material.Text(item.name),
+                            material.Text("${item.size} bytes"),
+                            material.Text(
+                              "${intl.DateFormat.yMMMEd().format(item.lastModified)}, "
+                              "${intl.DateFormat.jm().format(item.lastModified)}"
+                            ),
+                          ],
+                        ),
+                      )).toList()
+                    );
+                  }
+              ),
+            ],
+          )
         ),
       ),
     ),
   );
-
-  return currFilePath;
 }
