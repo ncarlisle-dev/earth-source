@@ -25,4 +25,4 @@ def get_client_url(deploy_url):
 #SAVE SINGLE CLIENT CODE RETURN FOR TESTING
 #Read the values from env file
 #Create the Client Connection
-client = get_client_url(convex_url)
+client = get_client_url(os.environ["CONVEX_URL"])
