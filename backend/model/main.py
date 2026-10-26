@@ -187,5 +187,5 @@ def run_job(
 #testing
 @app.get("/test-convex")
 def test_convex():
-    result = client.query("testConnect:ping", {})
-    return result
+    result = client.query("health:ping", {})
+    return {"message": result}
