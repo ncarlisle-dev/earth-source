@@ -5,7 +5,6 @@ import './help_page.dart' as help_page;
 import './languages_page.dart' as languages_page;
 import './projects_page.dart' as projects_page;
 import './settings_page.dart' as settings_page;
-import './connections_page.dart' as connections_page;
 
 /// A page containing the navigation bar for the app from which all other pages
 /// can be accessed.
@@ -57,10 +56,10 @@ class _HomePageState extends material.State<HomePage> {
           ),
 
           // Use below for testing pages
-          material.NavigationDestination(
-            icon: material.Icon(material.Icons.warning),
-            label: 'WIP'
-          ),
+          // material.NavigationDestination(
+          //   icon: material.Icon(material.Icons.warning),
+          //   label: 'WIP'
+          // ),
         ],
       ),
       
@@ -71,7 +70,7 @@ class _HomePageState extends material.State<HomePage> {
         projects_page.UserProjectsPage(),
         help_page.HelpPage(),
         about_page.AboutPage(),
-        connections_page.ConnectionsPage(),
+        // connections_page.ConnectionsPage(),
       ][currentPageIndex],
     );
   }

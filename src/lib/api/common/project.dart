@@ -251,7 +251,7 @@ class Project
     );
 
     try {
-      lastUpdated = await networkService.deletePxrfData(id, id);
+      lastUpdated = await networkService.deletePxrfData(this.id, id);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(

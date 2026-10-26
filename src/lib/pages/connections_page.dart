@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart' as intl;
 import '../api/api.dart' as api;
-
-// TODO: port this page over to use new AirdroidController
+import 'data/data_file.dart';
 
 /* ============================== Utility ============================== */
 
@@ -69,7 +68,8 @@ Future<void> pingConnections() async {
 /// Page for managing AirDroid connections.
 class ConnectionsPage extends material.StatefulWidget
 {
-  const ConnectionsPage({ super.key });
+  final api.Project project;
+  const ConnectionsPage({ required this.project, super.key });
 
   @override
   material.State<ConnectionsPage> createState()
@@ -85,158 +85,188 @@ class _ConnectionsPageState extends material.State<ConnectionsPage>
   {
 
     currSetState = setState;
+        
+    return material.Material(
+      child: material.Scaffold (
+        floatingActionButton: material.Row(
+          mainAxisAlignment: .end,
+          spacing: 10.0,
+          children: [
+            material.IconButton(
+              onPressed: pingConnections,
+              icon: const material.Icon(material.Icons.refresh),
+            ),
 
-    return material.FutureBuilder(
-      future: getUserConnectionSpecs(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          print(snapshot.error.toString());
+            material.FloatingActionButton(
+              onPressed: () async
+              {
+                final String? createdSpecId = await _showConnectionModal(
+                  context
+                );
+                if (createdSpecId == null) return;
 
-          return material.Center(child: material.Text(
-            "Error occurred fetching your connections."
-          ));
-        }
+                await pingConnections();
 
-        if (!snapshot.hasData || snapshot.data == null) {
-          return material.Center(child: material.Text("Loading..."));
-        }
+                final airdroidController = await api.AirdroidController
+                  .getInstance();
 
-        return material.Padding(
-          padding: material.EdgeInsetsGeometry.symmetric(
-            vertical: 20.0,
-            horizontal: 30.0
-          ),
-          child: material.Scaffold(
-            body: material.SingleChildScrollView(
-              child: material.Column(
-                spacing: 15.0,
-                crossAxisAlignment: material.CrossAxisAlignment.stretch,
-                children: snapshot.data!.map((spec)
-                  => material.Container(
-                    padding: material.EdgeInsets.all(10.0),
-                    decoration: material.BoxDecoration(
-                      color: material.Color.fromARGB(255, 231, 231, 231),
-                      borderRadius: material.BorderRadius.circular(10.0),
-                    ),
-                    child: material.Row(
-                      spacing: 10.0,
-                      children: [
-                        _connectionStatusSymbols[spec.status]!,
+                airdroidController.watchConnectionStatus(
+                  createdSpecId,
+                  (_) => currSetState!(() {})
+                );
 
-                        material.Column(
-                          crossAxisAlignment: material.CrossAxisAlignment.start,
-                          children: [
-                            material.Text(
-                              "${spec.ipAddress}:${spec.port}",
-                              style: material.TextStyle(
-                                fontWeight: material.FontWeight.bold
-                              ),
-                            ),
-                            material.Text(
-                              "${intl.DateFormat.yMMMEd().format(spec.createdAt)} "
-                              "at ${intl.DateFormat.jm().format(spec.createdAt)}"
-                            )
-                          ]
-                        ),
-
-                        material.IconButton(
-                          icon: material.Icon(material.Icons.folder_open),
-                          onPressed: () async {
-                            final selectedContent = await _showFileDownloadModal(
-                              context,
-                              spec.id
-                            );
-
-                            if (selectedContent == null) return;
-
-                            final airdroidController = 
-                              await api.AirdroidController.getInstance();
-
-                            final fileContents = await airdroidController
-                              .getFileContents(
-                                spec.id,
-                                selectedContent.filepath
-                              );
-
-                            final projectController = 
-                              await api.ProjectController.getInstance();
-
-                            final project = await projectController
-                              .getProjectById(selectedContent.projectId);
-                            
-                            // TODO: move this logic to the projects page
-                            await project.addPxrfData(
-                              fileContents,
-                              selectedContent.filepath,
-                              ""
-                            );
-                          },
-                        ),
-
-                        material.IconButton(
-                          icon: material.Icon(material.Icons.refresh),
-                          onPressed: () async {
-                            final airdroidController = 
-                              await api.AirdroidController.getInstance();
-                            
-                            final createdSpec = await airdroidController.connect(
-                              spec.ipAddress,
-                              spec.port
-                            );
-
-                            airdroidController.watchConnectionStatus(
-                              createdSpec.id,
-                              (_) => currSetState!(() {})
-                            );
-
-                            pingConnections();
-
-                            setState(() {});
-                          },
-                        ),
-                      ]
-                    )
+                setState(() {});
+              },
+              tooltip: 'Add connection',
+              child: const material.Icon(material.Icons.add),
+            ),
+          ],
+        ),
+        body: material.ListView(
+          children: [
+            material.Padding(
+              padding: material.EdgeInsetsGeometry.symmetric(vertical: 16.0),
+              child: material.FloatingActionButton(
+                onPressed: () => material.Navigator.of(context).pop(),
+                child: const material.Icon(material.Icons.arrow_circle_left)
+              )
+            ),
+            material.Padding(
+              padding: .symmetric(vertical: 16.0),
+              child: material.Center(
+                child: material.Text(
+                  "AirDroid connections",
+                  style: material.TextTheme.of(context).headlineLarge?.copyWith(
+                    fontWeight: .bold, 
+                    color: material.Colors.indigo
                   )
-                ).toList().reversed.toList(),
-              ),
+                )
+              ), //Icon
             ),
-            floatingActionButton: material.Row(
-              mainAxisAlignment: .end,
-              spacing: 10.0,
-              children: [
-                material.IconButton(
-                  onPressed: pingConnections,
-                  icon: const material.Icon(material.Icons.refresh),
-                ),
+            material.FutureBuilder(
+              future: getUserConnectionSpecs(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  print(snapshot.error.toString());
 
-                material.FloatingActionButton(
-                  onPressed: () async
-                  {
-                    final String? createdSpecId = await _showConnectionModal(
-                      context
-                    );
-                    if (createdSpecId == null) return;
+                  return material.Center(child: material.Text(
+                    "Error occurred fetching your connections."
+                  ));
+                }
 
-                    await pingConnections();
+                if (!snapshot.hasData || snapshot.data == null) {
+                  return material.Center(child: material.Text("Loading..."));
+                }
 
-                    final airdroidController = await api.AirdroidController
-                      .getInstance();
+                return material.Padding(
+                  padding: material.EdgeInsetsGeometry.symmetric(
+                    vertical: 20.0,
+                    horizontal: 30.0
+                  ),
+                    child: material.SingleChildScrollView(
+                      child: material.Column(
+                        spacing: 15.0,
+                        crossAxisAlignment: .stretch,
+                        children: snapshot.data!.map((spec)
+                          => material.Container(
+                            padding: material.EdgeInsets.all(10.0),
+                            decoration: material.BoxDecoration(
+                              color: material.Color.fromARGB(255, 231, 231, 231),
+                              borderRadius: material.BorderRadius.circular(10.0),
+                            ),
+                            child: material.Row(
+                              spacing: 10.0,
+                              children: [
+                                _connectionStatusSymbols[spec.status]!,
 
-                    airdroidController.watchConnectionStatus(
-                      createdSpecId,
-                      (_) => currSetState!(() {})
-                    );
+                                material.Column(
+                                  crossAxisAlignment: .start,
+                                  children: [
+                                    material.Text(
+                                      "${spec.ipAddress}:${spec.port}",
+                                      style: material.TextStyle(
+                                        fontWeight: material.FontWeight.bold
+                                      ),
+                                    ),
+                                    material.Text(
+                                      "${intl.DateFormat.yMMMEd().format(spec.createdAt)} "
+                                      "at ${intl.DateFormat.jm().format(spec.createdAt)}"
+                                    )
+                                  ]
+                                ),
 
-                    setState(() {});
-                  },
-                  tooltip: 'Add connection',
-                  child: const material.Icon(material.Icons.add),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
+                                material.IconButton(
+                                  icon: material.Icon(material.Icons.folder_open),
+                                  onPressed: () async {
+                                    final selectedFilepath = await _showFileDownloadModal(
+                                      context,
+                                      spec.id
+                                    );
+
+                                    if (selectedFilepath == null) return;
+
+                                    final airdroidController = 
+                                      await api.AirdroidController.getInstance();
+
+                                    final fileContents = await airdroidController
+                                      .getFileContents(
+                                        spec.id,
+                                        selectedFilepath
+                                      );
+                                    
+                                    final dataSpec = await widget.project.addPxrfData(
+                                      fileContents,
+                                      selectedFilepath,
+                                      "",
+                                    );
+
+                                    if (context.mounted) {
+                                      await material.Navigator.pushReplacement(
+                                        context,
+                                        material.MaterialPageRoute(
+                                          builder: (_) => DataView(
+                                            project: widget.project,
+                                            dataSpec: dataSpec,
+                                          )
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+
+                                material.IconButton(
+                                  icon: material.Icon(material.Icons.refresh),
+                                  onPressed: () async {
+                                    final airdroidController = 
+                                      await api.AirdroidController.getInstance();
+                                    
+                                    final createdSpec = await airdroidController.connect(
+                                      spec.ipAddress,
+                                      spec.port
+                                    );
+
+                                    airdroidController.watchConnectionStatus(
+                                      createdSpec.id,
+                                      (_) => currSetState!(() {})
+                                    );
+
+                                    pingConnections();
+
+                                    setState(() {});
+                                  },
+                                ),
+                              ]
+                            )
+                          )
+                        ).toList().reversed.toList(),
+                      ),
+                    ),
+                );
+              }
+            )
+          ]
+        ),
+      ),
     );
   }
 }
@@ -388,14 +418,12 @@ Future<List<api.DirectoryItemSpec>> _getDirectoryItems(
   return await airdroidController.getDirectoryContents(specId, filePath);
 }
 
-Future<({ String filepath, String projectId })?> _showFileDownloadModal(
+Future<String?> _showFileDownloadModal(
   material.BuildContext context,
   String specId,
 ) async
 {
   String currFilePath = "/sdcard";
-  bool itemSelected = false;
-  String? projectId;
 
   await material.showDialog(
     barrierDismissible: true,
@@ -407,8 +435,7 @@ Future<({ String filepath, String projectId })?> _showFileDownloadModal(
       )
       => material.AlertDialog(
         content: material.SingleChildScrollView(
-          child: !itemSelected
-            ? material.Column(
+          child: material.Column(
                 children: [
                   material.Text(currFilePath),
                   material.FutureBuilder(
@@ -434,7 +461,9 @@ Future<({ String filepath, String projectId })?> _showFileDownloadModal(
                           onTap: () {
                             setModalState(() {
                               currFilePath += "/${item.name}";
-                              if (item.isFile) itemSelected = true;
+                              if (item.isFile && context.mounted) {
+                                material.Navigator.of(context).pop();
+                              }
                             });
                           },
                           child: material.Row(
@@ -457,59 +486,10 @@ Future<({ String filepath, String projectId })?> _showFileDownloadModal(
                   ),
                 ],
               )
-            : material.Column(
-                children: [
-                  material.Text("Select project"),
-                  material.FutureBuilder(
-                    future: getUserProjectSpecs(),
-                    builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                        print(snapshot.error.toString());
-                        return material.Center(child: material.Text(
-                          "Failed to fetch projects."
-                        ));
-                      }
-
-                      if (!snapshot.hasData || snapshot.data == null) {
-                        return material.Center(child: material.Text(
-                          "Fetching projects..."
-                        ));
-                      }
-
-                      return material.Column(
-                        spacing: 15.0,
-                        crossAxisAlignment: .stretch,
-                        children: snapshot.data!.map((spec) => material.InkWell(
-                          onTap: () {
-                            projectId = spec.id;
-                            if (context.mounted) {
-                              material.Navigator.pop(context);
-                            }
-                          },
-                          child: material.Row(
-                            spacing: 10.0,
-                            children: [
-                              material.Text(spec.name),
-                              material.Text("${spec.numUnits} units"),
-                              material.Text("${spec.numLayers} layers"),
-                              material.Text(
-                                "${intl.DateFormat.yMMMEd().format(spec.lastUpdated)}, "
-                                "${intl.DateFormat.jm().format(spec.lastUpdated)}"
-                              ),
-                            ],
-                          ),
-                        )).toList()
-                      );
-                    }
-                  ),
-                ]
-            ),
         ),
       ),
     ),
   );
 
-  return (itemSelected && projectId != null)
-    ? (filepath: currFilePath, projectId: projectId!)
-    : null;
+  return currFilePath;
 }

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../api/api.dart' as api;
-import 'data_file.dart' as data_file;
-import 'data_upload.dart';
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'dart:io' as io;
+
+import '../../api/api.dart' as api;
+import 'data_file.dart' as data_file;
+import '../connections_page.dart';
 
 /// A stateful widget for the project predictions page, which takes the id for 
 /// the current project as a required field.
@@ -210,7 +211,10 @@ class _DataPageState extends State<DataPage>
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
-            onPressed: () => {},
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder: 
+                (context) => ConnectionsPage(project: widget.project),
+            )),
             child: Text("Upload data via AirDroid")
           )
         ),
