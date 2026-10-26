@@ -122,7 +122,10 @@ class Project
     final networkService = await NetworkService.getInstance();
 
     try {
-      lastUpdated = await networkService.setProjectMetadata(id, description: newDescription);
+      lastUpdated = await networkService.setProjectMetadata(
+        id,
+        description: newDescription
+      );
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(

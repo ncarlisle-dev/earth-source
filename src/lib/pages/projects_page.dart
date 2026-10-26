@@ -16,19 +16,15 @@ class UserProjectsPage extends StatefulWidget
 class _UserProjectsPageState extends State<UserProjectsPage>
 {
   /// Name of the created project.
-  String? projectName;
-  /// Description of the created project.
-  String? projectDescription;
-  /// UTM zone of the created project
-  int? utmZone;
-  /// Boolean tracking whether or not the project is in the southern or northern
-  /// hemisphere.
-  bool isSouthernHemisphere = false;
-
+  String projectName = "";
+  /// UTM zone of the created project.
   String zoneValue = "1";
+  /// Hemisphere of the created project.
   String hemisphere = "Southern";
+  /// Description of the created project.
+  String projectDescription = "";
 
-  List<String> utmZones = [for (var i = 1; i <= 60; i++) "$i"];
+  List<String> utmZones = [for (var i = 1; i <= 60; i++) "$i"]; // 0 to 60
   List<String> hemispheres = ["Southern", "Northern"];
 
   /// Fetches a list of all the user's projects.
@@ -64,6 +60,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     decoration: const InputDecoration(
                       labelText: "Enter project name:",
                     ),
+                    initialValue: projectName,
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter a name for the project.';
@@ -72,7 +69,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     },
                     onSaved: (value) async {
                       setState(() {
-                        projectName = value;
+                        projectName = value!;
                       });
                     },
                   ),
@@ -80,6 +77,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     decoration: const InputDecoration(
                       labelText: "Enter project description:",
                     ),
+                    initialValue: projectDescription,
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter a description for the project.';
@@ -88,7 +86,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     },
                     onSaved: (value) async {
                       setState(() {
-                        projectDescription = value;
+                        projectDescription = value!;
                       });
                     },
                   ),
@@ -143,23 +141,25 @@ class _UserProjectsPageState extends State<UserProjectsPage>
               // to project dashboard.
               onPressed: () async {
                 formKey.currentState!.save();
-                api.ProjectController projectController = 
-                  await api.ProjectController.getInstance();
-                
-                api.Project newProject = await projectController.createProject(
-                  projectName!, 
-                  projectDescription!,
-                  utmZone!,
-                  isSouthernHemisphere,
+
+                final projectController = await api.ProjectController
+                  .getInstance();
+
+                final newProject = await projectController.createProject(
+                  projectName, 
+                  projectDescription,
+                  int.parse(zoneValue),
+                  hemisphere == "Southern",
                   [
-                    (latitude: 0, longitude: 0), // TODO: add input for this field
+                    // TODO: add input for this field
+                    (latitude: 0, longitude: 0), 
                     (latitude: 0, longitude: 0),
                     (latitude: 0, longitude: 0),
                     (latitude: 0, longitude: 0),
                   ]
                 );
-                if (context.mounted)
-                {
+
+                if (context.mounted) {
                   Navigator.push(
                     context, 
                     MaterialPageRoute<void>(builder: 
