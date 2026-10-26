@@ -15,6 +15,8 @@ from gbdt_model_renewed import PXRFMaterialClassifier
 from tempfile import TemporaryDirectory
 
 logger = logging.getLogger(__name__)
+#create client connection
+client = get_client_url(os.environ["CONVEX_URL"])
 
 #Get Job Function
 def get_prediction_params(job_id, project_id):
