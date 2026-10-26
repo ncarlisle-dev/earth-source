@@ -55,6 +55,12 @@ def load_data(params):
   
   for index, unit in enumerate(params["unitMetadata"]):
     df = download_csv(unit["dataDownloadUrl"])
+    #test to check for csv data
+    print("Downloaded CSV columns:")
+    print(df.columns.tolist())
+
+    print("First 3 rows:")
+    print(df.head(3).to_string())
 
     if df.empty:
       raise ValueError("pXRF CSV is Empty")
