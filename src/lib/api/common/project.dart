@@ -783,6 +783,26 @@ class Project
     return predictionJob;
   }
 
+  Future<jobs.JobStatus> watchPredictionJobStatus(String jobId) async 
+  {
+    // validate args
+    final jobIndex = predictions.indexWhere(
+      (prediction) => prediction.id == jobId);
+    assert(jobIndex >= 0, "Job with ID '$jobId' not found.");
+
+    try {
+      predictions[jobIndex].watchStatus(id, predictions[jobIndex].setStatus);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Job status failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+
+    return predictions[jobIndex].status;
+  }
+
   /// Runs a training job using a given file as training data for the new model 
   /// and returns a [jobs.TrainingJob] object.
   /// 

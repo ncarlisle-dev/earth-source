@@ -26,7 +26,7 @@ abstract class Job
   DateTime lastUpdated;
 
   /// A collection of status listeners called when the job's status changes.
-  final List<void Function(JobStatus)> _statusListeners = [];
+  // final List<void Function(JobStatus)> _statusListeners = [];
 
   Job({
     required this.id,
@@ -38,20 +38,18 @@ abstract class Job
   });
 
   /// Sets a callback to be run every time the status of a given job changes
-  Future<void> watchStatus(void Function(JobStatus status) callback) async
+  Future<void> watchStatus(
+    String projectId, 
+    void Function(JobStatus status) callback
+  ) async
   {
     NetworkService networkService = await NetworkService.getInstance();
-    networkService.watchPredictionJobStatus(id, id, callback);
-    _statusListeners.add(callback);
+    networkService.watchPredictionJobStatus(projectId, id, callback);
   }
 
-
-  /// Helper function that sets the the client's [_status] and subsequently 
-  /// calls its [_statusListener], if it exists.
-  void _setStatus(JobStatus status)
+  void setStatus(JobStatus changedStatus)
   {
-    if (_statusListener != null && status != _status) _statusListener!(status);
-    _status = status;
+    status = changedStatus;
   }
 }
 
@@ -128,17 +126,21 @@ class PredictionJob extends Job
     // doubles.
     if (fileContents == "") return [];
 
-    List<List<String>> resultsAsString = [];
-    List<String> fileLines = fileContents.split('\n');
-    for (var i = 1; i < fileLines.length; i++) {
-      resultsAsString.add(fileLines[i].split(','));
+    List<String> lines = fileContents.split('\n');
+    List<List<String>> splitLines = [];
+    for (var line in lines)
+    {
+      splitLines.add(line.split(","));
     }
-    for (var i = 0; i < fileLines.length - 1; i++) {
+
+    for (var i = 1; i < splitLines.length; i++) {
       List<double> parsedList = [];
-      for (var j = 0; j < fileLines[0].length; j++) {
-        parsedList.add(double.parse(resultsAsString[i][j]));
+      for (var j = 0; j < splitLines[i].length; j++) {
+        if (splitLines[i].length == 4) {
+          parsedList.add(double.parse(splitLines[i][j]));
+        }
       }
-      results.add(parsedList);
+      if (parsedList.length == 4) results.add(parsedList);
     }
     
     return results;

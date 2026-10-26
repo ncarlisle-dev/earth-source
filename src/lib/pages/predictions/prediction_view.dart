@@ -4,6 +4,7 @@ import '../../api/api.dart' as api;
 import '../home_page.dart';
 import 'package:coordinate_converter/coordinate_converter.dart' as 
   coord_converter;
+import 'dart:io';
 
 /// A stateful widget for the prediction view page, which takes the id for the
 /// current project and a prediction job object as required fields.
@@ -48,6 +49,9 @@ class _PredictionViewState extends State<PredictionView> {
   bool isDescriptionChanged = false;
   /// The job's layer. TODO: attach actual layer instance to the job
   api.Layer? jobLayer;
+
+  String changedStatus = "";
+  bool isStatusChanged = false;
 
 
   /// Displays a pop-up dialogue box that allows the user to set a new name for
@@ -244,7 +248,7 @@ class _PredictionViewState extends State<PredictionView> {
 
   /// Loads both the image and the prediction results for display on the 
   /// prediction view page.
-  Future<String> 
+  Future<(List<coord_converter.UTMCoordinates>, List<double>, String)> 
     loadPredictionData() async
   {
     List<coord_converter.UTMCoordinates> predictionPoints = [];
@@ -272,7 +276,8 @@ class _PredictionViewState extends State<PredictionView> {
         predictionValues.add(results[i][2]);
       }
     }
-    return imageContents;
+
+    return (predictionPoints, predictionValues, imageContents);
   }
 
   Future<void> _loadJobLayer() async {
@@ -288,6 +293,25 @@ class _PredictionViewState extends State<PredictionView> {
         (layer) => layer.id == widget.predictionJob.layerId,
       );
     });
+  }
+
+  Future<void> refreshPage() async {
+    final controller = await api.ProjectController.getInstance();
+
+    final project =
+        await controller.getProjectById(widget.projectId);
+
+    api.JobStatus newStatus = await 
+      project.watchPredictionJobStatus(widget.predictionJob.id);
+    if (newStatus != widget.predictionJob.status)
+    {
+      isStatusChanged = true;
+      setState(() {
+        changedStatus = jobStatusList[newStatus.index];
+      });
+    }
+
+    setState(() {});
   }
 
   @override
@@ -308,6 +332,13 @@ class _PredictionViewState extends State<PredictionView> {
           child: FloatingActionButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Icon(Icons.arrow_circle_left)
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: refreshPage,
+            child: Icon(Icons.refresh),
           )
         ),
         Padding(
@@ -379,7 +410,9 @@ class _PredictionViewState extends State<PredictionView> {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: Center(
-            child: Text("Job Status: $jobStatus")
+            child: 
+            isStatusChanged ? Text("Job Status: $changedStatus")
+            : Text("Job Status: $jobStatus")
           )
         ),
         Padding(
@@ -424,26 +457,17 @@ class _PredictionViewState extends State<PredictionView> {
             ),
           )
         ),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton(
-            onPressed: (() => setState(() {
-              mapDisplay ? mapDisplay = false : mapDisplay = true;
-            })),
-            child: Text(
-              mapDisplay 
-              ? "Toggle text-formatted predictions" 
-              : "Toggle map display"
-            ),
-          )
-        ),
         SizedBox(
           height: MediaQuery.of(context).size.height * 0.75,
           child: FutureBuilder(
             future: loadPredictionData(),
             builder: (
               BuildContext ctx, 
-              AsyncSnapshot<String> snapshot
+              AsyncSnapshot<(
+                List<coord_converter.UTMCoordinates>, 
+                List<double>, 
+                String
+              )> snapshot
             ) 
             => !snapshot.hasData
               ? Center(child: Text("Prediction data failed to load."))
@@ -452,18 +476,17 @@ class _PredictionViewState extends State<PredictionView> {
                 : mapDisplay 
                     ? 
                     visualizer.Visualizer(
-                      predictionCoords: [],
-                      predictionValues: [], 
-                      imageFile: snapshot.data!,
+                      predictionCoords: snapshot.data!.$1,
+                      predictionValues: snapshot.data!.$2, 
+                      imageFile: snapshot.data!.$3,
                       corners: jobLayer!.corners,
-                      threshold: 0.5
+                      threshold: 0.3
                     )
                     :
                     visualizer.TextDisplay(
-                      predictionCoords: 
-                        [], 
-                      predictionValues: [],  
-                      threshold: 0.5
+                      predictionCoords: snapshot.data!.$1, 
+                      predictionValues: snapshot.data!.$2,  
+                      threshold: 0.3
                     )
           ),
         ),

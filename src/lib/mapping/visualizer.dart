@@ -56,26 +56,38 @@ Future<List<map.Polygon>> _validateData(
       // - if not, to cut down on rendering costs, that point won't be
       // displayed.
       if (predictedValues[i] > threshold) {
+        double top = flutter_geo_math.FlutterMapMath.destinationPoint(
+          coordinates[i].latitude, 
+          coordinates[i].longitude, 
+          heightInterval / 2, 
+          0
+        ).latitude;
+        double left = flutter_geo_math.FlutterMapMath.destinationPoint(
+          coordinates[i].latitude, 
+          coordinates[i].longitude, 
+          widthInterval / 2, 
+          270
+        ).longitude;
         double right = flutter_geo_math.FlutterMapMath.destinationPoint(
           coordinates[i].latitude, 
           coordinates[i].longitude, 
-          widthInterval, 
+          widthInterval / 2, 
           90
         ).longitude;
         double bottom = flutter_geo_math.FlutterMapMath.destinationPoint(
           coordinates[i].latitude, 
           coordinates[i].longitude, 
-          heightInterval, 
+          heightInterval / 2, 
           180
         ).latitude;
 
         // Construct and color the polygon.
         map.Polygon polygon = map.Polygon(
           points: [
-            latlong.LatLng(coordinates[i].latitude, coordinates[i].longitude), 
-            latlong.LatLng(coordinates[i].latitude, right), 
+            latlong.LatLng(top, left), 
+            latlong.LatLng(top, right), 
             latlong.LatLng(bottom, right), 
-            latlong.LatLng(bottom, coordinates[i].longitude)
+            latlong.LatLng(bottom, left)
           ], 
           color: HeatPalette.colorFor(predictedValues[i], threshold, "soil")
         );
