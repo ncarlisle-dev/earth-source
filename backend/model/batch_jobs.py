@@ -3,11 +3,13 @@ import os
 import logging
 from pathlib import Path
 
+import math
 import joblib
 import pandas as pd
 import requests
 import numpy as np
 
+from pyproj import Transformer
 from client_convex import get_client_url
 from cloud_model import PXRFModel
 from ebk_predict import dataframe_to_grid
@@ -71,11 +73,16 @@ def load_data(params):
     coords = ["X_Coord", "Y_Coord"]
     #ensure the coords are present in the file
     if not all(col in df.columns for col in coords):
-      raise ValueError("CSV has no XY coordinates")
-    #Convert coords to actual numeric values
-    for col in coords:
-      df[col] = pd.to_numeric(df[col],errors="coerce")
+      print(f"Mapping sample coords for unit {index}")
 
+      df = assign_coords(df,unit,params["siteCorners"])
+      
+    else:
+      #Convert coords to actual numeric values
+      for col in coords:
+        df[col] = pd.to_numeric(df[col],errors="coerce")
+
+    
     return_df.append(df)
 
   if not return_df:
@@ -257,3 +264,73 @@ def train_model(df):
             "content": model_in_bytes,
             "contentType": "application/octet-stream"
   }]
+
+#Address file inputs with no coordinates
+def assign_coords(df, unit, site_corners):
+  latitude = sum(
+        p["latitude"] for p in site_corners)/len(site_corners)
+
+  longitude = sum(
+    p["longitude"] for p in site_corners)/len(site_corners)
+
+  zone = min(60, max(1, int((longitude + 180) // 6) + 1))
+
+  epsg = (32600 if latitude >= 0 else 32700) + zone
+
+  transformer = Transformer.from_crs(
+    "EPSG:4326",
+    f"EPSG:{epsg}",
+    always_xy=True)
+
+  corners = [transformer.transform(
+    p["longitude"], p["latitude"]) for p in unit["corners"]]
+
+  top_left, top_right, bot_left, bot_right = corners
+  #Convert to centimeters
+  interval = float(unit["pointInterval"])/100.0
+
+  width = math.dist(top_left, top_right)
+  height = math.dist(top_left, bot_left)
+
+  if interval <= 0 or width <= 0 or height <= 0:
+    raise ValueError("Invalid geometry")
+
+  columns = math.floor(width / interval + 1e-9) + 1
+  rows = math.floor(height / interval + 1e-9) + 1
+
+  capacity = rows * columns
+
+  if len(df) > capacity:
+    raise ValueError(
+      f"CSV has {len(df)} rows, but unit grid "
+      f"has only {capacity} positions")
+
+  x_coords = []
+  y_coords = []
+
+  for i in range(len(df)):
+    row, col = divmod(i, columns)
+    #Retrieve the weight of the vertical(vt) and horizontal (hz)
+    hz = col * interval / width
+    vt = row * interval / height
+    #bilinear interpolation assignmnents (explanation later)
+    #Assigns locations for EBK, EBK != Bilinear interpolation
+    x = ((1-hz)*(1-vt)*top_left[0] + hz*(1-vt)*top_right[0] +
+         hz*vt*bot_right[0] + (1-hz)*vt*bot_left[0])
+
+    y = ((1-hz)*(1-vt)*top_left[1] + hz*(1-vt)*top_right[1] + 
+         hz*vt*bot_right[1] + (1-hz)*vt*bot_left[1])
+
+    x_coords.append(x)
+    y_coords.append(y)
+
+  result = df.copy()
+
+  result["X_Coord"] = x_coords
+  result["Y_Coord"] = y_coords
+
+  return result
+
+  
+    
+    
