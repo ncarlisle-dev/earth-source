@@ -6,7 +6,7 @@ import io
 #testing import to prove Render Connection
 from client_convex import client
 
-from cloud_model import PXRFModel
+from cloud_model import PXRFModel, FEATURE_COLUMNS
 from ebk_predict import dataframe_to_grid
 from batch_jobs import process_job
 
