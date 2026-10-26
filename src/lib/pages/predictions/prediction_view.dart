@@ -49,6 +49,9 @@ class _PredictionViewState extends State<PredictionView> {
   /// The job's layer. TODO: attach actual layer instance to the job
   api.Layer? jobLayer;
 
+  String changedStatus = "";
+  bool isStatusChanged = false;
+
 
   /// Displays a pop-up dialogue box that allows the user to set a new name for
   /// the prediction job and changes the name of the job within the appropriate
@@ -244,7 +247,7 @@ class _PredictionViewState extends State<PredictionView> {
 
   /// Loads both the image and the prediction results for display on the 
   /// prediction view page.
-  Future<(String, List<coord_converter.UTMCoordinates>, List<double>)> 
+  Future<(List<coord_converter.UTMCoordinates>, List<double>, String)> 
     loadPredictionData() async
   {
     List<coord_converter.UTMCoordinates> predictionPoints = [];
@@ -260,32 +263,81 @@ class _PredictionViewState extends State<PredictionView> {
     final String imageContents = await project
       .getLayerImage(widget.predictionJob.layerId);
 
-    for (var i = 0; i < results.length; i++) {
-      coord_converter.UTMCoordinates coords = coord_converter.UTMCoordinates(
-        x: results[i][0], 
-        y: results[i][1], 
-        zoneNumber: project.utmZone,
-        isSouthernHemisphere: project.isSouthernHemisphere
-      );
-      predictionPoints.add(coords);
-      predictionValues.add(results[i][2]);
+    if (results.isNotEmpty) {
+      for (var i = 0; i < results.length; i++) {
+        coord_converter.UTMCoordinates coords = coord_converter.UTMCoordinates(
+          x: results[i][0], 
+          y: results[i][1], 
+          zoneNumber: project.utmZone,
+          isSouthernHemisphere: project.isSouthernHemisphere
+        );
+        predictionPoints.add(coords);
+        predictionValues.add(results[i][2]);
+      }
     }
 
-    return (imageContents, predictionPoints, predictionValues);
+    return (predictionPoints, predictionValues, imageContents);
+  }
+
+  /// Loads layer corresponding to current prediction job - placed in its own
+  /// async function so setState isn't run immediately when the build function
+  /// is called, which leads to an infinite loop.
+  Future<void> _loadJobLayer() async {
+    final controller = await api.ProjectController.getInstance();
+
+    final project =
+        await controller.getProjectById(widget.projectId);
+
+    if (!mounted) return;
+
+    setState(() {
+      jobLayer = project.layers.singleWhere(
+        (layer) => layer.id == widget.predictionJob.layerId,
+      );
+    });
+  }
+
+  /// Unsure if this function is necessary, but it calls the 
+  /// watchPredictionJobStatus function again if the page is refreshed.
+  Future<void> refreshPage() async {
+    final controller = await api.ProjectController.getInstance();
+
+    final project =
+        await controller.getProjectById(widget.projectId);
+
+    project.watchPredictionJobStatus(widget.predictionJob.id, callback);
+  }
+
+  /// Callback function which is called when the status of a prediction job 
+  /// changes and sets the state of the page using the new status.
+  void callback(api.JobStatus status) async {
+    final controller = await api.ProjectController.getInstance();
+    final project = await controller.getProjectById(widget.projectId);
+    final jobIndex = project.predictions.indexWhere(
+      (prediction) => prediction.id == widget.predictionJob.id);
+    project.predictions[jobIndex].setStatus(status);
+
+    setState(() {
+      isStatusChanged = true;
+      changedStatus = jobStatusList[status.index];
+      widget.predictionJob.setStatus(status);
+    });
+  }
+
+  /// Job layer is loaded and watchPredictionJobStatus is called the first time
+  /// the widget is constructed.
+  @override
+  void initState() {
+    super.initState();
+
+    _loadJobLayer();
+    refreshPage();
   }
 
   @override
   Widget build(BuildContext context) {
     String jobStatus = jobStatusList[widget.predictionJob.status.index];
 
-    api.ProjectController.getInstance()
-      .then((controller) => controller.getProjectById(widget.projectId))
-      .then((fetchedProject) {
-        setState(() => jobLayer = fetchedProject.layers.singleWhere(
-          (layer) => layer.id == widget.predictionJob.layerId
-        ));
-      });
-    
     return Material(child: ListView(
       children: [
       Padding(
@@ -293,6 +345,13 @@ class _PredictionViewState extends State<PredictionView> {
           child: FloatingActionButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Icon(Icons.arrow_circle_left)
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: refreshPage,
+            child: Icon(Icons.refresh),
           )
         ),
         Padding(
@@ -364,7 +423,9 @@ class _PredictionViewState extends State<PredictionView> {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: Center(
-            child: Text("Job Status: $jobStatus")
+            child: 
+            isStatusChanged ? Text("Job Status: $changedStatus")
+            : Text("Job Status: $jobStatus")
           )
         ),
         Padding(
@@ -415,7 +476,11 @@ class _PredictionViewState extends State<PredictionView> {
             future: loadPredictionData(),
             builder: (
               BuildContext ctx, 
-              AsyncSnapshot<(String, List, List)> snapshot
+              AsyncSnapshot<(
+                List<coord_converter.UTMCoordinates>, 
+                List<double>, 
+                String
+              )> snapshot
             ) 
             => !snapshot.hasData
               ? Center(child: Text("Prediction data failed to load."))
@@ -424,21 +489,17 @@ class _PredictionViewState extends State<PredictionView> {
                 : mapDisplay 
                     ? 
                     visualizer.Visualizer(
-                      predictionCoords: 
-                        snapshot.data!.$2 as 
-                        List<coord_converter.UTMCoordinates>,
-                      predictionValues: snapshot.data!.$3 as List<double>, 
-                      imageFile: snapshot.data!.$1,
+                      predictionCoords: snapshot.data!.$1,
+                      predictionValues: snapshot.data!.$2, 
+                      imageFile: snapshot.data!.$3,
                       corners: jobLayer!.corners,
-                      threshold: 0.5
+                      threshold: 0.3
                     )
                     :
                     visualizer.TextDisplay(
-                      predictionCoords: 
-                        snapshot.data!.$2 as 
-                        List<coord_converter.UTMCoordinates>, 
-                      predictionValues: snapshot.data!.$3 as List<double>,  
-                      threshold: 0.5
+                      predictionCoords: snapshot.data!.$1, 
+                      predictionValues: snapshot.data!.$2,  
+                      threshold: 0.3
                     )
           ),
         ),

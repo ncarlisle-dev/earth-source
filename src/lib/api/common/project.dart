@@ -787,6 +787,29 @@ class Project
     return predictionJob;
   }
 
+  /// Watches the status of a given prediction job, passing in a callback to be
+  /// run when the status changes.
+  Future<void> watchPredictionJobStatus(
+    String jobId, 
+    void Function(JobStatus status) callback
+  ) async 
+  {
+    // validate args
+    final jobIndex = predictions.indexWhere(
+      (prediction) => prediction.id == jobId);
+    assert(jobIndex >= 0, "Job with ID '$jobId' not found.");
+
+    try {
+      predictions[jobIndex].watchStatus(id, callback);
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Job status failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+  }
+
   /// Runs a training job using a given file as training data for the new model 
   /// and returns a [jobs.TrainingJob] object.
   /// 

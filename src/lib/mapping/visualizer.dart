@@ -22,62 +22,77 @@ Future<List<map.Polygon>> _validateData(
 {
   /// List storing the polygons to be drawn onto the map.
   List<map.Polygon> polygons = [];
-  /// List in latitude/longitude of all the coordinates of the predictions.
-  List<latlong.LatLng> coordinates = convertCoordsUTM(predictedPoints);
 
-  double widthInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
-    coordinates[0].latitude, 
-    coordinates[0].longitude, 
-    coordinates[1].latitude, 
-    coordinates[1].longitude,
-    ""
-  );
+  if (predictedPoints.isNotEmpty) {
+    /// List in latitude/longitude of all the coordinates of the predictions.
+    List<latlong.LatLng> coordinates = convertCoordsUTM(predictedPoints);
 
-  int index = 0;
-  while (predictedPoints[index].y == predictedPoints[index + 1].y)
-  {
-    index++;
-  }
-  index ++;
+    double widthInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
+      coordinates[0].latitude, 
+      coordinates[0].longitude, 
+      coordinates[1].latitude, 
+      coordinates[1].longitude,
+      ""
+    );
 
-  double heightInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
-    coordinates[0].latitude, 
-    coordinates[0].longitude, 
-    coordinates[index].latitude, 
-    coordinates[index].longitude,
-    ""
-  );
+    int index = 0;
+    while (predictedPoints[index].y == predictedPoints[index + 1].y)
+    {
+      index++;
+    }
+    index ++;
 
-  for (var i = 0; i < predictedPoints.length; i++) {
+    double heightInterval = flutter_geo_math.FlutterMapMath.distanceBetween(
+      coordinates[0].latitude, 
+      coordinates[0].longitude, 
+      coordinates[index].latitude, 
+      coordinates[index].longitude,
+      ""
+    );
 
-    // Check that current prediction point is above the user-set threshold
-    // - if not, to cut down on rendering costs, that point won't be
-    // displayed.
-    if (predictedValues[i] > threshold) {
-      double right = flutter_geo_math.FlutterMapMath.destinationPoint(
-        coordinates[i].latitude, 
-        coordinates[i].longitude, 
-        widthInterval, 
-        90
-      ).longitude;
-      double bottom = flutter_geo_math.FlutterMapMath.destinationPoint(
-        coordinates[i].latitude, 
-        coordinates[i].longitude, 
-        heightInterval, 
-        180
-      ).latitude;
+    for (var i = 0; i < predictedPoints.length; i++) {
 
-      // Construct and color the polygon.
-      map.Polygon polygon = map.Polygon(
-        points: [
-          latlong.LatLng(coordinates[i].latitude, coordinates[i].longitude), 
-          latlong.LatLng(coordinates[i].latitude, right), 
-          latlong.LatLng(bottom, right), 
-          latlong.LatLng(bottom, coordinates[i].longitude)
-        ], 
-        color: HeatPalette.colorFor(predictedValues[i], threshold, "soil")
-      );
-      polygons.add(polygon);
+      // Check that current prediction point is above the user-set threshold
+      // - if not, to cut down on rendering costs, that point won't be
+      // displayed.
+      if (predictedValues[i] > threshold) {
+        double top = flutter_geo_math.FlutterMapMath.destinationPoint(
+          coordinates[i].latitude, 
+          coordinates[i].longitude, 
+          heightInterval / 2, 
+          0
+        ).latitude;
+        double left = flutter_geo_math.FlutterMapMath.destinationPoint(
+          coordinates[i].latitude, 
+          coordinates[i].longitude, 
+          widthInterval / 2, 
+          270
+        ).longitude;
+        double right = flutter_geo_math.FlutterMapMath.destinationPoint(
+          coordinates[i].latitude, 
+          coordinates[i].longitude, 
+          widthInterval / 2, 
+          90
+        ).longitude;
+        double bottom = flutter_geo_math.FlutterMapMath.destinationPoint(
+          coordinates[i].latitude, 
+          coordinates[i].longitude, 
+          heightInterval / 2, 
+          180
+        ).latitude;
+
+        // Construct and color the polygon.
+        map.Polygon polygon = map.Polygon(
+          points: [
+            latlong.LatLng(top, left), 
+            latlong.LatLng(top, right), 
+            latlong.LatLng(bottom, right), 
+            latlong.LatLng(bottom, left)
+          ], 
+          color: HeatPalette.colorFor(predictedValues[i], threshold, "soil")
+        );
+        polygons.add(polygon);
+      }
     }
   }
   return polygons;
