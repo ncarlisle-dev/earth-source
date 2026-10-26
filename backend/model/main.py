@@ -76,6 +76,17 @@ async def ebk(file: UploadFile = File(...)):
         io.BytesIO(contents)
     )
 
+    #Check for these headers
+    required_coords = {"X_Coord", "Y_Coord"}
+    #If theyre missing
+    missing = required_coords - set(df.columns)
+
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=("EBK requires spatial coordinates: "
+                    + ", ".join(sorted(missing))))
+    
     # The EBK process needs the classifier probability first
     result_df = model.predict(df)
 
