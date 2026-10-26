@@ -15,7 +15,7 @@ def get_client_url(deploy_url):
 
   deploy_url = deploy_url.rstrip('/')
 
-  if deployment_url not in approved_urls:
+  if deploy_url not in approved_urls:
         raise ValueError("This is not an approved Convex deployment")
 
   return ConvexClient(deploy_url)
