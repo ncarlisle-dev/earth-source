@@ -26,7 +26,7 @@ abstract class Job
   DateTime lastUpdated;
 
   /// A collection of status listeners called when the job's status changes.
-  final List<void Function(JobStatus)> _statusListeners = [];
+  // final List<void Function(JobStatus)> _statusListeners = [];
 
   Job({
     required this.id,
@@ -37,10 +37,20 @@ abstract class Job
     required this.status,
   });
 
-  /// Sets a callback to be run every time the status of a given job changes
-  Future<void> watchStatus(void Function(JobStatus status) callback) async
+  /// Sets a callback to be run every time the status of a given job changes.
+  Future<void> watchStatus(
+    String projectId, 
+    void Function(JobStatus status) callback
+  ) async
   {
-    _statusListeners.add(callback);
+    NetworkService networkService = await NetworkService.getInstance();
+    networkService.watchPredictionJobStatus(projectId, id, callback);
+  }
+
+  /// Setter function to change the status of a job.
+  void setStatus(JobStatus changedStatus)
+  {
+    status = changedStatus;
   }
 }
 
@@ -94,6 +104,7 @@ class PredictionJob extends Job
   {
     final List<List<double>> results = [];
     NetworkService networkService = await NetworkService.getInstance();
+    if (status != JobStatus.complete) return [];
     assert(status == JobStatus.complete, "Job isn't complete.");
 
     final String fileContents;
@@ -116,17 +127,21 @@ class PredictionJob extends Job
     // doubles.
     if (fileContents == "") return [];
 
-    List<List<String>> resultsAsString = [];
-    List<String> fileLines = fileContents.split('\n');
-    for (var i = 1; i < fileLines.length; i++) {
-      resultsAsString.add(fileLines[i].split(','));
+    List<String> lines = fileContents.split('\n');
+    List<List<String>> splitLines = [];
+    for (var line in lines)
+    {
+      splitLines.add(line.split(","));
     }
-    for (var i = 0; i < fileLines.length - 1; i++) {
+
+    for (var i = 1; i < splitLines.length; i++) {
       List<double> parsedList = [];
-      for (var j = 0; j < fileLines[0].length; j++) {
-        parsedList.add(double.parse(resultsAsString[i][j]));
+      for (var j = 0; j < splitLines[i].length; j++) {
+        if (splitLines[i].length == 4) {
+          parsedList.add(double.parse(splitLines[i][j]));
+        }
       }
-      results.add(parsedList);
+      if (parsedList.length == 4) results.add(parsedList);
     }
     
     return results;

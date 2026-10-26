@@ -175,10 +175,6 @@ class PredictionGenerationState extends State<PredictionGeneration>
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
                 child: ElevatedButton(
-                  // Note that I tried to make the below its own function so
-                  // there wouldn't be so much indentation here, but it gave me
-                  // issues due to not having access to the context passed in
-                  // to the overridden build function.
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text("Cancel"),
                 )
