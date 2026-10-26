@@ -311,6 +311,12 @@ class _PredictionViewState extends State<PredictionView> {
   /// Callback function which is called when the status of a prediction job 
   /// changes and sets the state of the page using the new status.
   void callback(api.JobStatus status) async {
+    final controller = await api.ProjectController.getInstance();
+    final project = await controller.getProjectById(widget.projectId);
+    final jobIndex = project.predictions.indexWhere(
+      (prediction) => prediction.id == widget.predictionJob.id);
+    project.predictions[jobIndex].setStatus(status);
+
     setState(() {
       isStatusChanged = true;
       changedStatus = jobStatusList[status.index];
