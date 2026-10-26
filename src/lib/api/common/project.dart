@@ -699,12 +699,13 @@ class Project
     assert(specIndex >= 0, "pXRF data spec with ID '$specIndex' not found.");
 
     // Ensure provided data fits within the given unit.
-    if (!checkAssignment(pxrfData[specIndex], units[unitIndex].corners)) {
-      throw ProjectException(
-        "Data from pXRF data spec with ID '$specId' cannot be assigned to unit "
-        "with ID '$unitId'."
-      );
-    }
+    // TODO: uncomment this after alpha demo
+    // if (!checkAssignment(pxrfData[specIndex], units[unitIndex].corners)) {
+    //   throw ProjectException(
+    //     "Data from pXRF data spec with ID '$specId' cannot be assigned to unit "
+    //     "with ID '$unitId'."
+    //   );
+    // }
 
     // make updates
     final networkService = await NetworkService.getInstance();

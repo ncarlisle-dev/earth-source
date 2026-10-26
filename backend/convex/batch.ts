@@ -1,6 +1,6 @@
 import { zodMutation, zodQuery } from "./builders";
-import { ApiPredictionJob, ApiTrainingJob, JobStatus } from "./schema";
-import { InvalidRequestError, ResourceNotFoundError } from "./errors";
+import { ApiPredictionJob, ApiTrainingJob, Corners, DbPxrfDataSpec, DbUnit, JobStatus, PointInterval } from "./schema";
+import { InvalidRequestError, ResourceNotFoundError, UnauthorizedError, UnknownServerError } from "./errors";
 
 import { zid } from "convex-helpers/server/zod4";
 import { api } from "./_generated/api";
@@ -11,12 +11,25 @@ import { MutationCtx } from "./_generated/server";
 
 /* ============================ Prediction jobs ============================ */
 
-export const getPredictionJobById = zodQuery({
+/** Object returned by the {@link getPredictionJobParameters} endpoint. */
+interface PredictionJobParams {
+  modelDownloadUrl: string | null,
+  siteCorners:      Corners,
+  unitMetadata:     {
+    corners:          Corners,
+    pointInterval:    PointInterval,
+    dataDownloadUrl:  string,
+  }[],
+};
+
+/** Endpoint for fetching a prediction job's parameters. */
+export const getPredictionJobParameters = zodQuery({
   args: {
     projectId: zid("projects"),
     jobId: zid("jobs"),
   },
-  handler: async (ctx, args): Promise<ApiPredictionJob> => {
+  handler: async (ctx, args): Promise<PredictionJobParams> => {
+    // get job
     const job = await ctx.db.get("jobs", args.jobId);
 
     if (job === null || job.kind !== "prediction")
@@ -24,16 +37,91 @@ export const getPredictionJobById = zodQuery({
         `Prediction job with ID '${args.jobId}' not found.`
       );
 
+    // get project
+    const project = await ctx.db.get("projects", args.projectId);
+
+    if (project === null)
+      throw new ResourceNotFoundError(
+        `Project with ID '${args.projectId}' not found.`
+      );
+    
+    // get unit info
+    const units: Record<Id<"units">, DbUnit & { dataDownloadUrl: string }> = {};
+    const dataSpecs: Record<Id<"dataSpecs">, DbPxrfDataSpec> = {};
+    const downloadUrls: Record<Id<"_storage">, string> = {};
+
+    for (const [unitId, specId] of Object.entries(job.dataAssignments)) {
+      // check IDs
+      if (specId === null) continue;
+      const safeSpecId = specId as Id<"dataSpecs">;
+      const safeUnitId = unitId as Id<"units">;
+
+      // get data spec
+      if (!dataSpecs[safeSpecId]) {
+        const spec = await ctx.db.get("dataSpecs", safeSpecId);
+        if (spec === null || spec.kind !== "pxrf")
+          throw new UnknownServerError(
+            `pXRF spec with ID '${specId}' not found.`
+          );
+        
+        dataSpecs[safeSpecId] = spec;
+      }
+
+      // get download URL
+      const storageId = dataSpecs[safeSpecId].storageId;
+      if (!downloadUrls[storageId]) {
+        const downloadUrl = await ctx.storage.getUrl(storageId);
+        if (downloadUrl === null)
+          throw new UnknownServerError(
+            `pXRF data with ID '${specId}' not found.`
+          );
+        
+        downloadUrls[storageId] = downloadUrl;
+      }
+
+      // get unit
+      const unit = await ctx.db.get("units", safeUnitId);
+      if (unit === null)
+        throw new UnknownServerError(
+          `Unit with ID '${unitId}' not found.`
+        );
+
+      units[safeUnitId] = {
+        ...unit,
+        dataDownloadUrl: downloadUrls[storageId],
+      };
+    }
+
+    // get model download URL
+    let modelDownloadUrl: string | null = null;
+    if (job.modelId !== null) {
+      const trainingJob = await ctx.db.get("jobs", job.modelId);
+      if (
+        trainingJob === null 
+        || trainingJob.kind !== "training" 
+        || trainingJob.status !== "complete"
+        || trainingJob.outputStorageId === null
+      )
+        throw new UnknownServerError(
+          `Complete training job with ID ${job.modelId} not found.`
+        );
+
+      modelDownloadUrl = await ctx.storage.getUrl(trainingJob.outputStorageId);
+      if (modelDownloadUrl === null)
+        throw new UnknownServerError(
+          `Training job output not found (job ID = '${job.modelId}').`
+        );
+    }
+
+    // return
     return {
-      id:                 job._id,
-      name:               job.name,
-      description:        job.description,
-      layerId:            job.layerId,
-      modelId:            job.modelId,
-      dataAssignments:    job.dataAssignments,
-      status:             job.status,
-      createdAt:          job._creationTime,
-      lastUpdated:        job.lastUpdated,
+      modelDownloadUrl:  modelDownloadUrl,
+      siteCorners:       project.corners,
+      unitMetadata:      Object.values(units).map(unit => ({
+        corners:         unit.corners,
+        pointInterval:   unit.pointInterval,
+        dataDownloadUrl: unit.dataDownloadUrl,
+      })),
     };
   }
 })
@@ -133,27 +221,31 @@ export const getPredictionJobResultsUploadUrl = zodMutation({
 
 /* ============================ Training jobs ============================ */
 
-export const getTrainingJobById = zodQuery({
+export const getTrainingJobParams = zodQuery({
   args: {
     projectId: zid("projects"),
     jobId: zid("jobs"),
   },
-  handler: async (ctx, args): Promise<ApiTrainingJob> => {
+  handler: async (ctx, args) => {
     const job = await ctx.db.get("jobs", args.jobId);
 
     if (job === null || job.kind !== "training")
       throw new ResourceNotFoundError(
         `Training job with ID '${args.jobId}' not found.`
       );
+    
+    const dataSpec = await ctx.db.get("dataSpecs", job.trainingDataSpecId);
+    if (dataSpec === null)
+      throw new UnknownServerError(
+        `Training data spec with ID '${job.trainingDataSpecId}' not found.`
+      );
+    
+    const downloadUrl = await ctx.storage.getUrl(dataSpec.storageId);
+    if (downloadUrl === null)
+      throw new UnknownServerError(`Training data with ID '${dataSpec.storageId}' not found.`);
 
     return {
-      id:                 job._id,
-      name:               job.name,
-      description:        job.description,
-      trainingDataSpecId: job.trainingDataSpecId,
-      status:             job.status,
-      createdAt:          job._creationTime,
-      lastUpdated:        job.lastUpdated,
+      dataDownloadUrl: downloadUrl,
     };
   }
 });
