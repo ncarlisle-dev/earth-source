@@ -783,7 +783,10 @@ class Project
     return predictionJob;
   }
 
-  Future<jobs.JobStatus> watchPredictionJobStatus(String jobId) async 
+  Future<void> watchPredictionJobStatus(
+    String jobId, 
+    void Function(JobStatus status) callback
+  ) async 
   {
     // validate args
     final jobIndex = predictions.indexWhere(
@@ -791,7 +794,7 @@ class Project
     assert(jobIndex >= 0, "Job with ID '$jobId' not found.");
 
     try {
-      predictions[jobIndex].watchStatus(id, predictions[jobIndex].setStatus);
+      predictions[jobIndex].watchStatus(id, callback);
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -799,8 +802,16 @@ class Project
         error.statusCode
       );
     }
+  }
 
-    return predictions[jobIndex].status;
+  Future<void> changePredictionJobStatus(String jobId, JobStatus status) async 
+  {
+    // validate args
+    final jobIndex = predictions.indexWhere(
+      (prediction) => prediction.id == jobId);
+    assert(jobIndex >= 0, "Job with ID '$jobId' not found.");
+
+    predictions[jobIndex].setStatus(status);
   }
 
   /// Runs a training job using a given file as training data for the new model 

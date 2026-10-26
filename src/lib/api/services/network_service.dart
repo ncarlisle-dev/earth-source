@@ -1016,6 +1016,7 @@ class NetworkService {
         'jobId':     jobId,
       },
       onUpdate: (response) {
+        print(response);
         final status = parseNetworkResponse(response, api_types.zJobStatus);
         callback(status);
       },

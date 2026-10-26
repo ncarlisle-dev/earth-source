@@ -4,7 +4,6 @@ import '../../api/api.dart' as api;
 import '../home_page.dart';
 import 'package:coordinate_converter/coordinate_converter.dart' as 
   coord_converter;
-import 'dart:io';
 
 /// A stateful widget for the prediction view page, which takes the id for the
 /// current project and a prediction job object as required fields.
@@ -301,17 +300,15 @@ class _PredictionViewState extends State<PredictionView> {
     final project =
         await controller.getProjectById(widget.projectId);
 
-    api.JobStatus newStatus = await 
-      project.watchPredictionJobStatus(widget.predictionJob.id);
-    if (newStatus != widget.predictionJob.status)
-    {
-      isStatusChanged = true;
-      setState(() {
-        changedStatus = jobStatusList[newStatus.index];
-      });
-    }
+    project.watchPredictionJobStatus(widget.predictionJob.id, callback);
+  }
 
-    setState(() {});
+  void callback(api.JobStatus status) async {
+    setState(() {
+      isStatusChanged = true;
+      changedStatus = jobStatusList[status.index];
+      widget.predictionJob.setStatus(status);
+    });
   }
 
   @override
@@ -319,6 +316,8 @@ class _PredictionViewState extends State<PredictionView> {
     super.initState();
 
     _loadJobLayer();
+
+    refreshPage();
   }
 
   @override
