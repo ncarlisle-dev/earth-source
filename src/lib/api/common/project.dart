@@ -783,6 +783,8 @@ class Project
     return predictionJob;
   }
 
+  /// Watches the status of a given prediction job, passing in a callback to be
+  /// run when the status changes.
   Future<void> watchPredictionJobStatus(
     String jobId, 
     void Function(JobStatus status) callback
@@ -802,16 +804,6 @@ class Project
         error.statusCode
       );
     }
-  }
-
-  Future<void> changePredictionJobStatus(String jobId, JobStatus status) async 
-  {
-    // validate args
-    final jobIndex = predictions.indexWhere(
-      (prediction) => prediction.id == jobId);
-    assert(jobIndex >= 0, "Job with ID '$jobId' not found.");
-
-    predictions[jobIndex].setStatus(status);
   }
 
   /// Runs a training job using a given file as training data for the new model 

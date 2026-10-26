@@ -37,7 +37,7 @@ abstract class Job
     required this.status,
   });
 
-  /// Sets a callback to be run every time the status of a given job changes
+  /// Sets a callback to be run every time the status of a given job changes.
   Future<void> watchStatus(
     String projectId, 
     void Function(JobStatus status) callback
@@ -47,6 +47,7 @@ abstract class Job
     networkService.watchPredictionJobStatus(projectId, id, callback);
   }
 
+  /// Setter function to change the status of a job.
   void setStatus(JobStatus changedStatus)
   {
     status = changedStatus;

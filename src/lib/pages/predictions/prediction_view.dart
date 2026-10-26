@@ -279,6 +279,9 @@ class _PredictionViewState extends State<PredictionView> {
     return (predictionPoints, predictionValues, imageContents);
   }
 
+  /// Loads layer corresponding to current prediction job - placed in its own
+  /// async function so setState isn't run immediately when the build function
+  /// is called, which leads to an infinite loop.
   Future<void> _loadJobLayer() async {
     final controller = await api.ProjectController.getInstance();
 
@@ -294,6 +297,8 @@ class _PredictionViewState extends State<PredictionView> {
     });
   }
 
+  /// Unsure if this function is necessary, but it calls the 
+  /// watchPredictionJobStatus function again if the page is refreshed.
   Future<void> refreshPage() async {
     final controller = await api.ProjectController.getInstance();
 
@@ -303,6 +308,8 @@ class _PredictionViewState extends State<PredictionView> {
     project.watchPredictionJobStatus(widget.predictionJob.id, callback);
   }
 
+  /// Callback function which is called when the status of a prediction job 
+  /// changes and sets the state of the page using the new status.
   void callback(api.JobStatus status) async {
     setState(() {
       isStatusChanged = true;
@@ -311,12 +318,13 @@ class _PredictionViewState extends State<PredictionView> {
     });
   }
 
+  /// Job layer is loaded and watchPredictionJobStatus is called the first time
+  /// the widget is constructed.
   @override
   void initState() {
     super.initState();
 
     _loadJobLayer();
-
     refreshPage();
   }
 
