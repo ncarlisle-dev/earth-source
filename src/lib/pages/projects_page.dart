@@ -106,7 +106,6 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     onChanged: (value) {
                       setState(() {
                         zoneValue = value!;
-                        utmZone = int.parse(value);
                       });
                     },
                   ),
@@ -127,7 +126,6 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                       setState(() {
                         hemisphere = value!;
                       });
-                      if (value! == "Southern") isSouthernHemisphere = true;
                     },
                   ),
                 ],
