@@ -1181,4 +1181,11 @@ class NetworkService {
 
     return handler.cancel;
   }
+
+  /// Attempts to authenticate user and returns true upon successful
+  /// authentication, false if not.
+  Future<bool> authenticateUser(String username, String password)
+  {
+    throw UnimplementedError();
+  }
 }
