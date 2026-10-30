@@ -146,13 +146,15 @@ async function updatePredictionJob(
     );
 
   const timestamp = Date.now();
+  const updates = {
+    status,
+    lastUpdated: timestamp,
+    outputStorageId: storageId,
+  };
 
-  await ctx.db.patch(
-    "jobs",
-    jobId,
-    { status, outputStorageId: storageId, lastUpdated: timestamp },
-  );
+  if (storageId === undefined) delete updates.outputStorageId;
 
+  await ctx.db.patch("jobs", jobId, updates);
   await ctx.db.patch("projects", projectId, { lastUpdated: timestamp });
 }
 
