@@ -7,6 +7,8 @@ joblib==1.5.3
 pathlib2==2.3.7.post1
 pykrige==1.7.3
 
+
+pyproj
 fastapi
 uvicorn[standard]
 python-multipart
