@@ -1184,7 +1184,7 @@ class NetworkService {
 
   /// Attempts to authenticate user and returns true upon successful
   /// authentication, false if not.
-  Future<bool> authenticateUser(String username, String password)
+  Future<bool> authenticateUser()
   {
     throw UnimplementedError();
   }

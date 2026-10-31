@@ -10,8 +10,7 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => LoginPageState();
 }
 
-/// The mutable state of the login page.
-class LoginPageState extends State<LoginPage> {
+/*class LoginPageState extends State<LoginPage> {
   // Variable storing the inputted username.
   String? _username;
   // Variable storing the inputted password.
@@ -116,6 +115,70 @@ class LoginPageState extends State<LoginPage> {
             child: Text("Login"),
           )
         ),
+      ]
+    ));
+  }
+}
+*/
+
+/// The mutable state of the login page.
+class LoginPageState extends State<LoginPage> 
+{
+  // Boolean to track whether or not user authentication failed.
+  bool authenticationFailure = false;
+  @override
+  Widget build(BuildContext context) {
+    return Material(child:ListView(
+      children: [
+        Image.asset(
+          "assets/Logo.png",
+          height: 300
+        ),
+        Padding(
+          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text("ArchaeoSight 2.0",
+              //dataSpec.fileName, 
+              style: TextTheme.of(context).headlineLarge?.copyWith(
+                fontWeight: FontWeight.bold, 
+                color: Colors.indigo
+              )
+            )
+          ), //Icon
+        ),
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: ElevatedButton(
+            onPressed: () async {
+              api.NetworkService networkService = 
+                await api.NetworkService.getInstance();
+              bool isAuthenticated = await 
+                networkService.authenticateUser();
+              if (isAuthenticated) {
+                if (context.mounted) {
+                  Navigator.push(context, MaterialPageRoute<void>(
+                    builder: (context) => HomePage()
+                  ));
+                }
+                else {
+                  setState(() {
+                    authenticationFailure = true;
+                  });
+                }
+              }
+            },
+            child: Text("Login with GitHub"),
+          )
+        ),
+        !authenticationFailure
+          ? Center(child: Text(""))
+          : Center(child: Text(
+            "Username or password is incorrect.",
+            style: TextTheme.of(context).bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold, 
+              color: Colors.red
+            )
+          )),
       ]
     ));
   }
