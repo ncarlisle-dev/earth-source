@@ -21,7 +21,6 @@ def root():
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-
     contents = await file.read()
 
     df = pd.read_csv(io.BytesIO(contents))
@@ -33,7 +32,8 @@ async def predict(file: UploadFile = File(...)):
     if not available:
         raise HTTPException(
             status_code=422,
-            detail="No recognized pXRF element columns")
+            detail="No recognized pXRF element columns"
+        )
 
     #Identify scans containing valid measurements
     valid_scans = (
@@ -67,10 +67,10 @@ async def predict(file: UploadFile = File(...)):
             "Content-Disposition":
             "attachment; filename=ArchaeoSight_Results.csv"
         })
+    
 #Request for the EBK file
 @app.post("/ebk")
 async def ebk(file: UploadFile = File(...)):
-
     contents = await file.read()
 
     df = pd.read_csv(
@@ -86,7 +86,8 @@ async def ebk(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=422,
             detail=("EBK requires spatial coordinates: "
-                    + ", ".join(sorted(missing))))
+                    + ", ".join(sorted(missing)))
+        )
 
     # Identify available chemical elements
     available = [col for col in FEATURE_COLUMNS
@@ -118,32 +119,36 @@ async def ebk(file: UploadFile = File(...)):
     if not valid.any():
         raise HTTPException(
             status_code=422,
-            detail="No valid samples available for EBK")
+            detail="No valid samples available for EBK"
+        )
 
-    
     #The EBK process needs the classifier probability first
     result_df = model.predict(df)
 
     location_data = result_df.loc[valid].copy()
 
     location_data[["X_Coord", "Y_Coord"]] = coords.loc[
-    valid, ["X_Coord", "Y_Coord"]]
+        valid, 
+        ["X_Coord", "Y_Coord"]
+    ]
 
     if len(unique_points) < 10:
         raise HTTPException(
             status_code=422,
-            detail="EBK requires at more than 10 distinct sample locations")
+            detail="EBK requires at more than 10 distinct sample locations"
+        )
 
     #Verify that enough distinct locations exist
-    unique_points = location_data[["X_Coord", "Y_Coord"]
-    ].drop_duplicates()
+    unique_points = location_data[["X_Coord", "Y_Coord"]]
+        .drop_duplicates()
 
     #Verify that coordinates can span a 2D region
     if (unique_points["X_Coord"].nunique() < 2
         or unique_points["Y_Coord"].nunique() < 2):
             raise HTTPException(
                 status_code=422,
-                detail="EBK requires variation in both coordinate axes")
+                detail="EBK requires variation in both coordinate axes"
+            )
 
     try:
         ebk_grid_df, original_points_df = dataframe_to_grid(
@@ -176,6 +181,7 @@ async def ebk(file: UploadFile = File(...)):
             "attachment; filename=ArchaeoSight_EBK_Grid.csv"
         }
     )
+
 @app.get("/run")
 def run_job(
     jobId: str,
