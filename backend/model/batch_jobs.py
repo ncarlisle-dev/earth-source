@@ -20,11 +20,18 @@ logger = logging.getLogger(__name__)
 #create client connection
 client = get_client_url(os.environ["CONVEX_URL"])
 
+#Constants for Coordinates
+X_COORD = "X_Coord"
+Y_COORD = "Y_Coord"
+
+COORD_COLUMNS = [X_COORD, Y_COORD]
+
 #Get Job Function
 def get_prediction_params(job_id, project_id):
-
-  job = client.query( "batch:getPredictionJobParameters", 
-                     {"jobId": job_id, "projectId": project_id})
+  job = client.query(
+    "batch:getPredictionJobParameters", 
+    {"jobId": job_id, "projectId": project_id}
+  )
 
   if job is None:
     raise ValueError("Job could not be found")
@@ -33,14 +40,15 @@ def get_prediction_params(job_id, project_id):
 
 #Upload URLS from the API
 def ret_upload_url(job_id):
-  
-  uploadUrl = client.mutation("batch:getPredictionJobResultsUploadUrl", { "jobId": job_id })
+  uploadUrl = client.mutation(
+    "batch:getPredictionJobResultsUploadUrl", 
+    { "jobId": job_id }
+  )
   
   return uploadUrl
 
 #Retrieve CSV function
 def download_csv(url):
-  
   response = requests.get(url, timeout=(10, 120))
 
   response.raise_for_status()
@@ -50,7 +58,6 @@ def download_csv(url):
 
 #Load the Data
 def load_data(params):
-  
   #assignments = job["dataAssignments"]
   #TODO 107: Use the parameters given with the project
   return_df = []
@@ -74,7 +81,6 @@ def load_data(params):
     #ensure the coords are present in the file
     if not all(col in df.columns for col in coords):
       print(f"Mapping sample coords for unit {index}")
-
       df = assign_coords(df,unit,params["siteCorners"])
       
     else:
@@ -95,7 +101,7 @@ def run_prediction(df, model):
   #Run the classifieer
   result_data_frame = model.predict(df)
   #Take in samples with validated coordinates
-  coords =  result_data_frame[["X_Coord", "Y_Coord"]]
+  coords =  result_data_frame[COORD_COLUMNS]
   #Make sure the coordinates are real and finite
   valid = np.isfinite(coords.to_numpy(dtype=float)).all(axis=1)
   #Use only the valid points in the EBK 
@@ -104,12 +110,11 @@ def run_prediction(df, model):
   if location_data.empty:
     raise ValueError("No valid coordinates available for EBK")
 
-  unique_points = location_data[["X_Coord", "Y_Coord"]].drop_duplicates()
+  unique_points = location_data[COORD_COLUMNS].drop_duplicates()
   
   if len(unique_points) < 10:
     raise ValueError("Need at least 10 distinct sample locations")
 
-  
   print(f"Total Unit Samples: {len(result_data_frame)}")
   print(f"Located Unit Samples: {len(location_data)}")
 
@@ -117,8 +122,8 @@ def run_prediction(df, model):
   ebk_grid_df, origin_points_df = (
         dataframe_to_grid(
             location_data,
-            x_col="X_Coord",
-            y_col="Y_Coord",
+            x_col=X_COORD,
+            y_col=Y_COORD,
             prob_col="non_soil_probability"
         )
   )
@@ -138,7 +143,6 @@ def run_prediction(df, model):
   ]
 #Upload Output File
 def upload_to_convex(job_id, output):
-  
   upload_url = ret_upload_url(job_id)
   
   response = requests.post(
@@ -156,18 +160,15 @@ def upload_to_convex(job_id, output):
 
 #Process the Job Using previous functions
 def process_job(model, job_id, project_id, output_name="classification"):
-
   #Validate the requested output name
   if output_name not in ["ebk", "classification"]:
         raise ValueError("Output must be classification or ebk")
-  
+    
   #Ensure the job is ready
-  job_ready = client.query("projects:getPredictionJobStatus",
-                           {
-                             "jobId": job_id,
-                              "projectId": project_id
-                           }
-                          )
+  job_ready = client.query(
+    "projects:getPredictionJobStatus",
+    {"jobId": job_id,"projectId": project_id}
+  )
   
   #Ensure that only starting jobs are processed
   if job_ready != "starting":
@@ -179,7 +180,6 @@ def process_job(model, job_id, project_id, output_name="classification"):
   claim_job(job_id, project_id)
   
   try:
-    
     data_frame = load_data(params)
     
     outputs = run_prediction(data_frame, model)
@@ -212,30 +212,30 @@ def process_job(model, job_id, project_id, output_name="classification"):
 
     raise
 
-  
 #Update the Job to Finished
 def complete_job(job_id, project_id, storage_id):
-  client.mutation("batch:completePredictionJob",
-                  {"jobId": job_id,
-                   "projectId": project_id,
-                   "storageId": storage_id
-                  })
+  client.mutation(
+    "batch:completePredictionJob",
+    {"jobId": job_id,
+     "projectId": project_id,
+     "storageId": storage_id
+    }
+  )
 
 #Add job_failed function for failed jobs
-
 def job_failed(job_id, project_id):
-  client.mutation("batch:failPredictionJob",
-                  {
-                    "jobId": job_id,
-                    "projectId": project_id
-                  }
-                 )
+  client.mutation(
+    "batch:failPredictionJob",
+    {"jobId": job_id,"projectId": project_id}
+  )
 #Once the claimed the Job can be ran
 #from starting -> running
 def claim_job(job_id, project_id):
-  is_claimed = client.mutation( "batch:claimPredictionJob", 
-                     {"jobId": job_id, "projectId": project_id})
-
+  is_claimed = client.mutation(
+    "batch:claimPredictionJob",
+    {"jobId": job_id, "projectId": project_id}
+  )
+  
 #Train if Necessary
 #Return the pkl model file
 def train_model(df):
@@ -259,10 +259,10 @@ def train_model(df):
     model_in_bytes = buffer.getvalue()
   
   return [{
-            "name": "model",
-            "filename": "trained_model.pkl",
-            "content": model_in_bytes,
-            "contentType": "application/octet-stream"
+    "name": "model",
+    "filename": "trained_model.pkl",
+    "content": model_in_bytes,
+    "contentType": "application/octet-stream"
   }]
 
 #Address file inputs with no coordinates
@@ -282,8 +282,8 @@ def assign_coords(df, unit, site_corners):
     f"EPSG:{epsg}",
     always_xy=True)
 
-  corners = [transformer.transform(
-    p["longitude"], p["latitude"]) for p in unit["corners"]]
+  corners = [transformer.transform(p["longitude"], 
+    p["latitude"]) for p in unit["corners"]]
 
   top_left, top_right, bot_left, bot_right = corners
   #Convert to centimeters
@@ -326,8 +326,8 @@ def assign_coords(df, unit, site_corners):
 
   result = df.copy()
 
-  result["X_Coord"] = x_coords
-  result["Y_Coord"] = y_coords
+  result[X_COORD] = x_coords
+  result[Y_COORD] = y_coords
 
   return result
 
