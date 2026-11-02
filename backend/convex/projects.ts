@@ -1470,7 +1470,7 @@ export const runPredictionJob = zodAction({
       outputName: "classification",
     });
 
-    fetch(`${baseUrl}?${params}`);
+    await fetch(`${baseUrl}?${params}`);
 
     return {
       id:              createdJob._id,

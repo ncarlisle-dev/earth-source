@@ -1019,13 +1019,8 @@ class _MapPageState extends State<MapPage>
     List<api.Layer> layers;
     List<api.Unit> units;
 
-    updatedLayers.isEmpty 
-      ? layers = widget.project.layers
-      : layers = updatedLayers;
-
-    updatedUnits.isEmpty 
-      ? units = widget.project.units
-      : units = updatedUnits;
+    layers = widget.project.layers;
+    units = widget.project.units;
 
     return Material(child:ListView(
       children: [
