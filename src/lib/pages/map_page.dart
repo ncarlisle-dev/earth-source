@@ -194,7 +194,7 @@ class _MapPageState extends State<MapPage>
                       return null;
                     },
                     onSaved: (value) {
-                      northings.add(double.parse(value.toString()));
+                      eastings.add(double.parse(value.toString()));
                     },
                   ),
                   TextFormField(
