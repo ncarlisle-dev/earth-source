@@ -16,57 +16,84 @@ class _HelpPageState extends State<HelpPage> {
   Widget build(BuildContext context) {
     return Material(child:ListView(
       children: [
-        Image.asset(
-          "assets/Logo.png",
-          height: 300
-        ),
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: Center(
-            child: Text("ArchaeoSight 2.0",
+            child: Text("Help",
               //dataSpec.fileName, 
               style: TextTheme.of(context).headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold, 
-                color: Colors.indigo
+                fontWeight: FontWeight.bold
               )
             )
           ), //Icon
         ),
         Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: ElevatedButton(
-            onPressed: () async {
-              api.NetworkService networkService = 
-                await api.NetworkService.getInstance();
-              bool isAuthenticated = true;
-              //bool isAuthenticated = await 
-              //  networkService.authenticateUser();
-              if (isAuthenticated) {
-                if (context.mounted) {
-                  Navigator.push(context, MaterialPageRoute<void>(
-                    builder: (context) => HomePage()
-                  ));
-                }
-                else {
-                  setState(() {
-                    authenticationFailure = true;
-                  });
-                }
-              }
-            },
-            child: Text("Login with GitHub"),
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text(
+              "How to Use ArchaeoSight 2.0", 
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold, color: Colors.indigo
+              )
+            )
           )
         ),
-        !authenticationFailure
-          ? Center(child: Text(""))
-          : Center(child: Text(
-            "Username or password is incorrect.",
-            style: TextTheme.of(context).bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold, 
-              color: Colors.red
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text(
+              "Project Creation", 
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold, color: Colors.blue
+              )
             )
-          )),
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text(
+              "pXRF Data Upload", 
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold, color: Colors.blue
+              )
+            )
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text(
+              "Running Predictions", 
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold, color: Colors.blue
+              )
+            )
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text(
+              "Documentation", 
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold, color: Colors.indigo
+              )
+            )
+          )
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text(
+              "Troubleshooting Tips", 
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold, color: Colors.indigo
+              )
+            )
+          )
+        )
       ]
     ));
-    }
+  }
 } 
