@@ -64,12 +64,13 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
     description:          apiProject.description,
     utmZone:              apiProject.utmZone,
     isSouthernHemisphere: apiProject.isSouthernHemisphere,
-    corners:              apiProject.corners.map((corner) => coords.UTMCoordinates(
-                            x: corner.easting,
-                            y: corner.northing,
-                            zoneNumber: apiProject.utmZone,
-                            isSouthernHemisphere: apiProject.isSouthernHemisphere
-                          )).toList(),
+    corners:              apiProject.corners.map(
+                            (corner) => convertCoordRecordToObj(
+                              corner, 
+                              apiProject.utmZone,
+                              apiProject.isSouthernHemisphere
+                            )
+                          ).toList(),
     dataAssignments:      apiProject.dataAssignments,
     createdAt:            DateTime.fromMillisecondsSinceEpoch(
                             apiProject.createdAt
@@ -82,12 +83,13 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       id:            layer.id,
       name:          layer.name,
       description:   layer.description,
-      corners:       layer.corners.map((corner) => coords.UTMCoordinates(
-                        x: corner.easting,
-                        y: corner.northing,
-                        zoneNumber: apiProject.utmZone,
-                        isSouthernHemisphere: apiProject.isSouthernHemisphere
-                      )).toList(),
+      corners:       layer.corners.map(
+                      (corner) => convertCoordRecordToObj(
+                        corner, 
+                        apiProject.utmZone,
+                        apiProject.isSouthernHemisphere
+                      )
+                     ).toList(),
       image:         layer.image,
       createdAt:     DateTime.fromMillisecondsSinceEpoch(layer.createdAt),
       lastUpdated:   DateTime.fromMillisecondsSinceEpoch(layer.lastUpdated),
@@ -97,12 +99,13 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       id:            unit.id,
       name:          unit.name,
       description:   unit.description,
-      corners:       unit.corners.map((corner) => coords.UTMCoordinates(
-                        x: corner.easting,
-                        y: corner.northing,
-                        zoneNumber: apiProject.utmZone,
-                        isSouthernHemisphere: apiProject.isSouthernHemisphere
-                      )).toList(),
+      corners:       unit.corners.map(
+                      (corner) => convertCoordRecordToObj(
+                        corner, 
+                        apiProject.utmZone,
+                        apiProject.isSouthernHemisphere
+                      )
+                     ).toList(),
       pointInterval: unit.pointInterval,
       createdAt:     DateTime.fromMillisecondsSinceEpoch(unit.createdAt),
       lastUpdated:   DateTime.fromMillisecondsSinceEpoch(unit.lastUpdated),
@@ -271,12 +274,13 @@ class NetworkService {
       description:          apiSpec.description,
       utmZone:              apiSpec.utmZone,
       isSouthernHemisphere: apiSpec.isSouthernHemisphere,
-      corners:              apiSpec.corners.map((corner) => coords.UTMCoordinates(
-                              x: corner.easting,
-                              y: corner.northing,
-                              zoneNumber: apiSpec.utmZone,
-                              isSouthernHemisphere: apiSpec.isSouthernHemisphere
-                            )).toList(),
+      corners:              apiSpec.corners.map(
+                              (corner) => convertCoordRecordToObj(
+                                corner, 
+                                apiSpec.utmZone,
+                                apiSpec.isSouthernHemisphere
+                              )
+                            ).toList(),
       numLayers:            apiSpec.numLayers,
       numUnits:             apiSpec.numUnits,
       numPxrfData:          apiSpec.numPxrfData,
@@ -516,12 +520,13 @@ class NetworkService {
         id:            unit.id,
         name:          unit.name,
         description:   unit.description,
-        corners:       unit.corners.map((corner) => coords.UTMCoordinates(
-                        x: corner.easting,
-                        y: corner.northing,
-                        zoneNumber: utmZone,
-                        isSouthernHemisphere: isSouthernHemisphere
-                       )).toList(),
+        corners:       unit.corners.map(
+                        (corner) => convertCoordRecordToObj(
+                          corner, 
+                          utmZone,
+                          isSouthernHemisphere
+                        )
+                       ).toList(),
         pointInterval: unit.pointInterval,
         createdAt:     DateTime.fromMillisecondsSinceEpoch(unit.createdAt),
         lastUpdated:   DateTime.fromMillisecondsSinceEpoch(unit.lastUpdated),
@@ -530,12 +535,13 @@ class NetworkService {
         id:           layer.id,
         name:         layer.name,
         description:  layer.description,
-        corners:      layer.corners.map((corner) => coords.UTMCoordinates(
-                        x: corner.easting,
-                        y: corner.northing,
-                        zoneNumber: utmZone,
-                        isSouthernHemisphere: isSouthernHemisphere
-                      )).toList(),
+        corners:      layer.corners.map(
+                        (corner) => convertCoordRecordToObj(
+                          corner, 
+                          utmZone,
+                          isSouthernHemisphere
+                        )
+                      ).toList(),
         image:        layer.image,
         createdAt:    DateTime.fromMillisecondsSinceEpoch(layer.createdAt),
         lastUpdated:  DateTime.fromMillisecondsSinceEpoch(layer.lastUpdated),
