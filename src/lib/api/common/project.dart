@@ -455,13 +455,12 @@ class Project
     if (description != null) layers[layerIndex].description = description;
     if (corners != null) {
       layers[layerIndex].corners = corners.map(
-        (corner) => coords.UTMCoordinates(
-          x: corner.easting,
-          y: corner.northing,
-          zoneNumber: utmZone,
-          isSouthernHemisphere: isSouthernHemisphere
-          )
-        ).toList();
+        (corner) => convertCoordRecordToObj(
+          corner, 
+          utmZone, 
+          isSouthernHemisphere
+        )
+      ).toList();
     }
 
     layers[layerIndex].lastUpdated = updateTimestamp;
@@ -524,11 +523,10 @@ class Project
       if (
         isOverlapping(
           corners.map(
-            (corner) => coords.UTMCoordinates(
-              x: corner.easting,
-              y: corner.northing,
-              zoneNumber: utmZone,
-              isSouthernHemisphere: isSouthernHemisphere
+            (corner) => convertCoordRecordToObj(
+              corner, 
+              utmZone, 
+              isSouthernHemisphere
             )
           ).toList(),
           unit.corners
@@ -604,11 +602,10 @@ class Project
     assert(unitIndex >= 0, "Unit with ID '$id' not found.");
 
     final cornerObjs = corners?.map(
-      (corner) => coords.UTMCoordinates(
-        x: corner.easting,
-        y: corner.northing,
-        zoneNumber: utmZone,
-        isSouthernHemisphere: isSouthernHemisphere
+      (corner) => convertCoordRecordToObj(
+        corner, 
+        utmZone, 
+        isSouthernHemisphere
       )
     ).toList();
 
