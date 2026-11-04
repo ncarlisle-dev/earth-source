@@ -150,10 +150,10 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                   hemisphere == "Southern",
                   [
                     // TODO: add input for this field
-                    (latitude: 0, longitude: 0), 
-                    (latitude: 0, longitude: 0),
-                    (latitude: 0, longitude: 0),
-                    (latitude: 0, longitude: 0),
+                    (easting: 166640, northing: 1110400), 
+                    (easting: 166640, northing: 1110400),  
+                    (easting: 166640, northing: 1110400),  
+                    (easting: 166640, northing: 1110400), 
                   ]
                 );
 
