@@ -39,7 +39,7 @@ def get_prediction_params(job_id, project_id):
   return job
 
 #Upload URLS from the API
-def ret_upload_url(job_id):
+def get_upload_url(job_id):
   uploadUrl = client.mutation(
     "batch:getPredictionJobResultsUploadUrl", 
     { "jobId": job_id }
@@ -143,7 +143,7 @@ def run_prediction(df, model):
   ]
 #Upload Output File
 def upload_to_convex(job_id, output):
-  upload_url = ret_upload_url(job_id)
+  upload_url = get_upload_url(job_id)
   
   response = requests.post(
     upload_url,
@@ -209,8 +209,8 @@ def process_job(model, job_id, project_id, output_name="classification"):
       
     except Exception:
       logger.exception("Could not mark job as failed")
-
-    raise
+      
+      raise
 
 #Update the Job to Finished
 def complete_job(job_id, project_id, storage_id):
@@ -268,7 +268,7 @@ def train_model(df):
 #Address file inputs with no coordinates
 def assign_coords(df, unit, site_corners):
   latitude = sum(
-        p["latitude"] for p in site_corners)/len(site_corners)
+    p["latitude"] for p in site_corners)/len(site_corners)
 
   longitude = sum(
     p["longitude"] for p in site_corners)/len(site_corners)
@@ -280,10 +280,15 @@ def assign_coords(df, unit, site_corners):
   transformer = Transformer.from_crs(
     "EPSG:4326",
     f"EPSG:{epsg}",
-    always_xy=True)
+    always_xy=True
+  )
 
-  corners = [transformer.transform(p["longitude"], 
-    p["latitude"]) for p in unit["corners"]]
+  corners = [
+    transformer.transform(
+      p["longitude"], 
+      p["latitude"]
+    ) for p in unit["corners"]
+  ]
 
   top_left, top_right, bot_left, bot_right = corners
   #Convert to centimeters
@@ -303,7 +308,8 @@ def assign_coords(df, unit, site_corners):
   if len(df) > capacity:
     raise ValueError(
       f"CSV has {len(df)} rows, but unit grid "
-      f"has only {capacity} positions")
+      f"has only {capacity} positions"
+    )
 
   x_coords = []
   y_coords = []
