@@ -29,8 +29,6 @@ class Layer
   String name;
   /// Given description of the layer.
   String description;
-  /// Coordinates of the four corner points of the layer image.
-  List<coords.UTMCoordinates> corners;
   /// The layer's image.
   ({ String name, int size, DateTime uploadedAt })? image;
   /// Time the layer was created.
@@ -42,7 +40,6 @@ class Layer
     required this.id,
     required this.name,
     required this.description,
-    required this.corners,
     required this.image,
     required this.createdAt,
     required this.lastUpdated,

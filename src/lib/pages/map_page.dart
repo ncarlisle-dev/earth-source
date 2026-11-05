@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
-import 'package:coordinate_converter/coordinate_converter.dart' as 
-  coord_converter;
-import 'package:latlong2/latlong.dart' as latlong;
 import '../mapping/visualizer.dart' as visualizer;
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'dart:io' as io; 
@@ -57,8 +54,6 @@ class _MapPageState extends State<MapPage>
 
     String? layerName;
     String? layerDescription;
-    List<double> eastings = [];
-    List<double> northings = [];
 
     showDialog(
       context: context,
@@ -99,118 +94,6 @@ class _MapPageState extends State<MapPage>
                       layerDescription = value!;
                     },
                   ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-left Easting:'
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the top-left easting';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      eastings.add(double.parse(value.toString()));
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-left Northing:'
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the top-left northing';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      northings.add(double.parse(value.toString()));
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-left Easting:'
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the bottom-left easting';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      eastings.add(double.parse(value.toString()));
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-left Northing:'
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the bottom-left northing';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      northings.add(double.parse(value.toString()));
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-right Easting:'
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the top-right easting';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      eastings.add(double.parse(value.toString()));
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-right Northing:'
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the top-right northing';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      northings.add(double.parse(value.toString()));
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-right Easting:'
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the bottom-right easting';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      eastings.add(double.parse(value.toString()));
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-right Northing:'
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the bottom-right northing';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) {
-                      northings.add(double.parse(value.toString()));
-                    },
-                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     child: ElevatedButton(
@@ -228,24 +111,10 @@ class _MapPageState extends State<MapPage>
               onPressed: () async {
                 formKey.currentState!.save();
 
-                // Convert corner coordinates to lat/long.
-                final List<List<double>> layerCorners = [
-                  [eastings[0], northings[0]],
-                  [eastings[1], northings[1]],
-                  [eastings[2], northings[2]],
-                  [eastings[3], northings[3]],
-                ];
-
                 // Access project controller and add new layer to the project.
                 final createdLayer = await widget.project.createLayer(
                   layerName!, 
                   layerDescription!, 
-                  layerCorners
-                    .map((coord) => (
-                      easting: coord[0],
-                      northing: coord[1]
-                    ))
-                    .toList()
                 );
 
                 // Upload layer image encoded as a string to the database.
@@ -279,17 +148,9 @@ class _MapPageState extends State<MapPage>
 
     bool nameChanged = false;
     bool descriptionChanged = false;
-    bool positioningChanged = false;
 
     String layerName = layer.name;
     String layerDescription = layer.description;
-
-    List<List<double>> cornerCoords = [
-      [layer.corners[0].x, layer.corners[0].y], 
-      [layer.corners[1].x, layer.corners[1].y], 
-      [layer.corners[2].x, layer.corners[2].y], 
-      [layer.corners[3].x, layer.corners[3].y]
-    ];
     
     showDialog(
       context: context,
@@ -322,102 +183,6 @@ class _MapPageState extends State<MapPage>
                       }
                     },
                   ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-left Easting:'
-                    ),
-                    initialValue: "${layer.corners[0].x}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != layer.corners[0].x) {
-                        cornerCoords[0][0] = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-left Northing:'
-                    ),
-                    initialValue: "${layer.corners[0].y}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != layer.corners[0].y) {
-                        cornerCoords[0][1] = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-left Easting:'
-                    ),
-                    initialValue: "${layer.corners[1].x}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != layer.corners[1].x) {
-                        cornerCoords[1][0] = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-left Northing:'
-                    ),
-                    initialValue: "${layer.corners[1].y}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != layer.corners[1].y) {
-                        cornerCoords[1][1] = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-right Easting:'
-                    ),
-                    initialValue: "${layer.corners[2].x}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != layer.corners[2].x) {
-                        cornerCoords[2][0] = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Top-right Easting:'
-                    ),
-                    initialValue: "${layer.corners[2].y}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != layer.corners[2].y) {
-                        cornerCoords[2][1] = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-right Northing:'
-                    ),
-                    initialValue: "${layer.corners[3].x}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != layer.corners[3].x) {
-                        cornerCoords[3][0] = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Bottom-right Northing:'
-                    ),
-                    initialValue: "${layer.corners[3].y}",
-                    onSaved: (value) {
-                      if (double.parse(value!) != layer.corners[3].y) {
-                        cornerCoords[3][1] = double.parse(value);
-                        positioningChanged = true;
-                      }
-                    },
-                  ),
                 ],
               ),
             ),
@@ -438,18 +203,6 @@ class _MapPageState extends State<MapPage>
                   await widget.project.updateLayer(
                     layer.id,
                     description: layerDescription
-                  );
-                }
-
-                if (positioningChanged) {
-                  await widget.project.updateLayer(
-                    layer.id,
-                    corners: cornerCoords.map(
-                      (coord) => (
-                        easting: coord[0],
-                        northing: coord[1]
-                      )
-                    ).toList(),
                   );
                 }
 
@@ -1106,30 +859,6 @@ class _MapPageState extends State<MapPage>
                       ),
                       Text(
                         "Description: ${layers[index].description}",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Top Left Coordinate: ("
-                        "${layers[index].corners[0].x}, "
-                        "${layers[index].corners[0].y})",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Top Right Coordinate: ("
-                        "${layers[index].corners[1].x}, "
-                        "${layers[index].corners[1].y})",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Bottom Left Coordinate: ("
-                        "${layers[index].corners[2].x}, "
-                        "${layers[index].corners[2].y})",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Bottom Right Coordinate: ("
-                        "${layers[index].corners[3].x}, "
-                        "${layers[index].corners[3].y})",
                         style: TextStyle(fontSize: 15)
                       ),
                       Text(

@@ -83,13 +83,6 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       id:            layer.id,
       name:          layer.name,
       description:   layer.description,
-      corners:       layer.corners.map(
-                      (corner) => convertCoordRecordToObj(
-                        corner, 
-                        apiProject.utmZone,
-                        apiProject.isSouthernHemisphere
-                      )
-                     ).toList(),
       image:         layer.image,
       createdAt:     DateTime.fromMillisecondsSinceEpoch(layer.createdAt),
       lastUpdated:   DateTime.fromMillisecondsSinceEpoch(layer.lastUpdated),
@@ -414,7 +407,6 @@ class NetworkService {
       List<({
         String                  name,
         String                  description,
-        List<common.Coordinate> corners,
       })> newLayers = const [],
 
       Map<
@@ -422,7 +414,6 @@ class NetworkService {
         ({
           String?                  name,
           String?                  description,
-          List<common.Coordinate>? corners,
         })
       > layerUpdates = const {},
 
@@ -478,18 +469,12 @@ class NetworkService {
         'newLayers':      newLayers.map((layer) => {
                             'name':         layer.name,
                             'description':  layer.description,
-                            'corners':      layer.corners
-                                              .map(convertCoordRecordToMap)
-                                              .toList(),
                           }).toList(),
         'layerUpdates':   layerUpdates.map((layerId, updates) => MapEntry(
                             layerId,
                             removeNullEntries({
                               'name':         updates.name,
                               'description':  updates.description,
-                              'corners':      updates.corners
-                                                ?.map(convertCoordRecordToMap)
-                                                .toList(),
                             }),
                           )),
         'layersToDelete': layersToDelete,
@@ -535,13 +520,6 @@ class NetworkService {
         id:           layer.id,
         name:         layer.name,
         description:  layer.description,
-        corners:      layer.corners.map(
-                        (corner) => convertCoordRecordToObj(
-                          corner, 
-                          utmZone,
-                          isSouthernHemisphere
-                        )
-                      ).toList(),
         image:        layer.image,
         createdAt:    DateTime.fromMillisecondsSinceEpoch(layer.createdAt),
         lastUpdated:  DateTime.fromMillisecondsSinceEpoch(layer.lastUpdated),

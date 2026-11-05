@@ -9,10 +9,10 @@ const possibleJobStatuses = api.JobStatus.values;
 /// the current project as a required field.
 class PredictionsPage extends StatefulWidget 
 {
-  const PredictionsPage({super.key, required this.projectId});
+  const PredictionsPage({super.key, required this.project});
 
-  /// The id of the current project.
-  final String projectId;
+  /// The current project being viewed.
+  final api.Project project;
 
   @override
   State<PredictionsPage> createState() => _PredictionsPageState();
@@ -21,15 +21,6 @@ class PredictionsPage extends StatefulWidget
 /// The mutable state of the project predictions page.
 class _PredictionsPageState extends State<PredictionsPage> 
 {
-  /// Fetches a list of all prediction jobs corresponding to the current 
-  /// project.
-  Future<List<api.PredictionJob>> fetchPredictions() async
-  {
-    final projectController = await api.ProjectController.getInstance();
-    final project = await projectController.getProjectById(widget.projectId);
-    return project.predictions;
-  }
-
   @override
   Widget build(BuildContext context) 
   {
@@ -63,7 +54,7 @@ class _PredictionsPageState extends State<PredictionsPage>
             onPressed: () => Navigator.push(
               context, 
               MaterialPageRoute<void>(builder: 
-                (context) => PredictionGeneration(projectId: widget.projectId)
+                (context) => PredictionGeneration(project: widget.project)
               )
             ),
             child: const Icon(Icons.add)
@@ -71,69 +62,64 @@ class _PredictionsPageState extends State<PredictionsPage>
         ),
         SizedBox(
           height: MediaQuery.of(context).size.height * 0.75,
-          child: FutureBuilder(
-            future: fetchPredictions(),
-            builder: (
-              BuildContext ctx, 
-              AsyncSnapshot<List<api.PredictionJob>> snapshot
-            ) 
-            => !(snapshot.hasData)
-            ?
-            Center(child:Text("Predictions could not be loaded."))
-            :
-            ListView.builder(
-              itemCount: snapshot.data!.length, 
-              itemBuilder: (BuildContext context, int index) {
-                return Card(
-                  elevation: 50,
-                  shadowColor: Colors.black,
-                  child: SizedBox(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            snapshot.data![index].name,
-                            style: TextStyle(
-                              fontSize: 30,
-                              color: Colors.indigo,
-                              fontWeight: FontWeight.w500,
-                            ),
+          child: 
+          (widget.project.predictions.isEmpty)
+          ?
+          Center(child:Text("No predictions at the moment!"))
+          :
+          ListView.builder(
+            itemCount: widget.project.predictions.length, 
+            itemBuilder: (BuildContext context, int index) {
+              return Card(
+                elevation: 50,
+                shadowColor: Colors.black,
+                child: SizedBox(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          widget.project.predictions[index].name,
+                          style: TextStyle(
+                            fontSize: 30,
+                            color: Colors.indigo,
+                            fontWeight: FontWeight.w500,
                           ),
-                          Text(
-                          "Status: "
-                          "${possibleJobStatuses[snapshot.data![index].status.index]}"
-                          "\nDescription: ${snapshot.data![index].name}\n"
-                          "Date Created: ${snapshot.data![index].createdAt}",
-                            style: TextStyle(
-                              fontSize: 15,
-                            ),
+                        ),
+                        Text(
+                        "Status: "
+                        "${possibleJobStatuses[widget.project.predictions[index].status.index]}"
+                        "\nDescription: ${widget.project.predictions[index].name}\n"
+                        "Date Created: ${widget.project.predictions[index].createdAt}",
+                          style: TextStyle(
+                            fontSize: 15,
                           ),
-                          // Button which navigates to the prediction view
-                          // page for the selected prediction.
-                          SizedBox(
-                            width: 100,
-                            child: ElevatedButton(
-                              onPressed: () => Navigator.push(
-                                  context, 
-                                  MaterialPageRoute<void>(builder: 
-                                    (context) => PredictionView(
-                                      projectId: widget.projectId, 
-                                      predictionJob: snapshot.data![index]
-                                    )
+                        ),
+                        // Button which navigates to the prediction view
+                        // page for the selected prediction.
+                        SizedBox(
+                          width: 100,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.push(
+                                context, 
+                                MaterialPageRoute<void>(builder: 
+                                  (context) => PredictionView(
+                                    project: widget.project, 
+                                    predictionJob: 
+                                      widget.project.predictions[index]
                                   )
-                                ),
-                              child: Text("View")
-                            ),
-                          )
-                        ],
-                      ),
+                                )
+                              ),
+                            child: Text("View")
+                          ),
+                        )
+                      ],
                     ),
                   ),
-                );
-              }
-            )
-          ),
+                ),
+              );
+            }
+          )
         ),
       ],
     ));

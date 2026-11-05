@@ -363,12 +363,9 @@ class Project
   /// after modification.
   Future<specs.Layer> createLayer(
     String name, 
-    String description, 
-    List<Coordinate> corners
+    String description
   ) async
   {
-    assert(corners.length == 4, "corners doesn't have four elements.");
-
     final networkService = await NetworkService.getInstance();
     final Layer createdLayer;
 
@@ -381,7 +378,6 @@ class Project
           newLayers: [(
             name: name,
             description: description,
-            corners: corners,
           )],
         );
 
@@ -409,13 +405,12 @@ class Project
     {
       String?           name,
       String?           description,
-      List<Coordinate>? corners,
     }
   ) async
   {
     // validate arguments
     assert(
-      name != null || description != null || corners != null,
+      name != null || description != null,
       "No updates specified."
     );
 
@@ -435,8 +430,7 @@ class Project
           layerUpdates: {
             id: (
               name: name,
-              description: description,
-              corners: corners,
+              description: description
             )
           }
         );
@@ -453,15 +447,6 @@ class Project
     // set local fields
     if (name != null) layers[layerIndex].name = name;
     if (description != null) layers[layerIndex].description = description;
-    if (corners != null) {
-      layers[layerIndex].corners = corners.map(
-        (corner) => convertCoordRecordToObj(
-          corner, 
-          utmZone, 
-          isSouthernHemisphere
-        )
-      ).toList();
-    }
 
     layers[layerIndex].lastUpdated = updateTimestamp;
     lastUpdated = updateTimestamp;
