@@ -1,5 +1,6 @@
 import 'network.dart' as network;
 import 'package:latlong2/latlong.dart' as latlong;
+import 'package:coordinate_converter/coordinate_converter.dart' as coords;
 
 class ConnectionSpec
 {
@@ -29,7 +30,7 @@ class Layer
   /// Given description of the layer.
   String description;
   /// Coordinates of the four corner points of the layer image.
-  List<latlong.LatLng> corners;
+  List<coords.UTMCoordinates> corners;
   /// The layer's image.
   ({ String name, int size, DateTime uploadedAt })? image;
   /// Time the layer was created.
@@ -58,7 +59,7 @@ class Unit
   /// Given description of the unit.
   String description;
   /// Coordinates of the corners of the unit.
-  List<latlong.LatLng> corners;
+  List<coords.UTMCoordinates> corners;
   /// Interval between sampling points within the unit.
   double pointInterval;
   /// Time the unit was created.
@@ -145,20 +146,20 @@ class DirectoryItemSpec {
 /// A shallow representation of a project, holding metadata about the project
 /// it represents.
 class ProjectSpec {
-  final String                  id;
-  final String                  name;
-  final String                  description;
-  final int                     utmZone;
-  final bool                    isSouthernHemisphere;
-  final List<latlong.LatLng>    corners;
-  final int                     numLayers;
-  final int                     numUnits;
-  final int                     numPxrfData;
-  final int                     numTrainingData;
-  final int                     numPredictions;
-  final int                     numModels;
-  final DateTime                createdAt;
-  final DateTime                lastUpdated;
+  final String                        id;
+  final String                        name;
+  final String                        description;
+  final int                           utmZone;
+  final bool                          isSouthernHemisphere;
+  final List<coords.UTMCoordinates>   corners;
+  final int                           numLayers;
+  final int                           numUnits;
+  final int                           numPxrfData;
+  final int                           numTrainingData;
+  final int                           numPredictions;
+  final int                           numModels;
+  final DateTime                      createdAt;
+  final DateTime                      lastUpdated;
 
   ProjectSpec({
     required this.id,

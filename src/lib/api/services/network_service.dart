@@ -4,7 +4,7 @@ import 'dart:convert' as convert;
 import '../common/common.dart' as common;
 import './api_types.dart' as api_types;
 
-import 'package:latlong2/latlong.dart' as latlong;
+import 'package:coordinate_converter/coordinate_converter.dart' as coords;
 import 'package:dzod/dzod.dart' as dzod;
 import 'package:convex_flutter/convex_flutter.dart' as convex;
 import 'package:http/http.dart' as http;
@@ -34,12 +34,21 @@ T parseNetworkResponse<T>(String response, dzod.Schema<T> schema)
 
 Map<String, double> convertCoordRecordToMap(common.Coordinate coord)
   => {
-    'latitude':  coord.latitude,
-    'longitude': coord.longitude,
+    'easting':  coord.easting,
+    'northing': coord.northing,
   };
 
-latlong.LatLng convertCoordRecordToObj(common.Coordinate coord)
-  => latlong.LatLng(coord.latitude, coord.longitude);
+coords.UTMCoordinates convertCoordRecordToObj(
+  common.Coordinate coord, 
+  int utmZone, 
+  bool isSouthern
+)
+  => coords.UTMCoordinates(
+    x: coord.easting, 
+    y: coord.northing, 
+    zoneNumber: utmZone, 
+    isSouthernHemisphere: isSouthern
+  );
 
 Map<String, dynamic> removeNullEntries(Map<String, dynamic> map)
 {
@@ -55,10 +64,13 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
     description:          apiProject.description,
     utmZone:              apiProject.utmZone,
     isSouthernHemisphere: apiProject.isSouthernHemisphere,
-    corners:              apiProject.corners.map((corner) => latlong.LatLng(
-                            corner.latitude,
-                            corner.longitude,
-                          )).toList(),
+    corners:              apiProject.corners.map(
+                            (corner) => convertCoordRecordToObj(
+                              corner, 
+                              apiProject.utmZone,
+                              apiProject.isSouthernHemisphere
+                            )
+                          ).toList(),
     dataAssignments:      apiProject.dataAssignments,
     createdAt:            DateTime.fromMillisecondsSinceEpoch(
                             apiProject.createdAt
@@ -71,7 +83,13 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       id:            layer.id,
       name:          layer.name,
       description:   layer.description,
-      corners:       layer.corners.map(convertCoordRecordToObj).toList(),
+      corners:       layer.corners.map(
+                      (corner) => convertCoordRecordToObj(
+                        corner, 
+                        apiProject.utmZone,
+                        apiProject.isSouthernHemisphere
+                      )
+                     ).toList(),
       image:         layer.image,
       createdAt:     DateTime.fromMillisecondsSinceEpoch(layer.createdAt),
       lastUpdated:   DateTime.fromMillisecondsSinceEpoch(layer.lastUpdated),
@@ -81,7 +99,13 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       id:            unit.id,
       name:          unit.name,
       description:   unit.description,
-      corners:       unit.corners.map(convertCoordRecordToObj).toList(),
+      corners:       unit.corners.map(
+                      (corner) => convertCoordRecordToObj(
+                        corner, 
+                        apiProject.utmZone,
+                        apiProject.isSouthernHemisphere
+                      )
+                     ).toList(),
       pointInterval: unit.pointInterval,
       createdAt:     DateTime.fromMillisecondsSinceEpoch(unit.createdAt),
       lastUpdated:   DateTime.fromMillisecondsSinceEpoch(unit.lastUpdated),
@@ -250,10 +274,13 @@ class NetworkService {
       description:          apiSpec.description,
       utmZone:              apiSpec.utmZone,
       isSouthernHemisphere: apiSpec.isSouthernHemisphere,
-      corners:              apiSpec
-                              .corners
-                              .map(convertCoordRecordToObj)
-                              .toList(),
+      corners:              apiSpec.corners.map(
+                              (corner) => convertCoordRecordToObj(
+                                corner, 
+                                apiSpec.utmZone,
+                                apiSpec.isSouthernHemisphere
+                              )
+                            ).toList(),
       numLayers:            apiSpec.numLayers,
       numUnits:             apiSpec.numUnits,
       numPxrfData:          apiSpec.numPxrfData,
@@ -360,6 +387,8 @@ class NetworkService {
     DateTime           timestamp,
   })> configureProjectSite(
     String id,
+    int utmZone,
+    bool isSouthernHemisphere,
     {
       List<common.Coordinate>? siteCorners,
 
@@ -423,8 +452,8 @@ class NetworkService {
       args: removeNullEntries({
         'id':             id,
         'siteCorners':    siteCorners?.map((corner) => {
-                            'latitude':  corner.latitude,
-                            'longitude': corner.longitude,
+                            'easting':  corner.easting,
+                            'northing': corner.northing,
                           }).toList(),
         'newUnits':       newUnits.map((unit) => {
                             'name':          unit.name,
@@ -491,7 +520,13 @@ class NetworkService {
         id:            unit.id,
         name:          unit.name,
         description:   unit.description,
-        corners:       unit.corners.map(convertCoordRecordToObj).toList(),
+        corners:       unit.corners.map(
+                        (corner) => convertCoordRecordToObj(
+                          corner, 
+                          utmZone,
+                          isSouthernHemisphere
+                        )
+                       ).toList(),
         pointInterval: unit.pointInterval,
         createdAt:     DateTime.fromMillisecondsSinceEpoch(unit.createdAt),
         lastUpdated:   DateTime.fromMillisecondsSinceEpoch(unit.lastUpdated),
@@ -500,7 +535,13 @@ class NetworkService {
         id:           layer.id,
         name:         layer.name,
         description:  layer.description,
-        corners:      layer.corners.map(convertCoordRecordToObj).toList(),
+        corners:      layer.corners.map(
+                        (corner) => convertCoordRecordToObj(
+                          corner, 
+                          utmZone,
+                          isSouthernHemisphere
+                        )
+                      ).toList(),
         image:        layer.image,
         createdAt:    DateTime.fromMillisecondsSinceEpoch(layer.createdAt),
         lastUpdated:  DateTime.fromMillisecondsSinceEpoch(layer.lastUpdated),
