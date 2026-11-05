@@ -200,8 +200,8 @@ class Visualizer extends StatelessWidget
                       decimalCorners[0].longitude
                     ),
                     bottomLeftCorner: latlong.LatLng(
-                      decimalCorners[1].latitude, 
-                      decimalCorners[1].longitude
+                      decimalCorners[2].latitude, 
+                      decimalCorners[2].longitude
                     ),
                     bottomRightCorner: latlong.LatLng(
                       decimalCorners[3].latitude, 
@@ -237,8 +237,8 @@ class Visualizer extends StatelessWidget
                       decimalCorners[0].longitude
                     ),
                     bottomLeftCorner: latlong.LatLng(
-                      decimalCorners[1].latitude, 
-                      decimalCorners[1].longitude
+                      decimalCorners[2].latitude, 
+                      decimalCorners[2].longitude
                     ),
                     bottomRightCorner: latlong.LatLng(
                       decimalCorners[3].latitude, 
