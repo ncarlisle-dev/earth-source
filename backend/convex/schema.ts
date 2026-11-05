@@ -108,7 +108,6 @@ export const zDbLayer = z.object({
   projectId:      zid("projects"),
   name:           z.string(),
   description:    z.string(),
-  corners:        zCorners,
   image:          z.object({
                     name:       z.string(),
                     size:       z.int().gte(0),

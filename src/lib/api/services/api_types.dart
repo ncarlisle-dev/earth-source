@@ -145,7 +145,6 @@ class ApiLayer
   final String                  id;
   final String                  name;
   final String                  description;
-  final List<common.Coordinate> corners;
   final int                     createdAt;
   final int                     lastUpdated;
   final ApiLayerImage?          image;
@@ -154,7 +153,6 @@ class ApiLayer
     required this.id,
     required this.name,
     required this.description,
-    required this.corners,
     required this.image,
     required this.createdAt,
     required this.lastUpdated,
@@ -165,7 +163,6 @@ class ApiLayer
         id:           map['id'],
         name:         map['name'],
         description:  map['description'],
-        corners:      map['corners'],
         image:        map['image'],
         createdAt:    map['createdAt'],
         lastUpdated:  map['lastUpdated'],
@@ -180,7 +177,6 @@ final zApiImage = _z.object({
 
 final zApiLayer = _z.object({
   'id':           zId,
-  'corners':      _z.array(_zCoordinate).length(4),
   'name':         _z.string(),
   'description':  _z.string(),
   'image':        zApiImage.nullable(),
