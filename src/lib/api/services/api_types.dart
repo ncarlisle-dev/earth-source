@@ -17,26 +17,26 @@ final zId = _z.string();
 /// milliseconds since epoch.
 final zTimestamp = _z.number().min(0).transform((val) => val.toInt());
 
-/// dzod type defining a latitude value. Must be a number between -90 and 90,
-/// inclusive.
-final _zLatitude = _z.number().min(-90).max(90);
+/// dzod type defining an easting value. Must be a number between 166,640 and
+/// 833,360, inclusive.
+final _zEasting = _z.number().min(166640).max(833360);
 
-/// dzod type defining a longitude value. Must be a number between -180 and 180
-/// inclusive.
-final _zLongitude = _z.number().min(-180).max(180);
+/// dzod type defining a northing value. Must be a number between 1,110,400 and
+/// 9,334,080, inclusive.
+final _zNorthing = _z.number().min(1110400).max(9334080);
 
 final _zUtmZone = _z.integer().min(0).max(60).transform((val) => val.toInt());
 
 final _zCount = _z.integer().min(0).transform((val) => val.toInt());
 
 /// dzod type defining the shape of a coordinate object. Is a map containing a
-/// [_zLatitude] and [_zLongitude] field.
+/// [_zEasting] and [_zNorthing] field.
 final _zCoordinate = _z.object({
-  'latitude':  _zLatitude,
-  'longitude': _zLongitude
+  'easting':  _zEasting,
+  'northing': _zNorthing
 }).transform((coordMap) => (
-  latitude:  coordMap['latitude'] as double,
-  longitude: coordMap['longitude'] as double,
+  easting:  coordMap['easting'] as double,
+  northing: coordMap['northing'] as double,
 ));
 
 final _zLayerDataAssignments = _z
@@ -145,7 +145,6 @@ class ApiLayer
   final String                  id;
   final String                  name;
   final String                  description;
-  final List<common.Coordinate> corners;
   final int                     createdAt;
   final int                     lastUpdated;
   final ApiLayerImage?          image;
@@ -154,7 +153,6 @@ class ApiLayer
     required this.id,
     required this.name,
     required this.description,
-    required this.corners,
     required this.image,
     required this.createdAt,
     required this.lastUpdated,
@@ -165,7 +163,6 @@ class ApiLayer
         id:           map['id'],
         name:         map['name'],
         description:  map['description'],
-        corners:      map['corners'],
         image:        map['image'],
         createdAt:    map['createdAt'],
         lastUpdated:  map['lastUpdated'],
@@ -180,7 +177,6 @@ final zApiImage = _z.object({
 
 final zApiLayer = _z.object({
   'id':           zId,
-  'corners':      _z.array(_zCoordinate).length(4),
   'name':         _z.string(),
   'description':  _z.string(),
   'image':        zApiImage.nullable(),

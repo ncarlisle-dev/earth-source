@@ -5,10 +5,10 @@ import '../../api/api.dart' as api;
 /// A page for generating predictions that takes in the current project Id as
 /// a required field.
 class PredictionGeneration extends StatefulWidget {
-  const PredictionGeneration({super.key, required this.projectId});
+  const PredictionGeneration({super.key, required this.project});
 
-  /// Id of the current project.
-  final String projectId;
+  /// The current project being viewed.
+  final api.Project project;
 
   @override
   State<PredictionGeneration> createState() => PredictionGenerationState();
@@ -34,13 +34,11 @@ class PredictionGenerationState extends State<PredictionGeneration>
   Future<List<api.Layer>> getLayersWithAssignments() async
   {
     final List<api.Layer> layers = [];
-    final projectController = await api.ProjectController.getInstance();
-    final project = await projectController.getProjectById(widget.projectId);
-
+    
     // Check to make sure that a layer is only displayed in the dropdown if it
     // has assigned data.
-    for (var layer in project.layers) {
-      if (project.dataAssignments.containsKey(layer.id)) {
+    for (var layer in widget.project.layers) {
+      if (widget.project.dataAssignments.containsKey(layer.id)) {
         layers.add(layer);
       }
     }
@@ -143,15 +141,10 @@ class PredictionGenerationState extends State<PredictionGeneration>
                   // to the overridden build function.
                   onPressed: () async {
                     _formKey.currentState!.save();
-                    final projectController = await api.ProjectController
-                      .getInstance();
                     
-                    final project = await projectController
-                      .getProjectById(widget.projectId);
-
                     // Create a prediction job with the appropriate fields
                     // assigned.
-                    final predictionJob = await project.runPredictionJob(
+                    final predictionJob = await widget.project.runPredictionJob(
                       jobName!,
                       jobDescription!,
                       layerId!,
@@ -163,7 +156,7 @@ class PredictionGenerationState extends State<PredictionGeneration>
                     if (context.mounted) {
                       Navigator.push(context, MaterialPageRoute<void>(
                         builder: (context) => PredictionView(
-                          projectId: widget.projectId, 
+                          project: widget.project, 
                           predictionJob: predictionJob,
                         ),
                       ));

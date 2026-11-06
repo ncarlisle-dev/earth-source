@@ -6,24 +6,24 @@ import { Id, TableNames } from './_generated/dataModel';
 /* =========================== Helper types =========================== */
 
 /**
- * Zod type defining a latitude value. Must be a number between -90 and 90,
- * inclusive.
+ * Zod type defining an easting value. Must be a number between 166,640 and 
+ * 833,360, inclusive.
  */
-export const zLatitude = z.number().gte(-90).lte(90);
+export const zEasting = z.number().gte(166640).lte(833360);
 
 /**
- * Zod type defining a longitude value. Must be a number between -180 and 180
- * inclusive.
+ * Zod type defining a northing value. Must be a number between 1,110,400 and 
+ * 9,334,080 inclusive.
  */
-export const zLongitude = z.number().gte(-180).lte(180);
+export const zNorthing = z.number().gte(1110400).lte(9334080);
 
 /**
  * Zod type defining the shape of a coordinate object. Consists of a
- * {@link zLatitude} and {@link zLongitude} field.
+ * {@link zEasting} and {@link zNorthing} field.
  */
 export const zCoordinate = z.object({
-  latitude: zLatitude,
-  longitude: zLongitude
+  easting: zEasting,
+  northing: zNorthing
 });
 
 /** A coordinate, derived from {@link zCoordinate}. */
@@ -108,7 +108,6 @@ export const zDbLayer = z.object({
   projectId:      zid("projects"),
   name:           z.string(),
   description:    z.string(),
-  corners:        zCorners,
   image:          z.object({
                     name:       z.string(),
                     size:       z.int().gte(0),

@@ -6,9 +6,9 @@ import '../services/network_service.dart';
 import 'network.dart' as network;
 import 'specs.dart' as specs;
 import 'jobs.dart' as jobs;
-import 'package:latlong2/latlong.dart' as latlong;
+import 'package:coordinate_converter/coordinate_converter.dart' as coords;
 
-typedef Coordinate = ({ double latitude, double longitude });
+typedef Coordinate = ({ double easting, double northing });
 
 const List<String> requiredPxrfFields = 
 [
@@ -49,7 +49,7 @@ class Project
   /// User-given description of the project.
   String description;
   /// Location of the corners of the project site.
-  List<latlong.LatLng> corners;
+  List<coords.UTMCoordinates> corners;
   /// List of layers the project contains.
   final List<specs.Layer> layers;
   /// List of units the project contains.
@@ -363,12 +363,9 @@ class Project
   /// after modification.
   Future<specs.Layer> createLayer(
     String name, 
-    String description, 
-    List<Coordinate> corners
+    String description
   ) async
   {
-    assert(corners.length == 4, "corners doesn't have four elements.");
-
     final networkService = await NetworkService.getInstance();
     final Layer createdLayer;
 
@@ -376,10 +373,11 @@ class Project
       final (:createdLayers, :timestamp, createdUnits: _) =
         await networkService.configureProjectSite(
           id,
+          utmZone,
+          isSouthernHemisphere,
           newLayers: [(
             name: name,
             description: description,
-            corners: corners,
           )],
         );
 
@@ -407,13 +405,12 @@ class Project
     {
       String?           name,
       String?           description,
-      List<Coordinate>? corners,
     }
   ) async
   {
     // validate arguments
     assert(
-      name != null || description != null || corners != null,
+      name != null || description != null,
       "No updates specified."
     );
 
@@ -428,11 +425,12 @@ class Project
       final (createdLayers: _, createdUnits: _, :timestamp) = 
         await networkService.configureProjectSite(
           this.id,
+          utmZone,
+          isSouthernHemisphere,
           layerUpdates: {
             id: (
               name: name,
-              description: description,
-              corners: corners,
+              description: description
             )
           }
         );
@@ -449,11 +447,6 @@ class Project
     // set local fields
     if (name != null) layers[layerIndex].name = name;
     if (description != null) layers[layerIndex].description = description;
-    if (corners != null) {
-      layers[layerIndex].corners = corners
-      .map(convertCoordRecordToObj)
-      .toList();
-    }
 
     layers[layerIndex].lastUpdated = updateTimestamp;
     lastUpdated = updateTimestamp;
@@ -475,6 +468,8 @@ class Project
       final (createdLayers: _, createdUnits: _, :timestamp) = 
         await networkService.configureProjectSite(
           this.id,
+          utmZone,
+          isSouthernHemisphere,
           layersToDelete: [id],
         );
       
@@ -512,7 +507,13 @@ class Project
     for (final unit in units) {
       if (
         isOverlapping(
-          corners.map(convertCoordRecordToObj).toList(),
+          corners.map(
+            (corner) => convertCoordRecordToObj(
+              corner, 
+              utmZone, 
+              isSouthernHemisphere
+            )
+          ).toList(),
           unit.corners
         )
       ) {
@@ -532,6 +533,8 @@ class Project
       final (createdLayers: _, :createdUnits, :timestamp) = 
         await networkService.configureProjectSite(
           id,
+          utmZone,
+          isSouthernHemisphere,
           newUnits: [(
             name:          name,
             description:   description,
@@ -583,7 +586,13 @@ class Project
     final unitIndex = units.indexWhere((unit) => unit.id == id);
     assert(unitIndex >= 0, "Unit with ID '$id' not found.");
 
-    final cornerObjs = corners?.map(convertCoordRecordToObj).toList();
+    final cornerObjs = corners?.map(
+      (corner) => convertCoordRecordToObj(
+        corner, 
+        utmZone, 
+        isSouthernHemisphere
+      )
+    ).toList();
 
     if (cornerObjs != null) {
       for (final unit in units) {
@@ -603,6 +612,8 @@ class Project
       final (createdLayers: _, createdUnits: _, :timestamp) = 
         await networkService.configureProjectSite(
           this.id,
+          utmZone,
+          isSouthernHemisphere,
           unitUpdates: {
             id: (
               name:          name,
@@ -663,6 +674,8 @@ class Project
       final (createdLayers: _, createdUnits: _, :timestamp) = 
         await networkService.configureProjectSite(
           this.id,
+          utmZone,
+          isSouthernHemisphere,
           unitsToDelete: [id],
         );
       
@@ -1094,7 +1107,10 @@ class Project
 /* ================================ Utility ================================ */
 
 /// Checks if two units are overlapping and returns true if so, false if not.
-bool isOverlapping(List<latlong.LatLng> corners1, List<latlong.LatLng> corners2)
+bool isOverlapping(
+  List<coords.UTMCoordinates> corners1, 
+  List<coords.UTMCoordinates> corners2
+)
 {
   assert(corners1.length == 4, "corners1 doesn't have four points.");
   assert(corners2.length == 4, "corners2 doesn't have four points.");
@@ -1172,7 +1188,7 @@ bool isOverlapping(List<latlong.LatLng> corners1, List<latlong.LatLng> corners2)
 
 /// Checks if a single lat/long point falls within a given set of corners.
 bool isWithinUnit(
-  List<latlong.LatLng> corners,
+  List<coords.UTMCoordinates> corners,
   double latitude,
   double longitude
 )
@@ -1209,7 +1225,10 @@ bool isWithinUnit(
 /// 
 /// Returns true if all assigned data falls within appropriate boundaries,
 /// false if not.
-bool checkAssignment(PxrfDataSpec pxrfDataSpec, List<latlong.LatLng> corners) 
+bool checkAssignment(
+  PxrfDataSpec pxrfDataSpec, 
+  List<coords.UTMCoordinates> corners
+) 
 {
   assert(corners.length == 4, "corners doesn't have four elements.");
 

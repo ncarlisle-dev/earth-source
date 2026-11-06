@@ -152,6 +152,9 @@ class LoginPageState extends State<LoginPage>
             onPressed: () async {
               api.NetworkService networkService = 
                 await api.NetworkService.getInstance();
+
+              // Temporarily setting authentication to true so the app can be
+              // accessed for testing purposes
               bool isAuthenticated = true;
               //bool isAuthenticated = await 
               //  networkService.authenticateUser();
