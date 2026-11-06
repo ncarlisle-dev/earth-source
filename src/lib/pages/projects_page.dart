@@ -45,6 +45,9 @@ class _UserProjectsPageState extends State<UserProjectsPage>
     final dropdownStateZone = GlobalKey<FormFieldState>();
     final dropdownStateHemisphere = GlobalKey<FormFieldState>();
 
+    List<double> eastings = [];
+    List<double> northings = [];
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -128,6 +131,128 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                       });
                     },
                   ),
+                  Text(
+                    "Enter coordinates for each corner of the project site."
+                  ),
+                  // top left corner
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-left Easting:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the top-left easting';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      eastings.add(double.parse(value.toString()));
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-left Northing:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the top-left northing';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      northings.add(double.parse(value.toString()));
+                    },
+                  ),
+
+                  // top right corner
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-right Easting:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the top-right easting';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      eastings.add(double.parse(value.toString()));
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Top-right Northing:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the top-right northing';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      northings.add(double.parse(value.toString()));
+                    },
+                  ),
+
+                  // bottom left corner
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-left Easting:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the bottom-left easting';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      eastings.add(double.parse(value.toString()));
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-left Northing:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the bottom-left northing';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      northings.add(double.parse(value.toString()));
+                    },
+                  ),
+  
+                  // bottom
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-right Easting:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the bottom-right easting';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      eastings.add(double.parse(value.toString()));
+                    },
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Bottom-right Northing:'
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the bottom-right northing';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) {
+                      northings.add(double.parse(value.toString()));
+                    },
+                  ),
                 ],
               ),
             ),
@@ -149,11 +274,10 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                   int.parse(zoneValue),
                   hemisphere == "Southern",
                   [
-                    // TODO: add input for this field
-                    (easting: 166640, northing: 1110400), 
-                    (easting: 166640, northing: 1110400),  
-                    (easting: 166640, northing: 1110400),  
-                    (easting: 166640, northing: 1110400), 
+                    (easting: eastings[0], northing: northings[0]), 
+                    (easting: eastings[1], northing: northings[1]),  
+                    (easting: eastings[2], northing: northings[2]),  
+                    (easting: eastings[3], northing: northings[3]), 
                   ]
                 );
 

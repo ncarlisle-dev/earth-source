@@ -148,7 +148,7 @@ class _ProjectDashboardState extends State<ProjectDashboard>
           child: FloatingActionButton(
             onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
               builder:
-                (context) => PredictionsPage(projectId: widget.project.id),
+                (context) => PredictionsPage(project: widget.project),
             )),
             heroTag: "predictionsPage",
             child: Text("Predictions")
