@@ -186,7 +186,8 @@ class PXRFMaterialClassifier:
         cm = confusion_matrix(y_test, y_pred, labels=unique_labels)
         
         print("\nCONFUSION MATRIX:")
-        print(f"{'Actual \\ Predicted':<15}", end="")
+        header = "Actual \\ Predicted"
+        print(f"{header:<15}", end="")
         for label in unique_labels:
             print(f"{label:<10}", end="")
         print()
@@ -279,7 +280,8 @@ class PXRFMaterialClassifier:
         binary_cm = confusion_matrix(y_binary, y_binary_pred, labels=['soil', 'non-soil'])
         
         print("\nBINARY CONFUSION MATRIX:")
-        print(f"{'Actual \\ Predicted':<20} {'soil':<10} {'non-soil':<10}")
+        header = "Actual \\ Predicted"
+        print(f"{header:<20} {'soil':<10} {'non-soil':<10}")
         print(f"{'soil':<20} {binary_cm[0][0]:<10} {binary_cm[0][1]:<10}")
         print(f"{'non-soil':<20} {binary_cm[1][0]:<10} {binary_cm[1][1]:<10}")
         
