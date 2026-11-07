@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart' as file_picker;
 import 'dart:io' as io; 
 import 'dart:convert' as convert;
 import 'dart:typed_data' as typed_data;
+import 'project_dashboard.dart';
 
 /// A stateful widget for the project site map page, which takes the current 
 /// project as a required field.
@@ -776,7 +777,10 @@ class _MapPageState extends State<MapPage>
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder:
+                (context) => ProjectDashboard(project: widget.project),
+            )),
             child: const Icon(Icons.arrow_circle_left)
           )
         ),

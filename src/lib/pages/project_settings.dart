@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api/api.dart' as api;
-import 'projects_page.dart';
+import 'home_page.dart';
 
 /// A stateful widget for the project settings page, with a given project id
 /// as a required field.
@@ -43,7 +43,7 @@ class _ProjectSettingsState extends State<ProjectSettings>
                 if (context.mounted)
                 {
                   Navigator.push(context, MaterialPageRoute<void>(
-                    builder: (context) => UserProjectsPage(),
+                    builder: (context) => HomePage(),
                     ),
                   );
                 }

@@ -5,6 +5,7 @@ import 'dart:io' as io;
 import '../../api/api.dart' as api;
 import 'data_file.dart' as data_file;
 import '../connections_page.dart';
+import '../project_dashboard.dart';
 
 /// A stateful widget for the project predictions page, which takes the id for 
 /// the current project as a required field.
@@ -192,7 +193,10 @@ class _DataPageState extends State<DataPage>
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder:
+                (context) => ProjectDashboard(project: widget.project),
+            )),
             child: const Icon(Icons.arrow_circle_left)
           )
         ),

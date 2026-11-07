@@ -268,7 +268,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                 final projectController = await api.ProjectController
                   .getInstance();
 
-                final newProject = await projectController.createProject(
+                await projectController.createProject(
                   projectName, 
                   projectDescription,
                   int.parse(zoneValue),
@@ -282,12 +282,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                 );
 
                 if (context.mounted) {
-                  Navigator.push(
-                    context, 
-                    MaterialPageRoute<void>(builder: 
-                      (context) => ProjectDashboard(project: newProject)
-                    )
-                  );
+                  Navigator.of(context).pop();
                 }
               },
             ),
@@ -304,7 +299,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   @override
   Widget build(BuildContext context) 
   {
-    return ListView(
+    return Material(child: ListView(
       children: [
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
@@ -437,6 +432,6 @@ class _UserProjectsPageState extends State<UserProjectsPage>
           ),
         ),
       ],
-    );
+    ));
   }
 }
