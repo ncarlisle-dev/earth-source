@@ -4,6 +4,7 @@ import 'project_settings.dart';
 import 'predictions/predictions_page.dart';
 import 'data/data_page.dart';
 import 'map_page.dart';
+import 'projects_page.dart';
 
 /// A stateful widget for the project dashboard page, with a given project
 /// as a required field.
@@ -86,7 +87,10 @@ class _ProjectDashboardState extends State<ProjectDashboard>
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder:
+                (context) => UserProjectsPage(),
+            )),
             child: const Icon(Icons.arrow_circle_left)
           )
         ),

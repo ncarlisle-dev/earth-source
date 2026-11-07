@@ -4,6 +4,7 @@ import '../../api/api.dart' as api;
 import '../home_page.dart';
 import 'package:coordinate_converter/coordinate_converter.dart' as 
   coord_converter;
+import '../project_dashboard.dart';
 
 /// A stateful widget for the prediction view page, which takes the id for the
 /// current project and a prediction job object as required fields.
@@ -300,7 +301,10 @@ class _PredictionViewState extends State<PredictionView> {
       Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder:
+                (context) => ProjectDashboard(project: widget.project),
+            )),
             child: const Icon(Icons.arrow_circle_left)
           )
         ),
