@@ -107,16 +107,17 @@ async def ebk(file: UploadFile = File(...)):
         .any(axis=1)
     )
 
-    coords = df[["X_Coord", "Y_Coord"]
-    ].apply(pd.to_numeric, errors="coerce")
+    coords = df[["X_Coord", "Y_Coord"]]
+    .apply(pd.to_numeric, errors="coerce")
 
     #Exclude invalid coordinates
-    valid_coords = np.isfinite(coords.to_numpy(dtype=float)
-                              ).all(axis=1)
+    valid_coords = np.isfinite(
+        coords.to_numpy(dtype=float)
+    ).all(axis=1)
 
-    valid = valid_scans & valid_coords
+    valid_samples = valid_scans & valid_coords
 
-    if not valid.any():
+    if not valid_samples.any():
         raise HTTPException(
             status_code=422,
             detail="No valid samples available for EBK"
@@ -125,10 +126,10 @@ async def ebk(file: UploadFile = File(...)):
     #The EBK process needs the classifier probability first
     result_df = model.predict(df)
 
-    location_data = result_df.loc[valid].copy()
+    location_data = result_df.loc[valid_samples].copy()
 
     location_data[["X_Coord", "Y_Coord"]] = coords.loc[
-        valid, 
+        valid_samples, 
         ["X_Coord", "Y_Coord"]
     ]
 
