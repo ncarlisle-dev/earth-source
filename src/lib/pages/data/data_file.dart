@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
+import 'data_page.dart';
 
 /// A stateful widget for viewing CSV data, which takes the current project and
 /// a data spec object as required fields.
@@ -44,7 +45,10 @@ class DataView extends StatelessWidget {
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder:
+                (context) => DataPage(project: project),
+            )),
             child: const Icon(Icons.arrow_circle_left)
           )
         ),

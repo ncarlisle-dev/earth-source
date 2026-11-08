@@ -1,77 +1,81 @@
-import 'package:flutter/material.dart' as material;
+import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' as cupertino;
 
-import './about_page.dart' as about_page;
-import './help_page.dart' as help_page;
-import './languages_page.dart' as languages_page;
-import './projects_page.dart' as projects_page;
-import './settings_page.dart' as settings_page;
+import './about_page.dart';
+import './help_page.dart';
+import './languages_page.dart';
+import './projects_page.dart';
+import './settings_page.dart';
 
 /// A page containing the navigation bar for the app from which all other pages
 /// can be accessed.
-class HomePage extends material.StatefulWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  material.State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
 /// The mutable state of the home page.
-class _HomePageState extends material.State<HomePage> {
-  // index of the current page being displayed from the nav bar
-  int currentPageIndex = 2;
+class _HomePageState extends State<HomePage> {
+  final cupertino.CupertinoTabController controller = 
+    cupertino.CupertinoTabController();
 
   @override
-  material.Widget build(material.BuildContext context) {
-    return material.Scaffold(
-      bottomNavigationBar: material.NavigationBar(
-        onDestinationSelected: (int index) {
-          setState(() {
-            currentPageIndex = index;
-          });
-        },
-        indicatorColor: material.Colors.amber,
-        selectedIndex: currentPageIndex,
-        labelBehavior: material.NavigationDestinationLabelBehavior.alwaysHide,
-        destinations: const <material.Widget>[
-          material.NavigationDestination(
-            icon: material.Icon(material.Icons.settings_outlined),
-            label: 'Settings',
+  Widget build(BuildContext context) {
+    controller.index = 2;
+    return cupertino.CupertinoTabScaffold(
+      controller: controller,
+      tabBar: cupertino.CupertinoTabBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            label: "Settings",
           ),
-          material.NavigationDestination(
-            icon: material.Icon(material.Icons.language_outlined),
-            label: 'Languages',
+          BottomNavigationBarItem(
+            icon: Icon(Icons.language_outlined),
+            label: "Languages",
           ),
-          material.NavigationDestination(
-            selectedIcon: material.Icon(material.Icons.home),
-            icon: material.Icon(material.Icons.home_outlined),
-            label: 'Home',
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            label: "Home",
           ),
-          material.NavigationDestination(
-            icon: material.Icon(material.Icons.help_outline),
-            label: 'Help',
+          BottomNavigationBarItem(
+            icon: Icon(Icons.help_outline),
+            label: "Help",
           ),
-          material.NavigationDestination(
-            icon: material.Icon(material.Icons.info_outline),
-            label: 'About',
+          BottomNavigationBarItem(
+            icon: Icon(Icons.info_outline),
+            label: "About",
           ),
-
-          // Use below for testing pages
-          // material.NavigationDestination(
-          //   icon: material.Icon(material.Icons.warning),
-          //   label: 'WIP'
-          // ),
         ],
       ),
-      
-      // page destinations of each item in the nav bar
-      body: <material.Widget>[
-        settings_page.SettingsPage(),
-        languages_page.LanguagesPage(),
-        projects_page.UserProjectsPage(),
-        help_page.HelpPage(),
-        about_page.AboutPage(),
-        // connections_page.ConnectionsPage(),
-      ][currentPageIndex],
+      tabBuilder: (context, index) {
+        switch (index) {
+          case 0:
+            return cupertino.CupertinoTabView(builder: (context) {
+              return cupertino.CupertinoPageScaffold(child: SettingsPage());
+            });
+          case 1:
+            return cupertino.CupertinoTabView(builder: (context) {
+              return cupertino.CupertinoPageScaffold(child: LanguagesPage());
+            });
+          case 2:
+            return cupertino.CupertinoTabView(builder: (context) {
+              return cupertino.CupertinoPageScaffold(child: UserProjectsPage());
+            });
+          case 3:
+            return cupertino.CupertinoTabView(builder: (context) {
+              return cupertino.CupertinoPageScaffold(child: HelpPage());
+            });
+          case 4:
+            return cupertino.CupertinoTabView(builder: (context) {
+              return cupertino.CupertinoPageScaffold(child: AboutPage());
+            });
+          default:
+            return const cupertino.CupertinoTabView();
+        }
+      },
     );
   }
 }
