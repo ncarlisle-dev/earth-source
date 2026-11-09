@@ -186,6 +186,30 @@ class _DataPageState extends State<DataPage>
     );
   }
 
+  /// Given a data spec id, searches through data assignments to find the name
+  /// of the layer and unit assigned to that data spec and returns both strings
+  /// if found, empty strings if not.
+  List<String> getAssignments(String dataId)
+  {
+    String layerName = "";
+    String unitName = "";
+
+    widget.project.dataAssignments.forEach((layerId, unitAssignment) {
+      unitAssignment.forEach((unitId, dataSpecId)
+      {
+        if (dataSpecId == dataId)
+        {
+          unitName =  widget.project.units.firstWhere(
+            (unit) => unit.id == unitId).name;
+          layerName =  widget.project.layers.firstWhere(
+            (layer) => layer.id == layerId).name;
+        }
+      }); 
+    });
+
+    return [layerName, unitName];
+  }
+
   @override
   Widget build(BuildContext context) 
   {
@@ -270,6 +294,27 @@ class _DataPageState extends State<DataPage>
                         Text(
                           "Last Updated: "
                             "${data[index].lastUpdated}",
+                          style: TextStyle(fontSize: 15)
+                        ),
+                        getAssignments(data[index].id)[0] == ""
+                        ?
+                        Text(
+                          "No layers or units assigned yet!",
+                          style: TextStyle(fontSize: 15)
+                        )
+                        :
+                        Text(
+                          "Assigned Layer: "
+                            "${getAssignments(data[index].id)[0]}",
+                          style: TextStyle(fontSize: 15)
+                        ),
+                        getAssignments(data[index].id)[1] == ""
+                        ?
+                        Center()
+                        :
+                        Text(
+                          "Assigned Unit: "
+                            "${getAssignments(data[index].id)[1]}",
                           style: TextStyle(fontSize: 15)
                         ),
                         // Button which navigates to the data view page for the
