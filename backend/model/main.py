@@ -107,8 +107,10 @@ async def ebk(file: UploadFile = File(...)):
         .any(axis=1)
     )
 
-    coords = df[["X_Coord", "Y_Coord"]]
-    .apply(pd.to_numeric, errors="coerce")
+    coords = (
+        df[["X_Coord", "Y_Coord"]]
+        .apply(pd.to_numeric, errors="coerce")
+    )
 
     #Exclude invalid coordinates
     valid_coords = np.isfinite(
@@ -133,16 +135,16 @@ async def ebk(file: UploadFile = File(...)):
         ["X_Coord", "Y_Coord"]
     ]
 
+    #Verify that enough distinct locations exist
+    unique_points = location_data[["X_Coord", "Y_Coord"]]
+        .drop_duplicates()
+
     if len(unique_points) < 10:
         raise HTTPException(
             status_code=422,
             detail="EBK requires at more than 10 distinct sample locations"
         )
-
-    #Verify that enough distinct locations exist
-    unique_points = location_data[["X_Coord", "Y_Coord"]]
-        .drop_duplicates()
-
+        
     #Verify that coordinates can span a 2D region
     if (unique_points["X_Coord"].nunique() < 2
         or unique_points["Y_Coord"].nunique() < 2):
