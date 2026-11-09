@@ -87,7 +87,7 @@ class _DataPageState extends State<DataPage>
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 16.0),
-                    child: Text("Change Layer Assignment:")
+                    child: Text("Set Layer Assignment:")
                   ),
                   DropdownButtonFormField(
                     key: dropdownStateLayer,
@@ -106,7 +106,7 @@ class _DataPageState extends State<DataPage>
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 16.0),
-                    child: Text("Change Unit Assignment:")
+                    child: Text("Set Unit Assignment:")
                   ),
                   DropdownButtonFormField(
                     key: dropdownStateUnit,
@@ -139,7 +139,8 @@ class _DataPageState extends State<DataPage>
                 String unitId = (widget.project.units.firstWhere(
                   (unit) => unit.name == assignedUnit)).id;
 
-                widget.project.assignData(layerId, unitId, dataId);
+                await widget.project.assignData(layerId, unitId, dataId);
+                setState(() => widget.project.dataAssignments);
 
                 if (context.mounted) Navigator.of(context).pop();
               },
