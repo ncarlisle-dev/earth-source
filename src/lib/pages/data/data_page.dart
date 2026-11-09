@@ -38,7 +38,8 @@ class _DataPageState extends State<DataPage>
       final filePath = file.path!;
       io.File imageFile = io.File(filePath);
       String fileString = await imageFile.readAsString();
-      widget.project.addPxrfData(fileString, filePath, "");
+      await widget.project.addPxrfData(fileString, filePath, "");
+      setState(() => widget.project.pxrfData);
     }
   }
 
