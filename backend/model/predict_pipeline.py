@@ -1,5 +1,6 @@
 from cloud_model import PXRFModel
 from ebk_predict import dataframe_to_grid
+from batch_jobs import X_COORD, Y_COORD, COORD_COLUMNS
 
 #Load in trained model for each process
 model = PXRFModel("pxrf_full_model.pkl")
@@ -13,7 +14,7 @@ def classify_samples(dataframe):
 #Take in samples with coordinates
 #Return the EBK grid
 def process_samples(dataframe):
-  req = {"X_Coord", "Y_Coord"}
+  req = {X_COORD, Y_COORD}
 
   is_missing = required - set(df.columns)
 
@@ -24,8 +25,8 @@ def process_samples(dataframe):
   #Run EBK predictions on the classified data
   grid_df, original_points_df = dataframe_to_grid(
     classified_dataframe,
-    x_col="X_Coord",
-    y_col="Y_Coord",
+    x_col=X_COORD,
+    y_col=Y_COORD,
     prob_col="non_soil_probability"
   )
   #return the processed data
