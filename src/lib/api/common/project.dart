@@ -738,7 +738,7 @@ class Project
       );
     }
 
-    dataAssignments[layerId] = {unitId: specId};
+    dataAssignments[layerId]![unitId] = specId;
   }
 
   /// Sends the data files assigned to the layer passed by name as a parameter 
