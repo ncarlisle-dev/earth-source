@@ -10,6 +10,7 @@ from client_convex import client
 from cloud_model import PXRFModel, FEATURE_COLUMNS
 from ebk_predict import dataframe_to_grid
 from batch_jobs import process_job
+from batch_jobs import X_COORD, Y_COORD, COORD_COLUMNS
 
 app = FastAPI()
 
@@ -78,7 +79,7 @@ async def ebk(file: UploadFile = File(...)):
     )
 
     #Check for these headers
-    required_coords = {"X_Coord", "Y_Coord"}
+    required_coords = {X_COORD, Y_COORD}
     #If theyre missing
     missing = required_coords - set(df.columns)
 
@@ -108,7 +109,7 @@ async def ebk(file: UploadFile = File(...)):
     )
 
     coords = (
-        df[["X_Coord", "Y_Coord"]]
+        df[[X_COORD, Y_COORD]]
         .apply(pd.to_numeric, errors="coerce")
     )
 
@@ -130,13 +131,13 @@ async def ebk(file: UploadFile = File(...)):
 
     location_data = result_df.loc[valid_samples].copy()
 
-    location_data[["X_Coord", "Y_Coord"]] = coords.loc[
+    location_data[[X_COORD, Y_COORD]] = coords.loc[
         valid_samples, 
-        ["X_Coord", "Y_Coord"]
+        [X_COORD, Y_COORD]
     ]
 
     #Verify that enough distinct locations exist
-    unique_points = location_data[["X_Coord", "Y_Coord"]]
+    unique_points = location_data[[X_COORD, Y_COORD]]
         .drop_duplicates()
 
     if len(unique_points) < 10:
@@ -146,8 +147,8 @@ async def ebk(file: UploadFile = File(...)):
         )
         
     #Verify that coordinates can span a 2D region
-    if (unique_points["X_Coord"].nunique() < 2
-        or unique_points["Y_Coord"].nunique() < 2):
+    if (unique_points[X_COORD].nunique() < 2
+        or unique_points[Y_COORD].nunique() < 2):
             raise HTTPException(
                 status_code=422,
                 detail="EBK requires variation in both coordinate axes"
@@ -156,8 +157,8 @@ async def ebk(file: UploadFile = File(...)):
     try:
         ebk_grid_df, original_points_df = dataframe_to_grid(
             location_data,
-            x_col="X_Coord",
-            y_col="Y_Coord",
+            x_col=X_COORD,
+            y_col=Y_COORD,
             prob_col="non_soil_probability"
         )
     except (ValueError, RuntimeError) as exc:
