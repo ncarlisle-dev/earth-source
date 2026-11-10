@@ -77,7 +77,7 @@ def load_data(params):
     #Store which unit this came from
     df["source_unit_index"] = index
     
-    coords = ["X_Coord", "Y_Coord"]
+    coords = [X_COORD, Y_COORD]
     #ensure the coords are present in the file
     if not all(col in df.columns for col in coords):
       print(f"Mapping sample coords for unit {index}")
