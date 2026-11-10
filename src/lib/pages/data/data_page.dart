@@ -189,7 +189,7 @@ class _DataPageState extends State<DataPage>
   /// Given a data spec id, searches through data assignments to find the name
   /// of the layer and unit assigned to that data spec and returns both strings
   /// if found, empty strings if not.
-  List<String> getAssignments(String dataId)
+  (String, String) getAssignments(String dataId)
   {
     String layerName = "";
     String unitName = "";
@@ -207,7 +207,7 @@ class _DataPageState extends State<DataPage>
       }); 
     });
 
-    return [layerName, unitName];
+    return (layerName, unitName);
   }
 
   @override
@@ -296,7 +296,7 @@ class _DataPageState extends State<DataPage>
                             "${data[index].lastUpdated}",
                           style: TextStyle(fontSize: 15)
                         ),
-                        getAssignments(data[index].id)[0] == ""
+                        getAssignments(data[index].id).$1 == ""
                         ?
                         Text(
                           "No layers or units assigned yet!",
@@ -305,16 +305,16 @@ class _DataPageState extends State<DataPage>
                         :
                         Text(
                           "Assigned Layer: "
-                            "${getAssignments(data[index].id)[0]}",
+                            "${getAssignments(data[index].id).$1}",
                           style: TextStyle(fontSize: 15)
                         ),
-                        getAssignments(data[index].id)[1] == ""
+                        getAssignments(data[index].id).$2 == ""
                         ?
                         Center()
                         :
                         Text(
                           "Assigned Unit: "
-                            "${getAssignments(data[index].id)[1]}",
+                            "${getAssignments(data[index].id).$2}",
                           style: TextStyle(fontSize: 15)
                         ),
                         // Button which navigates to the data view page for the
