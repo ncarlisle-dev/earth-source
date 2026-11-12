@@ -2,6 +2,7 @@ import 'package:archaeo_sight_2/api/controllers/project_controller.dart';
 import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
 import './project_dashboard.dart';
+import 'dart:convert' as convert;
 
 /// A stateful widget for the user projects page.
 class UserProjectsPage extends StatefulWidget 
@@ -34,6 +35,21 @@ class _UserProjectsPageState extends State<UserProjectsPage>
       await api.ProjectController.getInstance();
     
     return await projectController.getUserProjectSpecs();
+  }
+
+  Future<String> fetchLayerImage(String projectId) async
+  {
+    String layerImage = "";
+
+    final projectController = await ProjectController.getInstance();
+    final project = await projectController.getProjectById(projectId);
+
+    if (project.layers.isNotEmpty)
+    {
+      layerImage = await project.getLayerImage(project.layers[0].id);
+    }
+
+    return layerImage;
   }
 
   /// Displays a dialogue box containing forms for the user to fill out for
@@ -343,86 +359,72 @@ class _UserProjectsPageState extends State<UserProjectsPage>
               }
 
               return ListView.builder(
+                shrinkWrap: true,
+                physics: ClampingScrollPhysics(),
                 itemCount: snapshot.data!.length, 
                 itemBuilder: (BuildContext context, int index) {
-                  return Card(
-                    color: Color.fromARGB(255, 232, 237, 242),
-                    elevation: 50,
-                    child: SizedBox(
-                      child: Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: Column(
-                          children: [
-                            Text(
-                              snapshot.data![index].name,
-                              style: TextStyle(
-                                fontSize: 30,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              "Description: "
-                                "${snapshot.data![index].description}",
-                              style: TextStyle(fontSize: 15)
-                            ),
-                            Text(
-                              "Date Created: "
-                                "${snapshot.data![index].createdAt}",
-                              style: TextStyle(fontSize: 15)
-                            ),
-                            Text(
-                              "Last Updated: "
-                                "${snapshot.data![index].lastUpdated}",
-                              style: TextStyle(fontSize: 15)
-                            ),
-                            Text(
-                              "Number of Layers: "
-                                "${snapshot.data![index].numLayers}",
-                              style: TextStyle(fontSize: 15)
-                            ),
-                            Text(
-                              "Number of Units: "
-                                "${snapshot.data![index].numUnits}",
-                              style: TextStyle(fontSize: 15)
-                            ),
-                            Text(
-                              "Number of Predictions: "
-                                "${snapshot.data![index].numPredictions}",
-                              style: TextStyle(fontSize: 15)
-                            ),
+                  return GestureDetector(
+                    onTap: () async {
+                      final projectController = 
+                        await ProjectController.getInstance();
+                      final project = await projectController.getProjectById(
+                        snapshot.data![index].id
+                      );
 
-                            // Button which navigates to the project 
-                            // dashboard page for the selected project.
-                            Padding(
-                              padding: EdgeInsets.all(20),
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  final projectController = 
-                                    await ProjectController.getInstance();
-                                  final project = await projectController
-                                    .getProjectById(
-                                      snapshot.data![index].id
-                                    );
+                      if (!context.mounted) return;
 
-                                  if (!context.mounted) return;
+                      Navigator.push(context, MaterialPageRoute<void>(
+                        builder: (context) => ProjectDashboard(project: project)
+                      ));
+                    },
+                    child: Card(
+                      margin: EdgeInsetsGeometry.only(top: 20.0),
+                      color: Color.fromARGB(255, 232, 237, 242),
+                      surfaceTintColor: Color.fromARGB(255, 84, 122, 149),
+                      child: 
+                        ProjectListItem(
+                          name: snapshot.data![index].name,
+                          description: snapshot.data![index].description,
+                          timeCreated: 
+                            snapshot.data![index].createdAt.toString(),
+                          timeUpdated: 
+                            snapshot.data![index].lastUpdated.toString(),
+                          numLayers: snapshot.data![index].numLayers.toString(),
+                          numUnits: snapshot.data![index].numUnits.toString(),
+                          numPredictions: 
+                            snapshot.data![index].numPredictions.toString(),
+                          thumbnail: FutureBuilder(
+                            future: fetchLayerImage(snapshot.data![index].id),
+                            builder: (
+                              BuildContext ctx, 
+                              AsyncSnapshot<String> newSnapshot
+                            ) {
+                              if (newSnapshot.hasError) {
+                                print(newSnapshot.error!.toString());
+                                return Center(
+                                  child: Text("Error fetching layer image.")
+                                );
+                              }
 
-                                  Navigator.push(
-                                    context, 
-                                    MaterialPageRoute<void>(
-                                      builder: (context) 
-                                        => ProjectDashboard(
-                                          project: project
-                                        )
-                                    )
-                                  );
-                                },
-                                child: Text("View Project")
-                              ),
-                            )
-                          ],
+                              if (!newSnapshot.hasData) {
+                                return Center(child: Text("Loading image..."));
+                              }
+
+                              if (newSnapshot.data == "") {
+                                return Center(child: Text(
+                                  "No layer image available."
+                                ));
+                              }
+
+                              else { 
+                                return Image.memory(
+                                  convert.base64Decode(newSnapshot.data!),
+                                  height: 300
+                                );
+                                }
+                            }),
                         ),
-                      ),
-                    ),
+                    )
                   );
                 }
               );
@@ -431,5 +433,155 @@ class _UserProjectsPageState extends State<UserProjectsPage>
         ),
       ],
     ));
+  }
+}
+
+/// Widget containing the text-based fields for a project.
+class ProjectFields extends StatelessWidget {
+  const ProjectFields({
+    super.key,
+    required this.name,
+    required this.description,
+    required this.timeCreated,
+    required this.timeUpdated,
+    required this.numLayers,
+    required this.numUnits,
+    required this.numPredictions
+  });
+
+  /// Name of the project.
+  final String name;
+  /// Description of the project.
+  final String description;
+  /// Time at which the project was created.
+  final String timeCreated;
+  /// Time at which the project was last updated.
+  final String timeUpdated;
+  /// Number of layers in the project.
+  final String numLayers;
+  /// Number of units in the project.
+  final String numUnits;
+  /// Number of predictions the project contains.
+  final String numPredictions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: .start,
+      children: <Widget>[
+        Text(
+          name,
+          maxLines: 2,
+          overflow: .ellipsis,
+          style: const TextStyle(fontWeight: .bold, fontSize: 22.0),
+        ),
+        const Padding(padding: .only(bottom: 2.0)),
+        Expanded(
+          child: Text(
+            description,
+            maxLines: 2,
+            overflow: .ellipsis,
+            style: const TextStyle(
+              fontSize: 15.0, 
+              color: Color.fromARGB(255, 84, 122, 149)
+            ),
+          ),
+        ),
+        Text(
+          "Created At: $timeCreated",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+        Text(
+          "Last Modified: $timeUpdated",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+        Text(
+          "Number of Layers: $numLayers",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+        Text(
+          "Number of Units: $numUnits",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+        Text(
+          "Number of Predictions: $numPredictions",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+      ],
+    );
+  }
+}
+
+/// Widget representing a single project spec, contained in a row in which the
+/// image for the topmost layer is displayed to the left and the text-based
+/// fields are displayed to the right.
+class ProjectListItem extends StatelessWidget {
+  const ProjectListItem({
+    super.key,
+    required this.name,
+    required this.description,
+    required this.timeCreated,
+    required this.timeUpdated,
+    required this.numLayers,
+    required this.numUnits,
+    required this.numPredictions,
+    required this.thumbnail
+  });
+
+  /// Widget for the thumbnail image.
+  final Widget thumbnail;
+  /// Name of the project.
+  final String name;
+  /// Description of the project.
+  final String description;
+  /// Time at which the project was created.
+  final String timeCreated;
+  /// Time at which the project was last updated.
+  final String timeUpdated;
+  /// Number of layers in the project.
+  final String numLayers;
+  /// Number of units in the project.
+  final String numUnits;
+  /// Number of predictions the project contains.
+  final String numPredictions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const .symmetric(vertical: 10.0),
+      child: SizedBox(
+        height: 180,
+        child: Row(
+          crossAxisAlignment: .start,
+          children: <Widget>[
+            AspectRatio(aspectRatio: 1.0, child: thumbnail),
+            Expanded(
+              child: Padding(
+                padding: const .fromLTRB(20.0, 0.0, 2.0, 0.0),
+                child: ProjectFields(
+                  name: name,
+                  description: description,
+                  timeCreated: timeCreated,
+                  timeUpdated: timeUpdated,
+                  numLayers: numLayers,
+                  numUnits: numUnits,
+                  numPredictions: numPredictions,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
