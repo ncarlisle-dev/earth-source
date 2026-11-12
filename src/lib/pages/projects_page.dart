@@ -299,7 +299,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   @override
   Widget build(BuildContext context) 
   {
-    return Material(child: ListView(
+    return Material(child: Column(
       children: [
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
@@ -307,8 +307,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
             child: Text(
               "Projects", 
               style: TextTheme.of(context).headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold, 
-                color: Colors.indigo
+                fontWeight: FontWeight.bold
               )
             )
           ), //Icon
@@ -347,8 +346,8 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                 itemCount: snapshot.data!.length, 
                 itemBuilder: (BuildContext context, int index) {
                   return Card(
+                    color: Color.fromARGB(255, 232, 237, 242),
                     elevation: 50,
-                    shadowColor: Colors.black,
                     child: SizedBox(
                       child: Padding(
                         padding: EdgeInsets.all(20.0),
@@ -358,7 +357,6 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                               snapshot.data![index].name,
                               style: TextStyle(
                                 fontSize: 30,
-                                color: Colors.indigo,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
