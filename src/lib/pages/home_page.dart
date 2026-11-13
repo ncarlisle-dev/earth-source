@@ -27,6 +27,7 @@ class _HomePageState extends State<HomePage> {
     return cupertino.CupertinoTabScaffold(
       controller: controller,
       tabBar: cupertino.CupertinoTabBar(
+        //backgroundColor: Color.fromARGB(255, 44, 57, 71),
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined),
@@ -49,6 +50,7 @@ class _HomePageState extends State<HomePage> {
             label: "About",
           ),
         ],
+        activeColor: Color.fromARGB(255, 84, 122, 149),
       ),
       tabBuilder: (context, index) {
         switch (index) {
@@ -62,7 +64,8 @@ class _HomePageState extends State<HomePage> {
             });
           case 2:
             return cupertino.CupertinoTabView(builder: (context) {
-              return cupertino.CupertinoPageScaffold(child: UserProjectsPage());
+              return cupertino.CupertinoPageScaffold(
+                child: UserProjectsPage());
             });
           case 3:
             return cupertino.CupertinoTabView(builder: (context) {

@@ -2,6 +2,7 @@ import 'package:archaeo_sight_2/api/controllers/project_controller.dart';
 import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
 import './project_dashboard.dart';
+import 'dart:convert' as convert;
 
 /// A stateful widget for the user projects page.
 class UserProjectsPage extends StatefulWidget 
@@ -24,16 +25,58 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   /// Description of the created project.
   String projectDescription = "";
 
-  List<String> utmZones = [for (var i = 1; i <= 60; i++) "$i"]; // 0 to 60
+  /// List of all possible UTM zones from 1 to 60.
+  List<String> utmZones = [for (var i = 1; i <= 60; i++) "$i"];
+  /// List of northern and southern hemispheres.
   List<String> hemispheres = ["Southern", "Northern"];
 
-  /// Fetches a list of all the user's projects.
-  Future<List<api.ProjectSpec>> fetchProjects() async
+  /// List to store specs for all user projects.
+  List<api.ProjectSpec> projects = [];
+  /// List to store string representations of layer images.
+  List<String> layerImages = [];
+
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
+  }
+
+  /// Loads data for project specs and layer images when the page is loaded.
+  Future<void> _loadData() async
   {
     api.ProjectController projectController = 
       await api.ProjectController.getInstance();
-    
-    return await projectController.getUserProjectSpecs();
+
+    api.LayerImages layerImageController =
+      await api.LayerImages.getInstance();
+
+    projects = await projectController.getUserProjectSpecs();
+
+    // Loop through all the projects and retrieve the image for each top layer.
+    for (var project in projects)
+    {
+      final projectData = await projectController.getProjectById(project.id);
+      String layerImage = "";
+      if (projectData.layers.isNotEmpty)
+      {
+        layerImage = await layerImageController.getImageByLayerId(
+          project.id, 
+          projectData.layers[0].id
+        );
+      }
+      layerImages.add(layerImage);
+    }
+
+    setState(() {
+      projects;
+      layerImages;
+      loading = false;
+    });
   }
 
   /// Displays a dialogue box containing forms for the user to fill out for
@@ -268,7 +311,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                 final projectController = await api.ProjectController
                   .getInstance();
 
-                await projectController.createProject(
+                api.Project newProject = await projectController.createProject(
                   projectName, 
                   projectDescription,
                   int.parse(zoneValue),
@@ -280,6 +323,28 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     (easting: eastings[3], northing: northings[3]), 
                   ]
                 );
+
+                // Update projects and layerImages to update page display.
+                projects.add(api.ProjectSpec(
+                  id: newProject.id, 
+                  name: projectName, 
+                  description: projectDescription, 
+                  utmZone: newProject.utmZone, 
+                  isSouthernHemisphere: newProject.isSouthernHemisphere, 
+                  corners: newProject.corners, 
+                  numLayers: 0, 
+                  numUnits: 0, 
+                  numPxrfData: 0, 
+                  numTrainingData: 0, numPredictions: 0, 
+                  numModels: 0, 
+                  createdAt: newProject.createdAt, 
+                  lastUpdated: newProject.lastUpdated
+                ));
+
+                layerImages.add("");
+
+                setState(() => projects);
+                setState(() => layerImages);
 
                 if (context.mounted) {
                   Navigator.of(context).pop();
@@ -307,131 +372,248 @@ class _UserProjectsPageState extends State<UserProjectsPage>
             child: Text(
               "Projects", 
               style: TextTheme.of(context).headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold, 
-                color: Colors.indigo
+                fontWeight: FontWeight.bold
               )
             )
           ), //Icon
         ), 
         Padding(
-          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+          padding: EdgeInsetsGeometry.all(16.0),
           child: FloatingActionButton(
             onPressed: createProject,
             child: const Icon(Icons.add)
           )
         ),
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.75,
-          child: FutureBuilder(
-            future: fetchProjects(),
-            builder: (
-              BuildContext ctx, 
-              AsyncSnapshot<List<api.ProjectSpec>> snapshot
-            ) {
-              if (snapshot.hasError) {
-                print(snapshot.error.toString());
-                return Center(child: Text("Error occurred fetching data."));
-              }
-
-              if (!snapshot.hasData) {
-                return Center(child: Text("Loading data..."));
-              }
-
-              if (snapshot.data!.isEmpty) {
-                return Center(child: Text(
-                  "No projects to show. Create one with the button above!"
-                ));
-              }
-
-              return ListView.builder(
-                itemCount: snapshot.data!.length, 
+          loading
+            ?
+            Center(child: Text("Loading data..."))
+            :
+            projects.isEmpty
+              ?
+              Center(child: Text(
+                "No projects to show. Create one with the button above!"
+              ))
+              :
+              ListView.builder(
+                shrinkWrap: true,
+                physics: ClampingScrollPhysics(),
+                itemCount: projects.length, 
                 itemBuilder: (BuildContext context, int index) {
-                  return Card(
-                    elevation: 50,
-                    shadowColor: Colors.black,
-                    child: SizedBox(
-                      child: Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: Column(
-                          children: [
-                            Text(
-                              snapshot.data![index].name,
-                              style: TextStyle(
-                                fontSize: 30,
-                                color: Colors.indigo,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              "Description: "
-                                "${snapshot.data![index].description}",
-                              style: TextStyle(fontSize: 15)
-                            ),
-                            Text(
-                              "Date Created: "
-                                "${snapshot.data![index].createdAt}",
-                              style: TextStyle(fontSize: 15)
-                            ),
-                            Text(
-                              "Last Updated: "
-                                "${snapshot.data![index].lastUpdated}",
-                              style: TextStyle(fontSize: 15)
-                            ),
-                            Text(
-                              "Number of Layers: "
-                                "${snapshot.data![index].numLayers}",
-                              style: TextStyle(fontSize: 15)
-                            ),
-                            Text(
-                              "Number of Units: "
-                                "${snapshot.data![index].numUnits}",
-                              style: TextStyle(fontSize: 15)
-                            ),
-                            Text(
-                              "Number of Predictions: "
-                                "${snapshot.data![index].numPredictions}",
-                              style: TextStyle(fontSize: 15)
-                            ),
+                  return GestureDetector(
+                    onTap: () async {
+                      final projectController = 
+                        await ProjectController.getInstance();
+                      final project = await projectController.getProjectById(
+                        projects[index].id
+                      );
 
-                            // Button which navigates to the project 
-                            // dashboard page for the selected project.
-                            Padding(
-                              padding: EdgeInsets.all(20),
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  final projectController = 
-                                    await ProjectController.getInstance();
-                                  final project = await projectController
-                                    .getProjectById(
-                                      snapshot.data![index].id
-                                    );
+                      if (!context.mounted) return;
 
-                                  if (!context.mounted) return;
-
-                                  Navigator.push(
-                                    context, 
-                                    MaterialPageRoute<void>(
-                                      builder: (context) 
-                                        => ProjectDashboard(
-                                          project: project
-                                        )
-                                    )
-                                  );
-                                },
-                                child: Text("View Project")
-                              ),
-                            )
-                          ],
+                      Navigator.push(context, MaterialPageRoute<void>(
+                        builder: (context) => ProjectDashboard(project: project)
+                      ));
+                    },
+                    child: Card(
+                      margin: 
+                        EdgeInsetsGeometry.only(
+                          top: 20.0, 
+                          left: 20.0, 
+                          right: 20.0
                         ),
-                      ),
-                    ),
+                      color: Color.fromARGB(255, 232, 237, 242),
+                      surfaceTintColor: Color.fromARGB(255, 84, 122, 149),
+                      child: ProjectListItem(
+                        name: projects[index].name,
+                        description: projects[index].description,
+                        timeCreated: 
+                          projects[index].createdAt.toString(),
+                        timeUpdated: 
+                          projects[index].lastUpdated.toString(),
+                        numLayers: projects[index].numLayers.toString(),
+                        numUnits: projects[index].numUnits.toString(),
+                        numPredictions: 
+                          projects[index].numPredictions.toString(),
+                        thumbnail: 
+                        layerImages.isEmpty
+                        ?
+                        Center()
+                        :
+                            layerImages[index] == ""
+                            ?
+                            Padding(
+                              padding: EdgeInsetsGeometry.symmetric(
+                                horizontal: 5.0
+                              ),
+                              child: Center(child: 
+                                Text("No image added to this project yet!")
+                              )
+                            )
+                            :
+                            Padding (
+                              padding: EdgeInsetsGeometry.symmetric(
+                                horizontal: 10.0),
+                              child: Image.memory(
+                                convert.base64Decode(layerImages[index]),
+                                height: 300
+                              ),
+                            ),
+                        ),
+                      )
                   );
                 }
-              );
-            }
-          ),
-        ),
+              ),
+        Center(),
       ],
     ));
+  }
+}
+
+/// Widget containing the text-based fields for a project.
+class ProjectFields extends StatelessWidget {
+  const ProjectFields({
+    super.key,
+    required this.name,
+    required this.description,
+    required this.timeCreated,
+    required this.timeUpdated,
+    required this.numLayers,
+    required this.numUnits,
+    required this.numPredictions
+  });
+
+  /// Name of the project.
+  final String name;
+  /// Description of the project.
+  final String description;
+  /// Time at which the project was created.
+  final String timeCreated;
+  /// Time at which the project was last updated.
+  final String timeUpdated;
+  /// Number of layers in the project.
+  final String numLayers;
+  /// Number of units in the project.
+  final String numUnits;
+  /// Number of predictions the project contains.
+  final String numPredictions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: .start,
+      children: <Widget>[
+        Text(
+          name,
+          maxLines: 2,
+          overflow: .ellipsis,
+          style: const TextStyle(fontWeight: .bold, fontSize: 22.0),
+        ),
+        const Padding(padding: .only(bottom: 2.0)),
+        Expanded(
+          child: Text(
+            description,
+            maxLines: 2,
+            overflow: .ellipsis,
+            style: const TextStyle(
+              fontSize: 15.0, 
+              color: Color.fromARGB(255, 84, 122, 149)
+            ),
+          ),
+        ),
+        Text(
+          "Created At: $timeCreated",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+        Text(
+          "Last Modified: $timeUpdated",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+        Text(
+          "Number of Layers: $numLayers",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+        Text(
+          "Number of Units: $numUnits",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+        Text(
+          "Number of Predictions: $numPredictions",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+      ],
+    );
+  }
+}
+
+/// Widget representing a single project spec, contained in a row in which the
+/// image for the topmost layer is displayed to the left and the text-based
+/// fields are displayed to the right.
+class ProjectListItem extends StatelessWidget {
+  const ProjectListItem({
+    super.key,
+    required this.name,
+    required this.description,
+    required this.timeCreated,
+    required this.timeUpdated,
+    required this.numLayers,
+    required this.numUnits,
+    required this.numPredictions,
+    required this.thumbnail
+  });
+
+  /// Widget for the thumbnail image.
+  final Widget thumbnail;
+  /// Name of the project.
+  final String name;
+  /// Description of the project.
+  final String description;
+  /// Time at which the project was created.
+  final String timeCreated;
+  /// Time at which the project was last updated.
+  final String timeUpdated;
+  /// Number of layers in the project.
+  final String numLayers;
+  /// Number of units in the project.
+  final String numUnits;
+  /// Number of predictions the project contains.
+  final String numPredictions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const .symmetric(vertical: 10.0),
+      child: SizedBox(
+        height: 180,
+        child: Row(
+          crossAxisAlignment: .start,
+          children: <Widget>[
+            AspectRatio(aspectRatio: 1.0, child: thumbnail),
+            Expanded(
+              child: Padding(
+                padding: const .fromLTRB(20.0, 0.0, 2.0, 0.0),
+                child: ProjectFields(
+                  name: name,
+                  description: description,
+                  timeCreated: timeCreated,
+                  timeUpdated: timeUpdated,
+                  numLayers: numLayers,
+                  numUnits: numUnits,
+                  numPredictions: numPredictions,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

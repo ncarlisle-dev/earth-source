@@ -125,6 +125,11 @@ class _MapPageState extends State<MapPage>
                   "unnamed image" // TODO: create an input for this
                 );
 
+                api.LayerImages layerImageController = 
+                  await api.LayerImages.getInstance();
+
+                layerImageController.addImage(widget.project.id, imageContents!);
+
                 setState(() => updatedLayers = widget.project.layers);
 
                 if (context.mounted) Navigator.of(context).pop();
@@ -759,9 +764,13 @@ class _MapPageState extends State<MapPage>
     );
   }
 
-  /// Fetches the image corresponding to a layer from the database for display.
-  Future<String> fetchImage(String layerId)
-    => widget.project.getLayerImage(layerId);
+  /// Fetches the image corresponding to a layer from the cache for display.
+  Future<String> fetchImage(String layerId) async
+  {
+    api.LayerImages layerImageController =
+      await api.LayerImages.getInstance();
+    return layerImageController.getImageByLayerId(widget.project.id, layerId);
+  }
 
   @override
   Widget build(BuildContext context) 
