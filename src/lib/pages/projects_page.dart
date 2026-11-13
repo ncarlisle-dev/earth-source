@@ -25,31 +25,58 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   /// Description of the created project.
   String projectDescription = "";
 
-  List<String> utmZones = [for (var i = 1; i <= 60; i++) "$i"]; // 0 to 60
+  /// List of all possible UTM zones from 1 to 60.
+  List<String> utmZones = [for (var i = 1; i <= 60; i++) "$i"];
+  /// List of northern and southern hemispheres.
   List<String> hemispheres = ["Southern", "Northern"];
 
-  /// Fetches a list of all the user's projects.
-  Future<List<api.ProjectSpec>> fetchProjects() async
-  {
-    api.ProjectController projectController = 
-      await api.ProjectController.getInstance();
-    
-    return await projectController.getUserProjectSpecs();
+  /// List to store specs for all user projects.
+  List<api.ProjectSpec> projects = [];
+  /// List to store string representations of layer images.
+  List<String> layerImages = [];
+
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
-  Future<String> fetchLayerImage(String projectId) async
+  /// Loads data for project specs and layer images when the page is loaded.
+  Future<void> _loadData() async
   {
-    String layerImage = "";
 
-    final projectController = await ProjectController.getInstance();
-    final project = await projectController.getProjectById(projectId);
+    api.ProjectController projectController = 
+      await api.ProjectController.getInstance();
 
-    if (project.layers.isNotEmpty)
+    api.LayerImages layerImageController =
+      await api.LayerImages.getInstance();
+
+    projects = await projectController.getUserProjectSpecs();
+
+    for (var project in projects)
     {
-      layerImage = await project.getLayerImage(project.layers[0].id);
+      final projectData = await projectController.getProjectById(project.id);
+      String layerImage = "";
+      if (projectData.layers.isNotEmpty)
+      {
+        layerImage = await layerImageController.getImageByProjectId(
+          project.id, 
+          projectData.layers[0].id
+        );
+      }
+      layerImages.add(layerImage);
     }
 
-    return layerImage;
+    setState(() {
+      projects;
+      layerImages;
+      loading = false;
+    });
   }
 
   /// Displays a dialogue box containing forms for the user to fill out for
@@ -284,7 +311,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                 final projectController = await api.ProjectController
                   .getInstance();
 
-                await projectController.createProject(
+                api.Project newProject = await projectController.createProject(
                   projectName, 
                   projectDescription,
                   int.parse(zoneValue),
@@ -296,6 +323,28 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                     (easting: eastings[3], northing: northings[3]), 
                   ]
                 );
+
+                // Update projects and layerImages to update page display.
+                projects.add(api.ProjectSpec(
+                  id: newProject.id, 
+                  name: projectName, 
+                  description: projectDescription, 
+                  utmZone: newProject.utmZone, 
+                  isSouthernHemisphere: newProject.isSouthernHemisphere, 
+                  corners: newProject.corners, 
+                  numLayers: 0, 
+                  numUnits: 0, 
+                  numPxrfData: 0, 
+                  numTrainingData: 0, numPredictions: 0, 
+                  numModels: 0, 
+                  createdAt: newProject.createdAt, 
+                  lastUpdated: newProject.lastUpdated
+                ));
+
+                layerImages.add("");
+
+                setState(() => projects);
+                setState(() => layerImages);
 
                 if (context.mounted) {
                   Navigator.of(context).pop();
@@ -315,7 +364,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   @override
   Widget build(BuildContext context) 
   {
-    return Material(child: Column(
+    return Material(child: ListView(
       children: [
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
@@ -335,40 +384,27 @@ class _UserProjectsPageState extends State<UserProjectsPage>
             child: const Icon(Icons.add)
           )
         ),
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.75,
-          child: FutureBuilder(
-            future: fetchProjects(),
-            builder: (
-              BuildContext ctx, 
-              AsyncSnapshot<List<api.ProjectSpec>> snapshot
-            ) {
-              if (snapshot.hasError) {
-                print(snapshot.error.toString());
-                return Center(child: Text("Error occurred fetching data."));
-              }
-
-              if (!snapshot.hasData) {
-                return Center(child: Text("Loading data..."));
-              }
-
-              if (snapshot.data!.isEmpty) {
-                return Center(child: Text(
-                  "No projects to show. Create one with the button above!"
-                ));
-              }
-
-              return ListView.builder(
+          loading
+            ?
+            Center(child: Text("Loading data..."))
+            :
+            projects.isEmpty
+              ?
+              Center(child: Text(
+                "No projects to show. Create one with the button above!"
+              ))
+              :
+              ListView.builder(
                 shrinkWrap: true,
                 physics: ClampingScrollPhysics(),
-                itemCount: snapshot.data!.length, 
+                itemCount: projects.length, 
                 itemBuilder: (BuildContext context, int index) {
                   return GestureDetector(
                     onTap: () async {
                       final projectController = 
                         await ProjectController.getInstance();
                       final project = await projectController.getProjectById(
-                        snapshot.data![index].id
+                        projects[index].id
                       );
 
                       if (!context.mounted) return;
@@ -381,56 +417,38 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                       margin: EdgeInsetsGeometry.only(top: 20.0),
                       color: Color.fromARGB(255, 232, 237, 242),
                       surfaceTintColor: Color.fromARGB(255, 84, 122, 149),
-                      child: 
-                        ProjectListItem(
-                          name: snapshot.data![index].name,
-                          description: snapshot.data![index].description,
-                          timeCreated: 
-                            snapshot.data![index].createdAt.toString(),
-                          timeUpdated: 
-                            snapshot.data![index].lastUpdated.toString(),
-                          numLayers: snapshot.data![index].numLayers.toString(),
-                          numUnits: snapshot.data![index].numUnits.toString(),
-                          numPredictions: 
-                            snapshot.data![index].numPredictions.toString(),
-                          thumbnail: FutureBuilder(
-                            future: fetchLayerImage(snapshot.data![index].id),
-                            builder: (
-                              BuildContext ctx, 
-                              AsyncSnapshot<String> newSnapshot
-                            ) {
-                              if (newSnapshot.hasError) {
-                                print(newSnapshot.error!.toString());
-                                return Center(
-                                  child: Text("Error fetching layer image.")
-                                );
-                              }
-
-                              if (!newSnapshot.hasData) {
-                                return Center(child: Text("Loading image..."));
-                              }
-
-                              if (newSnapshot.data == "") {
-                                return Center(child: Text(
-                                  "No layer image available."
-                                ));
-                              }
-
-                              else { 
-                                return Image.memory(
-                                  convert.base64Decode(newSnapshot.data!),
-                                  height: 300
-                                );
-                                }
-                            }),
+                      child: ProjectListItem(
+                        name: projects[index].name,
+                        description: projects[index].description,
+                        timeCreated: 
+                          projects[index].createdAt.toString(),
+                        timeUpdated: 
+                          projects[index].lastUpdated.toString(),
+                        numLayers: projects[index].numLayers.toString(),
+                        numUnits: projects[index].numUnits.toString(),
+                        numPredictions: 
+                          projects[index].numPredictions.toString(),
+                        thumbnail: 
+                        layerImages.isEmpty
+                        ?
+                        Center()
+                        :
+                            layerImages[index] == ""
+                            ?
+                            Center(child: 
+                              Text("No image added to this project yet!")
+                            )
+                            :
+                            Image.memory(
+                              convert.base64Decode(layerImages[index]),
+                              height: 300
+                            ),
                         ),
-                    )
+                      )
                   );
                 }
-              );
-            }
-          ),
-        ),
+              ),
+        Center(),
       ],
     ));
   }

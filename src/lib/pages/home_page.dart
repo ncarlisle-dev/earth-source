@@ -64,7 +64,8 @@ class _HomePageState extends State<HomePage> {
             });
           case 2:
             return cupertino.CupertinoTabView(builder: (context) {
-              return cupertino.CupertinoPageScaffold(child: UserProjectsPage());
+              return cupertino.CupertinoPageScaffold(
+                child: UserProjectsPage());
             });
           case 3:
             return cupertino.CupertinoTabView(builder: (context) {
