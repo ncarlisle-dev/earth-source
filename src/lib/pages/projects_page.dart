@@ -49,7 +49,6 @@ class _UserProjectsPageState extends State<UserProjectsPage>
   /// Loads data for project specs and layer images when the page is loaded.
   Future<void> _loadData() async
   {
-
     api.ProjectController projectController = 
       await api.ProjectController.getInstance();
 
@@ -58,13 +57,14 @@ class _UserProjectsPageState extends State<UserProjectsPage>
 
     projects = await projectController.getUserProjectSpecs();
 
+    // Loop through all the projects and retrieve the image for each top layer.
     for (var project in projects)
     {
       final projectData = await projectController.getProjectById(project.id);
       String layerImage = "";
       if (projectData.layers.isNotEmpty)
       {
-        layerImage = await layerImageController.getImageByProjectId(
+        layerImage = await layerImageController.getImageByLayerId(
           project.id, 
           projectData.layers[0].id
         );

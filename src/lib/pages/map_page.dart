@@ -764,12 +764,12 @@ class _MapPageState extends State<MapPage>
     );
   }
 
-  /// Fetches the image corresponding to a layer from the database for display.
+  /// Fetches the image corresponding to a layer from the cache for display.
   Future<String> fetchImage(String layerId) async
   {
     api.LayerImages layerImageController =
       await api.LayerImages.getInstance();
-    return layerImageController.getImageByProjectId(widget.project.id, layerId);
+    return layerImageController.getImageByLayerId(widget.project.id, layerId);
   }
 
   @override

@@ -1058,7 +1058,6 @@ class Project
   /// Throws a [network.ApiNetworkException] if the image cannot be retrieved.
   Future<String> getLayerImage(String id) async
   {
-    print("running");
     assert(
       layers.indexWhere((layer) => layer.id == id) >= 0,
       "Layer with ID '$id' not found."
