@@ -87,7 +87,7 @@ class _DataPageState extends State<DataPage>
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 16.0),
-                    child: Text("Change Layer Assignment:")
+                    child: Text("Set Layer Assignment:")
                   ),
                   DropdownButtonFormField(
                     key: dropdownStateLayer,
@@ -106,7 +106,7 @@ class _DataPageState extends State<DataPage>
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 16.0),
-                    child: Text("Change Unit Assignment:")
+                    child: Text("Set Unit Assignment:")
                   ),
                   DropdownButtonFormField(
                     key: dropdownStateUnit,
@@ -139,7 +139,8 @@ class _DataPageState extends State<DataPage>
                 String unitId = (widget.project.units.firstWhere(
                   (unit) => unit.name == assignedUnit)).id;
 
-                widget.project.assignData(layerId, unitId, dataId);
+                await widget.project.assignData(layerId, unitId, dataId);
+                setState(() => widget.project.dataAssignments);
 
                 if (context.mounted) Navigator.of(context).pop();
               },
@@ -183,6 +184,30 @@ class _DataPageState extends State<DataPage>
         );
       }
     );
+  }
+
+  /// Given a data spec id, searches through data assignments to find the name
+  /// of the layer and unit assigned to that data spec and returns both strings
+  /// if found, empty strings if not.
+  (String, String) getAssignments(String dataId)
+  {
+    String layerName = "";
+    String unitName = "";
+
+    widget.project.dataAssignments.forEach((layerId, unitAssignment) {
+      unitAssignment.forEach((unitId, dataSpecId)
+      {
+        if (dataSpecId == dataId)
+        {
+          unitName =  widget.project.units.firstWhere(
+            (unit) => unit.id == unitId).name;
+          layerName =  widget.project.layers.firstWhere(
+            (layer) => layer.id == layerId).name;
+        }
+      }); 
+    });
+
+    return (layerName, unitName);
   }
 
   @override
@@ -269,6 +294,27 @@ class _DataPageState extends State<DataPage>
                         Text(
                           "Last Updated: "
                             "${data[index].lastUpdated}",
+                          style: TextStyle(fontSize: 15)
+                        ),
+                        getAssignments(data[index].id).$1 == ""
+                        ?
+                        Text(
+                          "No layers or units assigned yet!",
+                          style: TextStyle(fontSize: 15)
+                        )
+                        :
+                        Text(
+                          "Assigned Layer: "
+                            "${getAssignments(data[index].id).$1}",
+                          style: TextStyle(fontSize: 15)
+                        ),
+                        getAssignments(data[index].id).$2 == ""
+                        ?
+                        Center()
+                        :
+                        Text(
+                          "Assigned Unit: "
+                            "${getAssignments(data[index].id).$2}",
                           style: TextStyle(fontSize: 15)
                         ),
                         // Button which navigates to the data view page for the
