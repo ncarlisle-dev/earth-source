@@ -45,7 +45,7 @@ class _MapPageState extends State<MapPage>
       imageContents = convert.base64.encode(bytes);
     }
   }
-
+/*
   /// Displays a modal in which the user can create a layer and upload a 
   /// corresponding image from their files, which results in a layer being
   /// added to the project controller.
@@ -258,6 +258,68 @@ class _MapPageState extends State<MapPage>
       }
     );
   }
+
+  */
+
+  /// Fetches the image corresponding to a layer from the cache for display.
+  Future<String> fetchImage(String layerId) async
+  {
+    api.LayerImages layerImageController =
+      await api.LayerImages.getInstance();
+    return layerImageController.getImageByLayerId(widget.project.id, layerId);
+  }
+
+  @override
+  Widget build(BuildContext context) 
+  {
+    return DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: AppBar(
+            bottom: const TabBar(
+              tabs: [
+                Tab(text: "Units"),
+                Tab(text: "Layers"),
+              ],
+            ),
+            title: Center(child: Text(
+              'Site Map',
+              style: TextTheme.of(context).headlineLarge?.copyWith(
+                fontWeight: FontWeight.bold
+              )
+            )),
+          ),
+          body: TabBarView(
+            children: [
+              Units(project: widget.project),
+              Center()
+            ],
+          ),
+        ),
+    );
+  }
+}
+
+class Units extends StatefulWidget
+{
+  const Units({super.key, required this.project});
+
+  /// The current project being viewed.
+  final api.Project project;
+
+  @override
+  State<Units> createState() => _UnitsState();
+}
+
+/// The mutable state of the site map page.
+class _UnitsState extends State<Units>
+{
+  /// List containing updated layers for the project.
+  List<api.Layer> updatedLayers = [];
+  /// List containing updated units for the project.
+  List<api.Unit> updatedUnits = [];
+  /// String to store the encoded contents of an image file.
+  String? imageContents;
 
   /// Displays a modal in which the user can create a unit, which results in the 
   /// unit being added to the project controller.
@@ -764,248 +826,159 @@ class _MapPageState extends State<MapPage>
     );
   }
 
-  /// Fetches the image corresponding to a layer from the cache for display.
-  Future<String> fetchImage(String layerId) async
-  {
-    api.LayerImages layerImageController =
-      await api.LayerImages.getInstance();
-    return layerImageController.getImageByLayerId(widget.project.id, layerId);
-  }
+  final verticalScrollController = ScrollController();
+  final horizontalScrollController = ScrollController();
 
   @override
   Widget build(BuildContext context) 
   {
-    List<api.Layer> layers;
-    List<api.Unit> units;
-
-    layers = widget.project.layers;
-    units = widget.project.units;
-
-    return Material(child:ListView(
+    return Material(child: Column(
       children: [
-        Padding(
-          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
-          child: FloatingActionButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
-              builder:
-                (context) => ProjectDashboard(project: widget.project),
-            )),
-            child: const Icon(Icons.arrow_circle_left)
-          )
-        ),
-        Padding(
-          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
-          child: Center(
-            child: Text(
-              "Site Map", 
-              style: TextTheme.of(context).headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold, 
-                color: Colors.indigo
-              )
+        Padding (
+          padding: EdgeInsetsGeometry.symmetric(vertical: 20.0),
+        child: Stack(
+          alignment: AlignmentGeometry.topRight,
+          children: <Widget>[
+            Center(
+              child: Text(
+                "Units", 
+              style: TextTheme.of(context).headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+            padding: EdgeInsetsGeometry.symmetric(
+              vertical: 16.0, 
+              horizontal: 20.0
+            ),
+            child: IconButton(
+              icon: Icon(Icons.add),
+              color: Color.fromARGB(255, 232, 237, 242),
+              style: IconButton.styleFrom(
+                backgroundColor: Color.fromARGB(255, 84, 122, 149)
+              ),
+              onPressed: addUnit,
             )
           ),
-        ), 
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Center(
-            child: Text(
-              "Layers", 
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold, color: Colors.indigo
-              )
+          ],
+        )),
+        Center(
+        child: Container(
+          width: MediaQuery.of(context).size.width, // match the window width
+          height: MediaQuery.of(context).size.height - 300,
+          margin: const EdgeInsets.all(15.0),
+
+          child: Scrollbar(
+            thumbVisibility: true,
+            trackVisibility: true, // make the scrollbar easy to see
+            controller: verticalScrollController,
+            child: Scrollbar(
+              thumbVisibility: true,
+              trackVisibility: true,
+              controller: horizontalScrollController,
+              notificationPredicate: (notif) => notif.depth == 1,
+              child: SingleChildScrollView(
+                controller: verticalScrollController,
+                scrollDirection: Axis.vertical,
+                child: SingleChildScrollView(
+                  controller: horizontalScrollController,
+                  scrollDirection: Axis.horizontal,
+                  child:
+                    DataTable(
+                    columns: const <DataColumn>[
+                    DataColumn(
+                      label: Expanded(
+                        child: Text(
+                          'Name', 
+                          style: TextStyle(fontStyle: .italic)
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Expanded(
+                        child: Text(
+                          'Created', 
+                          style: TextStyle(fontStyle: .italic)
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Expanded(
+                        child: Text(
+                          'Modified', 
+                          style: TextStyle(fontStyle: .italic)
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Expanded(
+                        child: Text(
+                          'Description', 
+                          style: TextStyle(fontStyle: .italic)
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Expanded(
+                        child: Text(
+                          'Area', 
+                          style: TextStyle(fontStyle: .italic)
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Expanded(
+                        child: Text('', style: TextStyle(fontStyle: .italic)),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Expanded(
+                        child: Text('', style: TextStyle(fontStyle: .italic)),
+                      ),
+                    ),
+                  ],
+                    rows: List<DataRow>.generate(
+                      widget.project.units.length,
+                      (int index) => DataRow(
+                        cells: <DataCell>[
+                        DataCell(Text(widget.project.units[index].name)),
+                        DataCell(
+                          Text(
+                            widget.project.units[index].createdAt.toString()
+                          )
+                        ),
+                        DataCell(
+                          Text(
+                            widget.project.units[index].lastUpdated.toString()
+                          )
+                        ),
+                        DataCell(
+                          Text(
+                            widget.project.units[index].description, 
+                            maxLines: 1,
+                            overflow: .ellipsis
+                          )
+                        ),
+                        DataCell(Text(widget.project.units[index].description)),
+                        DataCell(IconButton(
+                          onPressed: () => 
+                            editUnit(widget.project.units[index]),
+                          icon: Icon(Icons.edit),
+                        )),
+                        DataCell(IconButton(
+                          onPressed: () => 
+                            deleteUnit(widget.project.units[index].id),
+                          icon: Icon(Icons.delete),
+                        )),
+                      ],
+                    )
+                  )
+                ),
+              ), 
             )
           )
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton(
-            onPressed: addLayer,
-            child: Text("Add Layer"),
-          )
-        ),
-        layers.isEmpty 
-        ?
-        Center(child: Text("No layers created yet!"))
-        :
-        ListView.builder(
-          shrinkWrap: true,
-          physics: ClampingScrollPhysics(),
-          itemCount: layers.length, 
-          itemBuilder: (BuildContext context, int index) {
-            return Card(
-              child: SizedBox(
-                child: Padding(
-                  padding: EdgeInsets.all(20.0),
-                  child: Column(
-                    children: [
-                      Text(
-                        layers[index].name,
-                        style: TextStyle(
-                          fontSize: 30,
-                          color: Colors.indigo,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      FutureBuilder(
-                        future: fetchImage(layers[index].id),
-                        builder: (
-                          BuildContext ctx, 
-                          AsyncSnapshot<String> snapshot
-                        )
-                        {
-                          if (snapshot.hasError) {
-                            print(snapshot.error!.toString());
-                            return Center(
-                              child: Text("Error fetching layer image.")
-                            );
-                          }
-
-                          if (!snapshot.hasData) {
-                            return Center(child: Text("Loading image..."));
-                          }
-
-                          return Image.memory(
-                            convert.base64Decode(snapshot.data!),
-                            height: 300
-                          );
-                        }
-                      ),
-                      Text(
-                        "Description: ${layers[index].description}",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Created At: ${layers[index].createdAt}",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Last Updated: ${layers[index].lastUpdated}",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Padding(
-                        padding: EdgeInsets.all(20),
-                        child: ElevatedButton(
-                          onPressed: () => editLayer(layers[index]),
-                          child: Text("Edit Layer")
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.all(20),
-                        child: ElevatedButton(
-                          onPressed: () => deleteLayer(layers[index].id),
-                          child: Text("Delete Layer")
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Center(
-            child: Text(
-              "Units", 
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold, color: Colors.indigo
-              )
-            )
-          )
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton(
-            onPressed: addUnit,
-            child: Text("Add Unit"),
-          )
-        ),
-        units.isEmpty 
-        ?
-        Center(child: Text("No units created yet!"))
-        :
-        ListView.builder(
-          shrinkWrap: true,
-          physics: ClampingScrollPhysics(),
-          itemCount: units.length, 
-          itemBuilder: (BuildContext context, int index) {
-            return Card(
-              child: SizedBox(
-                child: Padding(
-                  padding: EdgeInsets.all(20.0),
-                  child: Column(
-                    children: [
-                      Text(
-                        units[index].name,
-                        style: TextStyle(
-                          fontSize: 30,
-                          color: Colors.indigo,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        "Description: ${units[index].description}",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Top Left Coordinate: ("
-                        "${units[index].corners[0].x}, "
-                        "${units[index].corners[0].y})",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Top Right Coordinate: ("
-                        "${units[index].corners[1].x}, "
-                        "${units[index].corners[1].y})",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Bottom Left Coordinate: ("
-                        "${units[index].corners[2].x}, "
-                        "${units[index].corners[2].y})",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Bottom Right Coordinate: ("
-                        "${units[index].corners[3].x}, "
-                        "${units[index].corners[3].y})",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Point Interval: ${units[index].pointInterval} cm",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Created At: ${units[index].createdAt}",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Text(
-                        "Last Updated: ${units[index].lastUpdated}",
-                        style: TextStyle(fontSize: 15)
-                      ),
-                      Padding(
-                        padding: EdgeInsets.all(20),
-                        child: ElevatedButton(
-                          onPressed: () => editUnit(units[index]),
-                          child: Text("Edit Unit")
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.all(20),
-                        child: ElevatedButton(
-                          onPressed: () => deleteUnit(units[index].id),
-                          child: Text("Delete Unit")
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }
-        ),
-      ]
+        )
+      ))]
     ));
   }
 }
