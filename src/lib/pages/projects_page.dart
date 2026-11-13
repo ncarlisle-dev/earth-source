@@ -378,7 +378,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
           ), //Icon
         ), 
         Padding(
-          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+          padding: EdgeInsetsGeometry.all(16.0),
           child: FloatingActionButton(
             onPressed: createProject,
             child: const Icon(Icons.add)
@@ -414,7 +414,12 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                       ));
                     },
                     child: Card(
-                      margin: EdgeInsetsGeometry.only(top: 20.0),
+                      margin: 
+                        EdgeInsetsGeometry.only(
+                          top: 20.0, 
+                          left: 20.0, 
+                          right: 20.0
+                        ),
                       color: Color.fromARGB(255, 232, 237, 242),
                       surfaceTintColor: Color.fromARGB(255, 84, 122, 149),
                       child: ProjectListItem(
@@ -435,13 +440,22 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                         :
                             layerImages[index] == ""
                             ?
-                            Center(child: 
-                              Text("No image added to this project yet!")
+                            Padding(
+                              padding: EdgeInsetsGeometry.symmetric(
+                                horizontal: 5.0
+                              ),
+                              child: Center(child: 
+                                Text("No image added to this project yet!")
+                              )
                             )
                             :
-                            Image.memory(
-                              convert.base64Decode(layerImages[index]),
-                              height: 300
+                            Padding (
+                              padding: EdgeInsetsGeometry.symmetric(
+                                horizontal: 10.0),
+                              child: Image.memory(
+                                convert.base64Decode(layerImages[index]),
+                                height: 300
+                              ),
                             ),
                         ),
                       )
