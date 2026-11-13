@@ -101,7 +101,6 @@ class _ProjectDashboardState extends State<ProjectDashboard>
               widget.project.name, 
               style: TextTheme.of(context).headlineLarge?.copyWith(
                 fontWeight: FontWeight.bold, 
-                color: Colors.indigo
               )
             )
           ),
@@ -109,7 +108,7 @@ class _ProjectDashboardState extends State<ProjectDashboard>
         Center(
           child: Text(
             widget.project.description,
-            style: TextStyle(fontSize: 15, color: Colors.indigo)
+            style: TextStyle(fontSize: 15)
           ),
         ),
         Center(
@@ -133,7 +132,7 @@ class _ProjectDashboardState extends State<ProjectDashboard>
                 (context) => MapPage(project: widget.project),
             )),
             heroTag: "mapPage",
-            child: Text("Site Map")
+            child: ButtonContent(icon: Icons.map_outlined, text: "Site Map")
           )
         ),
         Padding(
@@ -171,5 +170,38 @@ class _ProjectDashboardState extends State<ProjectDashboard>
         ),
       ]
     ));
+  }
+}
+
+class ButtonContent extends StatelessWidget
+{
+  const ButtonContent({super.key, required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) 
+  {
+   return Padding(
+          padding: const .symmetric(vertical: 10.0),
+          child: SizedBox(
+            height: 180,
+            child: Row(
+              crossAxisAlignment: .start,
+              children: <Widget>[
+                Icon(icon),
+                Expanded(
+                  child: Padding(
+                    padding: const .fromLTRB(20.0, 0.0, 2.0, 0.0),
+                    child: Center(child: Text(text, style: TextTheme.of(context).headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold, )
+                  )),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
   }
 }
