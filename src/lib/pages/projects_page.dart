@@ -52,9 +52,6 @@ class _UserProjectsPageState extends State<UserProjectsPage>
     api.ProjectController projectController = 
       await api.ProjectController.getInstance();
 
-    api.LayerImages layerImageController =
-      await api.LayerImages.getInstance();
-
     projects = await projectController.getUserProjectSpecs();
 
     // Loop through all the projects and retrieve the image for each top layer.
@@ -64,10 +61,7 @@ class _UserProjectsPageState extends State<UserProjectsPage>
       String layerImage = "";
       if (projectData.layers.isNotEmpty)
       {
-        layerImage = await layerImageController.getImageByLayerId(
-          project.id, 
-          projectData.layers[0].id
-        );
+        layerImage = await projectData.getLayerImage(projectData.layers[0].id);
       }
       layerImages.add(layerImage);
     }

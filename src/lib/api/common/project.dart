@@ -74,6 +74,9 @@ class Project
   /// Most recent time the project was updated.
   DateTime lastUpdated;
 
+  /// Image strings stored in the cache, keyed by layer ID.
+  final Map<String, String> _cachedImages = {};
+
   Project({
     required this.id,
     required this.name,
@@ -1050,6 +1053,9 @@ class Project
 
     layers[layerIndex].lastUpdated = timestamp;
     lastUpdated = timestamp;
+
+    // Add layer image to image cache.
+    _cachedImages[id] = imageContents;
   }
 
   /// Fetches an image corresponding to a layer from the appropriate location in
@@ -1063,10 +1069,16 @@ class Project
       "Layer with ID '$id' not found."
     );
 
+    if (_cachedImages.containsKey(id)) return _cachedImages[id]!;
+
     final networkService = await NetworkService.getInstance();
 
+    String imageContents;
+
     try {
-      return await networkService.fetchLayerImage(this.id, id);
+      imageContents =  await networkService.fetchLayerImage(this.id, id);
+      _cachedImages[id] = imageContents;
+      return imageContents;
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -1101,6 +1113,8 @@ class Project
     layers[layerIndex].image = null;
     layers[layerIndex].lastUpdated = timestamp;
     lastUpdated = timestamp;
+
+    _cachedImages.remove(id);
   }
 }
 
