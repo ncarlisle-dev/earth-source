@@ -137,9 +137,11 @@ async def ebk(file: UploadFile = File(...)):
     ]
 
     #Verify that enough distinct locations exist
-    unique_points = location_data[[X_COORD, Y_COORD]
-    ].drop_duplicates()
-
+    unique_points = (
+        location_data[[X_COORD, Y_COORD]]
+        .drop_duplicates()
+    )
+    
     if len(unique_points) < 10:
         raise HTTPException(
             status_code=422,
