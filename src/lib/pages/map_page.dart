@@ -5,7 +5,10 @@ import 'package:file_picker/file_picker.dart' as file_picker;
 import 'dart:io' as io; 
 import 'dart:convert' as convert;
 import 'dart:typed_data' as typed_data;
-import 'project_dashboard.dart';
+import 'package:coordinate_converter/coordinate_converter.dart' as coords;
+import 'package:latlong2/latlong.dart' as latlong;
+import 'package:flutter_map_math/flutter_geo_math.dart' as flutter_geo_math;
+import 'layer_page.dart';
 
 /// A stateful widget for the project site map page, which takes the current 
 /// project as a required field.
@@ -27,247 +30,6 @@ class _MapPageState extends State<MapPage>
   List<api.Layer> updatedLayers = [];
   /// List containing updated units for the project.
   List<api.Unit> updatedUnits = [];
-  /// String to store the encoded contents of an image file.
-  String? imageContents;
-
-  /// Loads an image from the local file system and encodes it as a base 64
-  /// string.
-  Future<void> loadImage() async {
-    file_picker.PlatformFile? image = await file_picker.FilePicker.pickFile(
-      type: file_picker.FileType.custom,
-      allowedExtensions: ['png', 'jpg', 'jpeg'],
-    );
-
-    if (image != null) {
-      final filePath = image.path!;
-      io.File imageFile = io.File(filePath);
-      typed_data.Uint8List bytes = await imageFile.readAsBytes();
-      imageContents = convert.base64.encode(bytes);
-    }
-  }
-/*
-  /// Displays a modal in which the user can create a layer and upload a 
-  /// corresponding image from their files, which results in a layer being
-  /// added to the project controller.
-  void addLayer()
-  {
-    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-
-    String? layerName;
-    String? layerDescription;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          scrollable: true,
-          content: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Form(
-              key: formKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: "Enter layer name:",
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a name for the layer.';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) async {
-                      layerName = value!;
-                    },
-                  ),
-                  TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: "Enter layer description:",
-                    ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a description for the layer.';
-                      }
-                      return null;
-                    },
-                    onSaved: (value) async {
-                      layerDescription = value!;
-                    },
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: ElevatedButton(
-                      onPressed: loadImage,
-                      child: Text("Upload layer image:"),
-                    )
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            ElevatedButton(
-              child: Text("Create Layer"),
-              onPressed: () async {
-                formKey.currentState!.save();
-
-                // Access project controller and add new layer to the project.
-                final createdLayer = await widget.project.createLayer(
-                  layerName!, 
-                  layerDescription!, 
-                );
-
-                // Upload layer image encoded as a string to the database.
-                await widget.project.uploadLayerImage(
-                  createdLayer.id,
-                  imageContents!,
-                  "unnamed image" // TODO: create an input for this
-                );
-
-                api.LayerImages layerImageController = 
-                  await api.LayerImages.getInstance();
-
-                layerImageController.addImage(widget.project.id, imageContents!);
-
-                setState(() => updatedLayers = widget.project.layers);
-
-                if (context.mounted) Navigator.of(context).pop();
-              },
-            ),
-            ElevatedButton(
-              child: const Text("Cancel"),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ]
-        );
-      }
-    );
-  }
-
-  /// Displays a form filled in with the fields for the corresponding layer that
-  /// the user can choose to edit, registers which if any of the fields have 
-  /// been changed, and updates information for the layer accordingly.
-  void editLayer(api.Layer layer)
-  {
-    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-
-    bool nameChanged = false;
-    bool descriptionChanged = false;
-
-    String layerName = layer.name;
-    String layerDescription = layer.description;
-    
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          scrollable: true,
-          content: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Form(
-              key: formKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    initialValue: layer.name,
-                    onSaved: (value) async {
-                      if (value != layer.name)
-                      {
-                        layerName = value!;
-                        nameChanged = true;
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    initialValue: layer.description,
-                    onSaved: (value) async {
-                      if (value != layer.description)
-                      {
-                        layerDescription = value!;
-                        descriptionChanged = true;
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            ElevatedButton(
-              child: Text("Save Edits"),
-              onPressed: () async {
-                formKey.currentState!.save();
-
-                // Check to see which, if any, of the fields has been changed
-                // by the user and make updates accordingly.
-                if (nameChanged) {
-                  await widget.project.updateLayer(layer.id, name: layerName);
-                }
-
-                if (descriptionChanged) {
-                  await widget.project.updateLayer(
-                    layer.id,
-                    description: layerDescription
-                  );
-                }
-
-                setState(() => updatedLayers = widget.project.layers);
-
-                if (context.mounted) Navigator.of(context).pop();
-              },
-            ),
-            ElevatedButton(
-              child: const Text("Cancel"),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ]
-        );
-      }
-    );
-  }
-
-  /// Deletes the given layer from the project and updates what is displayed.
-  void deleteLayer(String layerId) async
-  {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          scrollable: true,
-          content: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text("Are you sure you want to delete this layer?")
-          ),
-          actions: [
-            ElevatedButton(
-              child: const Text("Confirm Deletion"),
-              onPressed: () async {
-                await widget.project.deleteLayer(layerId);
-                setState(() => updatedLayers = widget.project.layers);
-
-                if (context.mounted) Navigator.of(context).pop();
-              },
-            ),
-            ElevatedButton(
-              child: const Text("Cancel"),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ]
-        );
-      }
-    );
-  }
-
-  */
-
-  /// Fetches the image corresponding to a layer from the cache for display.
-  Future<String> fetchImage(String layerId) async
-  {
-    api.LayerImages layerImageController =
-      await api.LayerImages.getInstance();
-    return layerImageController.getImageByLayerId(widget.project.id, layerId);
-  }
 
   @override
   Widget build(BuildContext context) 
@@ -292,7 +54,7 @@ class _MapPageState extends State<MapPage>
           body: TabBarView(
             children: [
               Units(project: widget.project),
-              Center()
+              Layers(project: widget.project),
             ],
           ),
         ),
@@ -314,13 +76,6 @@ class Units extends StatefulWidget
 /// The mutable state of the site map page.
 class _UnitsState extends State<Units>
 {
-  /// List containing updated layers for the project.
-  List<api.Layer> updatedLayers = [];
-  /// List containing updated units for the project.
-  List<api.Unit> updatedUnits = [];
-  /// String to store the encoded contents of an image file.
-  String? imageContents;
-
   /// Displays a modal in which the user can create a unit, which results in the 
   /// unit being added to the project controller.
   void addUnit()
@@ -546,8 +301,6 @@ class _UnitsState extends State<Units>
                   corners,
                   pointInterval!
                 );
-
-                setState(() => updatedUnits = widget.project.units);
 
                 if (context.mounted) Navigator.of(context).pop();
               },
@@ -780,8 +533,6 @@ class _UnitsState extends State<Units>
                   );
                 }
 
-                setState(() => updatedUnits = widget.project.units);
-
                 if (context.mounted) Navigator.of(context).pop();
               },
             ),
@@ -921,7 +672,7 @@ class _UnitsState extends State<Units>
                     DataColumn(
                       label: Expanded(
                         child: Text(
-                          'Area', 
+                          'Area (m)', 
                           style: TextStyle(fontStyle: .italic)
                         ),
                       ),
@@ -959,7 +710,7 @@ class _UnitsState extends State<Units>
                             overflow: .ellipsis
                           )
                         ),
-                        DataCell(Text(widget.project.units[index].description)),
+                        DataCell(Text(calculateArea(widget.project.units[index].corners).toString())),
                         DataCell(IconButton(
                           onPressed: () => 
                             editUnit(widget.project.units[index]),
@@ -980,5 +731,387 @@ class _UnitsState extends State<Units>
         )
       ))]
     ));
+  }
+}
+
+/// Calculates and returns the area of a unit, rounded to the nearest meter.
+int calculateArea(List<coords.UTMCoordinates> corners)
+{
+  List<latlong.LatLng> coordinates = visualizer.convertCoordsUTM(corners);
+
+  double width = flutter_geo_math.FlutterMapMath.distanceBetween(
+    coordinates[0].latitude, 
+    coordinates[0].longitude, 
+    coordinates[1].latitude, 
+    coordinates[1].longitude,
+    ""
+  );
+  double height = flutter_geo_math.FlutterMapMath.distanceBetween(
+    coordinates[0].latitude, 
+    coordinates[0].longitude, 
+    coordinates[2].latitude, 
+    coordinates[2].longitude,
+    ""
+  );
+
+  double area = width * height;
+  
+  return area.round();
+}
+
+class Layers extends StatefulWidget
+{
+  const Layers({super.key, required this.project});
+
+  /// The current project being viewed.
+  final api.Project project;
+
+  @override
+  State<Layers> createState() => _LayersState();
+}
+
+/// The mutable state of the site map page.
+class _LayersState extends State<Layers>
+{
+  /// String to store the encoded contents of an image file.
+  String? imageContents;
+
+  /// Loads an image from the local file system and encodes it as a base 64
+  /// string.
+  Future<void> loadImage() async {
+    file_picker.PlatformFile? image = await file_picker.FilePicker.pickFile(
+      type: file_picker.FileType.custom,
+      allowedExtensions: ['png', 'jpg', 'jpeg'],
+    );
+
+    if (image != null) {
+      final filePath = image.path!;
+      io.File imageFile = io.File(filePath);
+      typed_data.Uint8List bytes = await imageFile.readAsBytes();
+      imageContents = convert.base64.encode(bytes);
+    }
+  }
+
+  /// Displays a modal in which the user can create a layer and upload a 
+  /// corresponding image from their files, which results in a layer being
+  /// added to the project controller.
+  void addLayer()
+  {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    String? layerName;
+    String? layerDescription;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          scrollable: true,
+          content: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter layer name:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a name for the layer.';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      layerName = value!;
+                    },
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter layer description:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a description for the layer.';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      layerDescription = value!;
+                    },
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: ElevatedButton(
+                      onPressed: loadImage,
+                      child: Text("Upload layer image:"),
+                    )
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              child: Text("Create Layer"),
+              onPressed: () async {
+                formKey.currentState!.save();
+
+                // Access project controller and add new layer to the project.
+                final createdLayer = await widget.project.createLayer(
+                  layerName!, 
+                  layerDescription!, 
+                );
+
+                // Upload layer image encoded as a string to the database.
+                await widget.project.uploadLayerImage(
+                  createdLayer.id,
+                  imageContents!,
+                  "unnamed image" // TODO: create an input for this
+                );
+
+                api.LayerImages layerImageController = 
+                  await api.LayerImages.getInstance();
+
+                layerImageController.addImage(widget.project.id, imageContents!);
+
+                if (context.mounted) Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ]
+        );
+      }
+    );
+  }
+
+  /// Fetches the image corresponding to a layer from the cache for display.
+  Future<String> fetchImage(String layerId) async
+  {
+    api.LayerImages layerImageController =
+      await api.LayerImages.getInstance();
+    return layerImageController.getImageByLayerId(widget.project.id, layerId);
+  }
+
+  @override
+  Widget build(BuildContext context) 
+  {
+    return Material(child: Column(
+      children: [
+        Padding (
+          padding: EdgeInsetsGeometry.symmetric(vertical: 20.0),
+          child: Stack(
+            alignment: AlignmentGeometry.topRight,
+            children: <Widget>[
+              Center(
+                child: Text(
+                  "Layers", 
+                  style: TextTheme.of(context).headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(
+                  vertical: 16.0, 
+                  horizontal: 20.0
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.add),
+                  color: Color.fromARGB(255, 232, 237, 242),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Color.fromARGB(255, 84, 122, 149)
+                  ),
+                  onPressed: addLayer,
+                )
+              )
+            ]
+          )
+        ),
+        widget.project.layers.isEmpty
+          ?
+          Center(child: Text(
+            "No layers created yet!"
+          ))
+          :
+          ListView.builder(
+            shrinkWrap: true,
+            physics: ClampingScrollPhysics(),
+            itemCount: widget.project.layers.length, 
+            itemBuilder: (BuildContext context, int index) {
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute<void>(
+                    builder: (context) => LayerPage(
+                      project: widget.project, 
+                      layer: widget.project.layers[index]
+                    )
+                  ));
+                },
+                child: Card(
+                  margin: 
+                    EdgeInsetsGeometry.only(
+                      top: 20.0, 
+                      left: 20.0, 
+                      right: 20.0
+                    ),
+                  color: Color.fromARGB(255, 232, 237, 242),
+                  surfaceTintColor: Color.fromARGB(255, 84, 122, 149),
+                  child: LayerItem(
+                    name: widget.project.layers[index].name,
+                    description: widget.project.layers[index].description,
+                    timeCreated: 
+                      widget.project.layers[index].createdAt.toString(),
+                    timeUpdated: 
+                      widget.project.layers[index].lastUpdated.toString(),
+                    thumbnail: 
+                    Padding(
+                      padding: EdgeInsetsGeometry.symmetric(
+                            horizontal: 10.0),
+                    child: FutureBuilder(
+                    future: fetchImage(widget.project.layers[index].id),
+                    builder: (
+                      BuildContext ctx, 
+                      AsyncSnapshot<String> snapshot
+                    )
+                    {
+                      if (snapshot.hasError) {
+                        print(snapshot.error!.toString());
+                        return Center(
+                          child: Text("Error fetching layer image.")
+                        );
+                      }
+
+                      if (!snapshot.hasData) {
+                        return Center(child: Text("Loading image..."));
+                      }
+
+                      return Image.memory(
+                        convert.base64Decode(snapshot.data!),
+                        height: 300
+                      );
+                    }
+                  ),
+                    ),
+                  )
+              ));
+            }
+          ),
+        ]));
+  }
+}
+
+/// Widget containing the text-based fields for a project.
+class LayerFields extends StatelessWidget {
+  const LayerFields({
+    super.key,
+    required this.name,
+    required this.description,
+    required this.timeCreated,
+    required this.timeUpdated,
+  });
+
+  /// Name of the project.
+  final String name;
+  /// Description of the project.
+  final String description;
+  /// Time at which the project was created.
+  final String timeCreated;
+  /// Time at which the project was last updated.
+  final String timeUpdated;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: .start,
+      children: <Widget>[
+        Text(
+          name,
+          maxLines: 2,
+          overflow: .ellipsis,
+          style: const TextStyle(fontWeight: .bold, fontSize: 22.0),
+        ),
+        const Padding(padding: .only(bottom: 2.0)),
+        Expanded(
+          child: Text(
+            description,
+            maxLines: 2,
+            overflow: .ellipsis,
+            style: const TextStyle(
+              fontSize: 15.0, 
+              color: Color.fromARGB(255, 84, 122, 149)
+            ),
+          ),
+        ),
+        Text(
+          "Created At: $timeCreated",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+        Text(
+          "Last Modified: $timeUpdated",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+      ],
+    );
+  }
+}
+
+/// Widget representing a single project spec, contained in a row in which the
+/// image for the topmost layer is displayed to the left and the text-based
+/// fields are displayed to the right.
+class LayerItem extends StatelessWidget {
+  const LayerItem({
+    super.key,
+    required this.name,
+    required this.description,
+    required this.timeCreated,
+    required this.timeUpdated,
+    required this.thumbnail
+  });
+
+  /// Widget for the thumbnail image.
+  final Widget thumbnail;
+  /// Name of the project.
+  final String name;
+  /// Description of the project.
+  final String description;
+  /// Time at which the project was created.
+  final String timeCreated;
+  /// Time at which the project was last updated.
+  final String timeUpdated;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const .symmetric(vertical: 10.0),
+      child: SizedBox(
+        height: 120,
+        child: Row(
+          crossAxisAlignment: .start,
+          children: <Widget>[
+            AspectRatio(aspectRatio: 1.0, child: thumbnail),
+            Expanded(
+              child: Padding(
+                padding: const .fromLTRB(20.0, 0.0, 2.0, 0.0),
+                child: LayerFields(
+                  name: name,
+                  description: description,
+                  timeCreated: timeCreated,
+                  timeUpdated: timeUpdated,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
