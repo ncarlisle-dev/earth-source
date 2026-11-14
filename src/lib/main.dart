@@ -16,8 +16,31 @@ class MyApp extends StatelessWidget
     return MaterialApp(
       title: 'ArchaeoSight 2.0',
       theme: ThemeData(
+        // From the following color palette: 
+        // https://colorhunt.co/palette/e8edf22c3947547a95c2a56d
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple
+          seedColor:Color.fromARGB(255, 84, 122, 149),
+          onPrimary: Color.fromARGB(255, 44, 57, 71),
+          primary:Color.fromARGB(255, 44, 57, 71),
+          primaryContainer: Color.fromARGB(255, 44, 57, 71),
+          onPrimaryContainer: Color.fromARGB(255, 194, 165, 109),
+          secondary:Color.fromARGB(255, 44, 57, 71),
+          onSecondary: Color.fromARGB(255, 44, 57, 71),
+          secondaryContainer: Color.fromARGB(255, 44, 57, 71),
+          onSecondaryContainer: Color.fromARGB(255, 194, 165, 109),
+          tertiary:Color.fromARGB(255, 44, 57, 71),
+          onTertiary: Color.fromARGB(255, 44, 57, 71),
+          tertiaryContainer: Color.fromARGB(255, 44, 57, 71),
+          onTertiaryContainer: Color.fromARGB(255, 194, 165, 109),
+          surfaceContainer: Color.fromARGB(255, 84, 122, 149),
+          surface: Color.fromARGB(255, 232, 237, 242),
+          onSurface: Color.fromARGB(255, 44, 57, 71),
+          //surfaceDim: Color.fromARGB(255, 84, 122, 149),
+          //surfaceBright: Color.fromARGB(255, 84, 122, 149),
+          surfaceContainerLow: Color.fromARGB(255, 84, 122, 149),
+          //surfaceContainerHigh: Color.fromARGB(255, 84, 122, 149),
+          //surfaceContainerHighest: Color.fromARGB(255, 84, 122, 149),
+          //onSurfaceVariant: Color.fromARGB(255, 84, 122, 149),
         ),
       ),
       initialRoute: '/',

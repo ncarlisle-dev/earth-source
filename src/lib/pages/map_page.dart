@@ -759,9 +759,11 @@ class _MapPageState extends State<MapPage>
     );
   }
 
-  /// Fetches the image corresponding to a layer from the database for display.
-  Future<String> fetchImage(String layerId)
-    => widget.project.getLayerImage(layerId);
+  /// Fetches the image corresponding to a layer from the cache for display.
+  Future<String> fetchImage(String layerId) async
+  {
+    return widget.project.getLayerImage(layerId);
+  }
 
   @override
   Widget build(BuildContext context) 
