@@ -7,8 +7,8 @@ import 'home_page.dart';
 class ProjectSettings extends StatefulWidget
 {
   // Id of the current project.
-  final String projectId;
-  const ProjectSettings({super.key, required this.projectId});
+  final api.Project project;
+  const ProjectSettings({super.key, required this.project});
 
   @override
   State<ProjectSettings> createState() => _ProjectSettingsState();
@@ -39,7 +39,7 @@ class _ProjectSettingsState extends State<ProjectSettings>
                 final projectController = 
                   await api.ProjectController.getInstance();
 
-                await projectController.deleteProject(widget.projectId);
+                await projectController.deleteProject(widget.project.id);
                 if (context.mounted)
                 {
                   Navigator.push(context, MaterialPageRoute<void>(
@@ -52,6 +52,62 @@ class _ProjectSettingsState extends State<ProjectSettings>
             ElevatedButton(
               child: const Text("Cancel"),
               onPressed: () => Navigator.of(context).pop(),
+            ),
+          ]
+        );
+      }
+    );
+  }
+
+  /// Displays a pop-up dialogue box that allows the user to set a new 
+  /// description for the project.
+  void changeDescription()
+  {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    String projectDescription = "";
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          scrollable: true,
+          content: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter new description:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a value for the new description';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      setState(() {
+                        projectDescription = value!;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              child: const Text("Submit"),
+              onPressed: () async {
+                formKey.currentState!.save();
+                await widget.project.setDescription(projectDescription);
+
+                if (!context.mounted) return;
+                Navigator.of(context).pop();
+              },
             ),
           ]
         );
@@ -83,6 +139,13 @@ class _ProjectSettingsState extends State<ProjectSettings>
             )
           ),
         ),
+        Padding(
+          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+          child: FloatingActionButton(
+            onPressed: changeDescription,
+            child: Text("Change Project Description")
+          )
+        ), 
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: FloatingActionButton(
