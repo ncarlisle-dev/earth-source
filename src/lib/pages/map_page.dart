@@ -20,6 +20,7 @@ class MapPage extends StatefulWidget
   /// The current project being viewed.
   final api.Project project;
 
+  /// The starting index for which tab to display within the map page.
   final int index;
 
   @override
@@ -29,56 +30,49 @@ class MapPage extends StatefulWidget
 /// The mutable state of the site map page.
 class _MapPageState extends State<MapPage>
 {
-  /// List containing updated layers for the project.
-  List<api.Layer> updatedLayers = [];
-  /// List containing updated units for the project.
-  List<api.Unit> updatedUnits = [];
-
   @override
   Widget build(BuildContext context) 
   {
     return DefaultTabController(
-        initialIndex: widget.index,
-        length: 2,
-        child: Scaffold(
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            leading: Padding(
-          padding: EdgeInsetsGeometry.all(
-            5.0
+      initialIndex: widget.index,
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          leading: Padding(
+            padding: EdgeInsetsGeometry.all(5.0),
+            child: FloatingActionButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+                builder: (context) => ProjectDashboard(project: widget.project),
+              )),
+              child: const Icon(Icons.arrow_circle_left)
+            )
           ),
-          child: FloatingActionButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
-              builder:
-                (context) => ProjectDashboard(project: widget.project),
-            )),
-            child: const Icon(Icons.arrow_circle_left)
-          )
-        ),
-            bottom: const TabBar(
-              tabs: [
-                Tab(text: "Units"),
-                Tab(text: "Layers"),
-              ],
-            ),
-            title: Center(child: Text(
-              'Site Map',
-              style: TextTheme.of(context).headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold
-              )
-            )),
-          ),
-          body: TabBarView(
-            children: [
-              Units(project: widget.project),
-              Layers(project: widget.project),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: "Units"),
+              Tab(text: "Layers"),
             ],
           ),
+          title: Center(child: Text(
+            'Site Map',
+            style: TextTheme.of(context).headlineLarge?.copyWith(
+              fontWeight: FontWeight.bold
+            )
+          )),
         ),
+        body: TabBarView(
+          children: [
+            Units(project: widget.project),
+            Layers(project: widget.project),
+          ],
+        ),
+      ),
     );
   }
 }
 
+/// A stateful widget for the units tab within the site map page.
 class Units extends StatefulWidget
 {
   const Units({super.key, required this.project});
@@ -90,7 +84,7 @@ class Units extends StatefulWidget
   State<Units> createState() => _UnitsState();
 }
 
-/// The mutable state of the site map page.
+/// The mutable state of the units tab within the site map page.
 class _UnitsState extends State<Units>
 {
   /// Displays a modal in which the user can create a unit, which results in the 
@@ -594,6 +588,7 @@ class _UnitsState extends State<Units>
     );
   }
 
+  /// Vertical and horizontal scroll controllers for the units data table.
   final verticalScrollController = ScrollController();
   final horizontalScrollController = ScrollController();
 
@@ -604,149 +599,159 @@ class _UnitsState extends State<Units>
       children: [
         Padding (
           padding: EdgeInsetsGeometry.symmetric(vertical: 20.0),
-        child: Stack(
-          alignment: AlignmentGeometry.topRight,
-          children: <Widget>[
-            Center(
-              child: Text(
+          child: Stack(
+            alignment: AlignmentGeometry.topRight,
+            children: <Widget>[
+              Center(child: Text(
                 "Units", 
-              style: TextTheme.of(context).headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold),
+                style: TextTheme.of(context).headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-            Padding(
-            padding: EdgeInsetsGeometry.symmetric(
-              vertical: 16.0, 
-              horizontal: 20.0
-            ),
-            child: IconButton(
-              icon: Icon(Icons.add),
-              color: Color.fromARGB(255, 232, 237, 242),
-              style: IconButton.styleFrom(
-                backgroundColor: Color.fromARGB(255, 84, 122, 149)
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(
+                  vertical: 16.0, 
+                  horizontal: 20.0
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.add),
+                  color: Color.fromARGB(255, 232, 237, 242),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Color.fromARGB(255, 84, 122, 149)
+                  ),
+                  onPressed: addUnit,
+                )
               ),
-              onPressed: addUnit,
-            )
-          ),
-          ],
-        )),
+            ],
+          )
+        ),
         Center(
-        child: Container(
-          width: MediaQuery.of(context).size.width, // match the window width
-          height: MediaQuery.of(context).size.height - 300,
-          margin: const EdgeInsets.all(15.0),
-
-          child: Scrollbar(
-            thumbVisibility: true,
-            trackVisibility: true, // make the scrollbar easy to see
-            controller: verticalScrollController,
+          child: Container(
+            width: MediaQuery.of(context).size.width, 
+            height: MediaQuery.of(context).size.height - 300,
+            margin: const EdgeInsets.all(15.0),
             child: Scrollbar(
               thumbVisibility: true,
-              trackVisibility: true,
-              controller: horizontalScrollController,
-              notificationPredicate: (notif) => notif.depth == 1,
-              child: SingleChildScrollView(
-                controller: verticalScrollController,
-                scrollDirection: Axis.vertical,
+              trackVisibility: true, 
+              controller: verticalScrollController,
+              child: Scrollbar(
+                thumbVisibility: true,
+                trackVisibility: true,
+                controller: horizontalScrollController,
+                notificationPredicate: (notif) => notif.depth == 1,
                 child: SingleChildScrollView(
-                  controller: horizontalScrollController,
-                  scrollDirection: Axis.horizontal,
-                  child:
-                    DataTable(
-                    columns: const <DataColumn>[
-                    DataColumn(
-                      label: Expanded(
-                        child: Text(
-                          'Name', 
-                          style: TextStyle(fontStyle: .italic)
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: Expanded(
-                        child: Text(
-                          'Created', 
-                          style: TextStyle(fontStyle: .italic)
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: Expanded(
-                        child: Text(
-                          'Modified', 
-                          style: TextStyle(fontStyle: .italic)
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: Expanded(
-                        child: Text(
-                          'Description', 
-                          style: TextStyle(fontStyle: .italic)
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: Expanded(
-                        child: Text(
-                          'Area (m)', 
-                          style: TextStyle(fontStyle: .italic)
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: Expanded(
-                        child: Text('', style: TextStyle(fontStyle: .italic)),
-                      ),
-                    ),
-                    DataColumn(
-                      label: Expanded(
-                        child: Text('', style: TextStyle(fontStyle: .italic)),
-                      ),
-                    ),
-                  ],
-                    rows: List<DataRow>.generate(
-                      widget.project.units.length,
-                      (int index) => DataRow(
-                        cells: <DataCell>[
-                        DataCell(Text(widget.project.units[index].name)),
-                        DataCell(
-                          Text(
-                            widget.project.units[index].createdAt.toString()
-                          )
-                        ),
-                        DataCell(
-                          Text(
-                            widget.project.units[index].lastUpdated.toString()
-                          )
-                        ),
-                        DataCell(
-                          Text(
-                            widget.project.units[index].description, 
-                            maxLines: 1,
-                            overflow: .ellipsis
-                          )
-                        ),
-                        DataCell(Text(calculateArea(widget.project.units[index].corners).toString())),
-                        DataCell(IconButton(
-                          onPressed: () => 
-                            editUnit(widget.project.units[index]),
-                          icon: Icon(Icons.edit),
-                        )),
-                        DataCell(IconButton(
-                          onPressed: () => 
-                            deleteUnit(widget.project.units[index].id),
-                          icon: Icon(Icons.delete),
-                        )),
-                      ],
+                  controller: verticalScrollController,
+                  scrollDirection: Axis.vertical,
+                  child: SingleChildScrollView(
+                    controller: horizontalScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child:
+                      DataTable(
+                        columns: const <DataColumn>[
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Name', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Created', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Modified', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Description', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Area (m)', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                '', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                '', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                        ],
+                      rows: List<DataRow>.generate(
+                        widget.project.units.length,
+                        (int index) => DataRow(
+                          cells: <DataCell>[
+                          DataCell(Text(widget.project.units[index].name)),
+                          DataCell(
+                            Text(
+                              widget.project.units[index].createdAt.toString()
+                            )
+                          ),
+                          DataCell(
+                            Text(
+                              widget.project.units[index].lastUpdated.toString()
+                            )
+                          ),
+                          DataCell(
+                            Text(
+                              widget.project.units[index].description, 
+                              maxLines: 1,
+                              overflow: .ellipsis
+                            )
+                          ),
+                          DataCell(Text(
+                            calculateArea(
+                              widget.project.units[index].corners
+                            ).toString()
+                          )),
+                          DataCell(IconButton(
+                            onPressed: () => 
+                              editUnit(widget.project.units[index]),
+                            icon: Icon(Icons.edit),
+                          )),
+                          DataCell(IconButton(
+                            onPressed: () => 
+                              deleteUnit(widget.project.units[index].id),
+                            icon: Icon(Icons.delete),
+                          )),
+                        ],
+                      )
                     )
-                  )
-                ),
-              ), 
+                  ),
+                ), 
+              )
             )
           )
         )
-      ))]
+      )]
     ));
   }
 }
@@ -789,7 +794,7 @@ class Layers extends StatefulWidget
   State<Layers> createState() => _LayersState();
 }
 
-/// The mutable state of the site map page.
+/// The mutable state of the layers tab within the site map page.
 class _LayersState extends State<Layers>
 {
   /// String to store the encoded contents of an image file.
@@ -993,103 +998,118 @@ class _LayersState extends State<Layers>
           )
         ),
         Center(
-        child: Container(
-          width: MediaQuery.of(context).size.width, // match the window width
-          height: MediaQuery.of(context).size.height - 300,
-          margin: const EdgeInsets.symmetric(horizontal: 15.0),
-          child:
-        widget.project.layers.isEmpty
-          ?
-          Center(child: Text(
-            "No layers created yet!"
-          ))
-          :
-          ListView.builder(
-            shrinkWrap: true,
-            physics: AlwaysScrollableScrollPhysics(),
-            itemCount: widget.project.layers.length, 
-            itemBuilder: (BuildContext context, int index) {
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute<void>(
-                    builder: (context) => LayerPage(
-                      project: widget.project, 
-                      layer: widget.project.layers[index]
-                    )
-                  ));
-                },
-                child: Card(
-                  margin: 
-                    EdgeInsetsGeometry.only(
-                      top: 20.0, 
-                      left: 5.0, 
-                      right: 5.0
-                    ),
-                  color: Color.fromARGB(255, 232, 237, 242),
-                  surfaceTintColor: Color.fromARGB(255, 84, 122, 149),
-                  child: Stack(alignment: AlignmentGeometry.bottomRight,
-                  children: [LayerItem(
-                    name: widget.project.layers[index].name,
-                    description: widget.project.layers[index].description,
-                    timeCreated: 
-                      widget.project.layers[index].createdAt.toString(),
-                    timeUpdated: 
-                      widget.project.layers[index].lastUpdated.toString(),
-                    thumbnail: 
-                    Padding(
-                      padding: EdgeInsetsGeometry.symmetric(
-                            horizontal: 10.0),
-                    child: FutureBuilder(
-                    future: fetchImage(widget.project.layers[index].id),
-                    builder: (
-                      BuildContext ctx, 
-                      AsyncSnapshot<String> snapshot
-                    )
-                    {
-                      if (snapshot.hasError) {
-                        print(snapshot.error!.toString());
-                        return Center(
-                          child: Text("Error fetching layer image.")
-                        );
-                      }
+          child: Container(
+            width: MediaQuery.of(context).size.width, // match the window width
+            height: MediaQuery.of(context).size.height - 300,
+            margin: const EdgeInsets.symmetric(horizontal: 15.0),
+            child:
+            widget.project.layers.isEmpty
+            ?
+              Center(child: Text("No layers created yet!"))
+            :
+              ListView.builder(
+                shrinkWrap: true,
+                physics: AlwaysScrollableScrollPhysics(),
+                itemCount: widget.project.layers.length, 
+                itemBuilder: (BuildContext context, int index) {
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute<void>(
+                        builder: (context) => LayerPage(
+                          project: widget.project, 
+                          layer: widget.project.layers[index]
+                        )
+                      ));
+                    },
+                    child: Card(
+                      margin: EdgeInsetsGeometry.only(
+                        top: 20.0, 
+                        left: 5.0, 
+                        right: 5.0
+                      ),
+                      color: Color.fromARGB(255, 232, 237, 242),
+                      surfaceTintColor: Color.fromARGB(255, 84, 122, 149),
+                      child: Stack(
+                        alignment: AlignmentGeometry.bottomRight,
+                        children: [
+                          LayerItem(
+                            name: widget.project.layers[index].name,
+                            description: 
+                              widget.project.layers[index].description,
+                            timeCreated: 
+                              widget.project.layers[index].createdAt.toString(),
+                            timeUpdated: 
+                              widget.project.layers[index].lastUpdated.
+                              toString(),
+                            thumbnail: Padding(
+                              padding: EdgeInsetsGeometry.symmetric(
+                                horizontal: 10.0
+                              ),
+                              child: FutureBuilder(
+                                future: fetchImage(
+                                  widget.project.layers[index].id
+                                ),
+                                builder: (
+                                  BuildContext ctx, 
+                                  AsyncSnapshot<String> snapshot
+                                ) {
+                                  if (snapshot.hasError) {
+                                    print(snapshot.error!.toString());
+                                    return Center(
+                                      child: Text(
+                                        "Error fetching layer image."
+                                      )
+                                    );
+                                  }
 
-                      if (!snapshot.hasData) {
-                        return Center(child: Text("Loading image..."));
-                      }
+                                  if (!snapshot.hasData) {
+                                    return Center(
+                                      child: Text("Loading image...")
+                                    );
+                                  }
 
-                      return Image.memory(
-                        convert.base64Decode(snapshot.data!),
-                        height: 300
-                      );
-                    }
-                  ),
-                    ),
-                  ),
-                  Padding(
-                padding: EdgeInsetsGeometry.only(
-                  top: 16.0, 
-                  left: 20.0, 
-                  right: 20.0,
-                  bottom: 16.0,
-                ),
-                child: IconButton(
-                  icon: Icon(Icons.delete),
-                  color: Color.fromARGB(255, 232, 237, 242),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Color.fromARGB(255, 84, 122, 149)
-                  ),
-                  onPressed: () => deleteLayer(widget.project.layers[index].id),
-                )
-              ),
-                  ])
-              ));
-            }
-          ),))
-        ]));
+                                  return Image.memory(
+                                    convert.base64Decode(snapshot.data!),
+                                    height: 300
+                                  );
+                                }
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsetsGeometry.only(
+                              top: 16.0, 
+                              left: 20.0, 
+                              right: 20.0,
+                              bottom: 16.0,
+                            ),
+                            child: IconButton(
+                              icon: Icon(Icons.delete),
+                              color: Color.fromARGB(255, 232, 237, 242),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Color.fromARGB(
+                                  255, 84, 122, 149
+                                )
+                              ),
+                              onPressed: () => 
+                                deleteLayer(widget.project.layers[index].id),
+                            )
+                          ),
+                        ]
+                      )
+                    )
+                  );
+                }
+              )
+            )
+          )
+        ]
+      )
+    );
   }
 }
 
-/// Widget containing the text-based fields for a project.
+/// Widget containing the text-based fields for a layer.
 class LayerFields extends StatelessWidget {
   const LayerFields({
     super.key,
@@ -1099,13 +1119,13 @@ class LayerFields extends StatelessWidget {
     required this.timeUpdated,
   });
 
-  /// Name of the project.
+  /// Name of the layer.
   final String name;
-  /// Description of the project.
+  /// Description of the layer.
   final String description;
-  /// Time at which the project was created.
+  /// Time at which the layer was created.
   final String timeCreated;
-  /// Time at which the project was last updated.
+  /// Time at which the layer was last updated.
   final String timeUpdated;
 
   @override
@@ -1151,8 +1171,8 @@ class LayerFields extends StatelessWidget {
   }
 }
 
-/// Widget representing a single project spec, contained in a row in which the
-/// image for the topmost layer is displayed to the left and the text-based
+/// Widget representing a single layer, contained in a row in which the
+/// image for the layer is displayed to the left and the text-based
 /// fields are displayed to the right.
 class LayerItem extends StatelessWidget {
   const LayerItem({
@@ -1164,15 +1184,15 @@ class LayerItem extends StatelessWidget {
     required this.thumbnail
   });
 
-  /// Widget for the thumbnail image.
+  /// Widget for the layer image.
   final Widget thumbnail;
-  /// Name of the project.
+  /// Name of the layer.
   final String name;
-  /// Description of the project.
+  /// Description of the layer.
   final String description;
-  /// Time at which the project was created.
+  /// Time at which the layer was created.
   final String timeCreated;
-  /// Time at which the project was last updated.
+  /// Time at which the layer was last updated.
   final String timeUpdated;
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/network_service.dart';
 import 'network.dart' as network;
 
+/// List of colors associated with each job status.
 const List<Color> statusColors = [
   Colors.lightBlue,
   Colors.yellow, 
@@ -9,6 +10,7 @@ const List<Color> statusColors = [
   Colors.red
 ];
 
+/// List of strings associated with each job status.
 const List<String> statusList = ["Starting", "Running", "Complete", "Failed"];
 
 /// Possible job statuses.
