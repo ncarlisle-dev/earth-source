@@ -776,6 +776,8 @@ class _LayersState extends State<Layers>
   /// String to store the encoded contents of an image file.
   String? imageContents;
 
+  bool imageLoaded = false;
+
   /// Loads an image from the local file system and encodes it as a base 64
   /// string.
   Future<void> loadImage() async {
@@ -801,6 +803,7 @@ class _LayersState extends State<Layers>
 
     String? layerName;
     String? layerDescription;
+    String? imageName;
 
     showDialog(
       context: context,
@@ -841,6 +844,20 @@ class _LayersState extends State<Layers>
                       layerDescription = value!;
                     },
                   ),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter a name for the layer image:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a name for the layer image.';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      imageName = value!;
+                    },
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     child: ElevatedButton(
@@ -848,6 +865,16 @@ class _LayersState extends State<Layers>
                       child: Text("Upload layer image:"),
                     )
                   ),
+                  !imageLoaded
+                    ?
+                    Center()
+                    :
+                    Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(
+                      child: Text("Image has been uploaded!"),
+                    )
+                  ), 
                 ],
               ),
             ),
@@ -868,13 +895,8 @@ class _LayersState extends State<Layers>
                 await widget.project.uploadLayerImage(
                   createdLayer.id,
                   imageContents!,
-                  "unnamed image" // TODO: create an input for this
+                  imageName!
                 );
-
-                api.LayerImages layerImageController = 
-                  await api.LayerImages.getInstance();
-
-                layerImageController.addImage(widget.project.id, imageContents!);
 
                 if (context.mounted) Navigator.of(context).pop();
               },
@@ -892,9 +914,7 @@ class _LayersState extends State<Layers>
   /// Fetches the image corresponding to a layer from the cache for display.
   Future<String> fetchImage(String layerId) async
   {
-    api.LayerImages layerImageController =
-      await api.LayerImages.getInstance();
-    return layerImageController.getImageByLayerId(widget.project.id, layerId);
+    return widget.project.getLayerImage(layerId);
   }
 
   @override

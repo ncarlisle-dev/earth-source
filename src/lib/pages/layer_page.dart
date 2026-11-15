@@ -230,11 +230,6 @@ class _LayerPageState extends State<LayerPage>
                   "unnamed image" // TODO: create an input for this
                 );
 
-                api.LayerImages layerImageController = 
-                  await api.LayerImages.getInstance();
-
-                layerImageController.addImage(widget.project.id, imageContents!);
-
                 if (context.mounted) Navigator.of(context).pop();
               },
             ),

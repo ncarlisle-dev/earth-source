@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
 import './project_dashboard.dart';
 import 'dart:convert' as convert;
-import 'dart:convert' as convert;
 
 /// A stateful widget for the user projects page.
 class UserProjectsPage extends StatefulWidget 
