@@ -394,6 +394,7 @@ class Project
       );
     }
 
+    dataAssignments[createdLayer.id] = {};
     layers.add(createdLayer);
     return createdLayer;
   }
@@ -558,6 +559,10 @@ class Project
 
     units.add(createdUnit);
     lastUpdated = updateTimestamp;
+
+    for (var layer in layers) {
+      dataAssignments[layer.id]![createdUnit.id] = null;
+    }
 
     return createdUnit;
   }
