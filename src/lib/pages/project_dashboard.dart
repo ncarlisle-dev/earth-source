@@ -147,7 +147,7 @@ class _ProjectDashboardState extends State<ProjectDashboard>
             child: FloatingActionButton(
               onPressed: () => Navigator.push(
                 context, MaterialPageRoute<void>(builder: 
-                  (context) => MapPage(project: widget.project),
+                  (context) => MapPage(index: 0, project: widget.project),
                 )
               ),
               child: ButtonContent(icon: Icons.map_outlined, text: "Site Map"),

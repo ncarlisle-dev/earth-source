@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
-import 'project_settings.dart';
-import 'predictions/predictions_page.dart';
-import 'data/data_page.dart';
 import 'map_page.dart';
-import 'projects_page.dart';
-import 'home_page.dart';
 import 'dart:io' as io; 
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'dart:convert' as convert;
@@ -156,40 +151,10 @@ class _LayerPageState extends State<LayerPage>
     }
   }
 
-  /// Deletes the given layer from the project and updates what is displayed.
-  void deleteLayer(String layerId) async
-  {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          scrollable: true,
-          content: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text("Are you sure you want to delete this layer?")
-          ),
-          actions: [
-            ElevatedButton(
-              child: const Text("Confirm Deletion"),
-              onPressed: () async {
-                await widget.project.deleteLayer(layerId);
-
-                if (context.mounted) Navigator.of(context).pop();
-              },
-            ),
-            ElevatedButton(
-              child: const Text("Cancel"),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ]
-        );
-      }
-    );
-  }
-
   void changeImage()
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    String? imageName;
 
     showDialog(
       context: context,
@@ -202,11 +167,26 @@ class _LayerPageState extends State<LayerPage>
               key: formKey,
               child: Column(
                 children: [
+                  Text("Warning: this will delete your previous image!"),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Enter new layer image name:",
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a name for the layer image.';
+                      }
+                      return null;
+                    },
+                    onSaved: (value) async {
+                      imageName = value!;
+                    },
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     child: ElevatedButton(
                       onPressed: loadImage,
-                      child: Text("Upload new layer image (warning: this will delete your previous image!)"),
+                      child: Text("Upload new image"),
                     )
                   ),
                 ],
@@ -227,7 +207,7 @@ class _LayerPageState extends State<LayerPage>
                 await widget.project.uploadLayerImage(
                   widget.layer.id,
                   imageContents!,
-                  "unnamed image" // TODO: create an input for this
+                  imageName!
                 );
 
                 if (context.mounted) Navigator.of(context).pop();
@@ -243,17 +223,62 @@ class _LayerPageState extends State<LayerPage>
     );
   }
 
+  String formatAssignments()
+  {
+    String assignments = "";
+    int specsAssigned = 0;
+
+    if (widget.project.dataAssignments[widget.layer.id]! == {})
+    {
+      return ("No data assigned to this layer as of yet!");
+    }
+
+    widget.project.dataAssignments[widget.layer.id]!.forEach((unitId, dataId) {
+      api.Unit unit = 
+        widget.project.units.firstWhere((unit) => unit.id == unitId);
+      if (dataId != null)
+      {
+        specsAssigned ++;
+        api.DataSpec dataSpec = 
+        widget.project.pxrfData.firstWhere((dataSpec) => dataSpec.id == dataId);
+        assignments += "${unit.name} - ${dataSpec.fileName},";
+      }
+    });
+    if (specsAssigned == 0)
+    {
+      return ("No data assigned to this layer as of yet!");
+    }
+    return assignments.substring(0, assignments.length - 1);
+  }
+
+  List<api.PredictionJob> getJobs()
+  {
+    List<api.PredictionJob> jobs = [];
+    for (var job in widget.project.predictions)
+    {
+      if (job.layerId == widget.layer.id) {
+        jobs.add(job);
+      }
+    }
+    return jobs;
+  }
+
   @override
   Widget build(BuildContext context) 
   {
-    return Material(child: Column(
+    String assignments = formatAssignments();
+    List<api.PredictionJob> jobs = getJobs();
+
+    return Material(child: ListView(
+      shrinkWrap: true,
+      physics: ClampingScrollPhysics(),
       children: [
         Padding(
-          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0, horizontal: 20.0),
           child: FloatingActionButton(
             onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
               builder:
-                (context) => MapPage(project: widget.project),
+                (context) => MapPage(index: 1, project: widget.project),
             )),
             child: const Icon(Icons.arrow_circle_left)
           )
@@ -269,17 +294,45 @@ class _LayerPageState extends State<LayerPage>
             )
           ),
         ), 
+        Padding(
+            padding: EdgeInsetsGeometry.symmetric(horizontal: 20.0),
+            child: Center(
+              child: Text(
+                widget.layer.description,
+                style: TextStyle(fontSize: 15)
+              ),
+            ),
+        ),
+        Padding(
+            padding: EdgeInsetsGeometry.only(left: 20.0, right: 20.0, top: 5.0, bottom: 20.0),
+            child: Center(
+              child: RichText(
+              text: TextSpan(
+                style: TextStyle(fontSize: 15, color: Color.fromARGB(255, 44, 57, 71)),
+                children: <TextSpan>[
+                  TextSpan(
+                    text: 'Assigned Data: ',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(
+                    text: assignments,
+                  ),
+                ],
+              ),
+            )
+            )
+        ),
          Padding(
           padding: EdgeInsetsGeometry.symmetric(
             vertical: 5.0, 
             horizontal: 20.0
           ),
           child: SizedBox(
-            height: 100.0,
+            height: 50.0,
             width: MediaQuery.of(context).size.width - 50,
             child: FloatingActionButton(
               onPressed: changeName,
-              child: ButtonContent(icon: Icons.edit, text: "Edit Name"),
+              child: ButtonContent(icon: Icons.edit, text: "Change Name"),
             )
           )
         ),
@@ -289,13 +342,13 @@ class _LayerPageState extends State<LayerPage>
             horizontal: 20.0
           ),
           child: SizedBox(
-            height: 100.0,
+            height: 50.0,
             width: MediaQuery.of(context).size.width - 50,
             child: FloatingActionButton(
               onPressed: changeDescription,
               child: ButtonContent(
                 icon: Icons.edit, 
-                text: "Edit Description"
+                text: "Change Description"
               ),
             )
           )
@@ -306,7 +359,7 @@ class _LayerPageState extends State<LayerPage>
             horizontal: 20.0
           ),
           child: SizedBox(
-            height: 100.0,
+            height: 50.0,
             width: MediaQuery.of(context).size.width - 50,
             child: FloatingActionButton(
               onPressed: changeImage,
@@ -318,22 +371,50 @@ class _LayerPageState extends State<LayerPage>
           )
         ),
         Padding(
-          padding: EdgeInsetsGeometry.symmetric(
-            vertical: 5.0, 
-            horizontal: 20.0
-          ),
-          child: SizedBox(
-            height: 100.0,
-            width: MediaQuery.of(context).size.width - 50,
-            child: FloatingActionButton(
-                onPressed: () => deleteLayer(widget.layer.id),
-              child: ButtonContent(
-                icon: Icons.delete, 
-                text: "Delete Layer"
-              ),
+          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text(
+              "Prediction Jobs", 
+              style: TextTheme.of(context).headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold
+              )
             )
-          )
-        ),
+          ),
+        ), 
+        Center(
+        child: Container(
+          width: MediaQuery.of(context).size.width, // match the window width
+          height: MediaQuery.of(context).size.height - 300,
+          margin: const EdgeInsets.symmetric(horizontal: 15.0),
+          child:
+        jobs.isEmpty
+          ?
+          Center(child: Text(
+            "No prediction jobs have been run on this layer yet!"
+          ))
+          :
+        ListView.builder(
+            shrinkWrap: true,
+            physics: AlwaysScrollableScrollPhysics(),
+            itemCount: jobs.length, 
+            itemBuilder: (BuildContext context, int index) {
+              return Card(
+                  margin: 
+                    EdgeInsetsGeometry.only(
+                      top: 20.0, 
+                      left: 20.0, 
+                      right: 20.0
+                    ),
+                  color: Color.fromARGB(255, 232, 237, 242),
+                  surfaceTintColor: Color.fromARGB(255, 84, 122, 149),
+                  child: Padding(
+      padding: const .all(10.0),
+      child: SizedBox(
+        height: 120, child:JobFields(name: jobs[index].name, 
+                  description: jobs[index].description, 
+                  status: jobs[index].status, timeCreated: jobs[index].createdAt.toString(), timeUpdated: jobs[index].lastUpdated.toString(),
+                  ))));}),
+        )),
       ]
     ));
   }
@@ -357,19 +438,19 @@ class ButtonContent extends StatelessWidget
     return Padding(
       padding: const .symmetric(vertical: 10.0),
       child: SizedBox(
-        height: 100,
+        height: 50,
         child: Row(
           crossAxisAlignment: .start,
           children: <Widget>[
             Padding(
                 padding: const .fromLTRB(20.0, 0.0, 2.0, 25.0),
-                child: Center(child: Icon(icon, size: 75))),
+                child: Center(child: Icon(icon, size: 30))),
             Expanded(
               child: Padding(
                 padding: const .fromLTRB(20.0, 0.0, 2.0, 0.0),
                 child: Center(child: Text(
                   text, 
-                  style: TextTheme.of(context).headlineMedium?.copyWith(
+                  style: TextTheme.of(context).bodyLarge?.copyWith(
                     fontWeight: FontWeight.bold, 
                     color: Color.fromARGB(255, 194, 165, 109)
                   )
@@ -379,6 +460,75 @@ class ButtonContent extends StatelessWidget
           ],
         ),
       ),
+    );
+  }
+}
+
+class JobFields extends StatelessWidget {
+  const JobFields({
+    super.key,
+    required this.name,
+    required this.description,
+    required this.status,
+    required this.timeCreated,
+    required this.timeUpdated,
+  });
+
+  /// Name of the project.
+  final String name;
+  /// Description of the project.
+  final String description;
+  final api.JobStatus status;
+  /// Time at which the project was created.
+  final String timeCreated;
+  /// Time at which the project was last updated.
+  final String timeUpdated;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: .start,
+      children: <Widget>[
+        Text(
+          name,
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontWeight: .bold, fontSize: 22.0),
+        ),
+        const Padding(padding: .only(bottom: 2.0)),
+        Expanded(
+          child: Text(
+            description,
+            maxLines: 1,
+            overflow: .ellipsis,
+            style: const TextStyle(
+              fontSize: 15.0, 
+              color: Color.fromARGB(255, 84, 122, 149)
+            ),
+          ),
+        ),
+        Text(
+          "Status: ${api.statusList[status.index]}",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: TextStyle(
+            fontSize: 15.0, 
+            color: api.statusColors[status.index]
+          ),
+        ),
+        Text(
+          "Created At: $timeCreated",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+        Text(
+          "Last Modified: $timeUpdated",
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: const TextStyle(fontSize: 15.0),
+        ),
+      ],
     );
   }
 }

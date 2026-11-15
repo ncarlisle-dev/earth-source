@@ -9,15 +9,18 @@ import 'package:coordinate_converter/coordinate_converter.dart' as coords;
 import 'package:latlong2/latlong.dart' as latlong;
 import 'package:flutter_map_math/flutter_geo_math.dart' as flutter_geo_math;
 import 'layer_page.dart';
+import 'project_dashboard.dart';
 
 /// A stateful widget for the project site map page, which takes the current 
 /// project as a required field.
 class MapPage extends StatefulWidget
 {
-  const MapPage({super.key, required this.project});
+  const MapPage({super.key, required this.project, required this.index});
 
   /// The current project being viewed.
   final api.Project project;
+
+  final int index;
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -35,9 +38,23 @@ class _MapPageState extends State<MapPage>
   Widget build(BuildContext context) 
   {
     return DefaultTabController(
+        initialIndex: widget.index,
         length: 2,
         child: Scaffold(
           appBar: AppBar(
+            automaticallyImplyLeading: false,
+            leading: Padding(
+          padding: EdgeInsetsGeometry.all(
+            5.0
+          ),
+          child: FloatingActionButton(
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder:
+                (context) => ProjectDashboard(project: widget.project),
+            )),
+            child: const Icon(Icons.arrow_circle_left)
+          )
+        ),
             bottom: const TabBar(
               tabs: [
                 Tab(text: "Units"),
@@ -759,6 +776,8 @@ int calculateArea(List<coords.UTMCoordinates> corners)
   return area.round();
 }
 
+/// A stateful widget for the layers tab, which takes the current project as a 
+/// required field.
 class Layers extends StatefulWidget
 {
   const Layers({super.key, required this.project});
@@ -775,8 +794,6 @@ class _LayersState extends State<Layers>
 {
   /// String to store the encoded contents of an image file.
   String? imageContents;
-
-  bool imageLoaded = false;
 
   /// Loads an image from the local file system and encodes it as a base 64
   /// string.
@@ -846,7 +863,7 @@ class _LayersState extends State<Layers>
                   ),
                   TextFormField(
                     decoration: const InputDecoration(
-                      labelText: "Enter a name for the layer image:",
+                      labelText: "Enter layer image name:",
                     ),
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
@@ -865,16 +882,6 @@ class _LayersState extends State<Layers>
                       child: Text("Upload layer image:"),
                     )
                   ),
-                  !imageLoaded
-                    ?
-                    Center()
-                    :
-                    Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: Center(
-                      child: Text("Image has been uploaded!"),
-                    )
-                  ), 
                 ],
               ),
             ),
@@ -917,6 +924,38 @@ class _LayersState extends State<Layers>
     return widget.project.getLayerImage(layerId);
   }
 
+  /// Deletes the given layer from the project and updates what is displayed.
+  void deleteLayer(String layerId) async
+  {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          scrollable: true,
+          content: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text("Are you sure you want to delete this layer? (Warning: "
+            "The attached image will also be deleted from this app.)")
+          ),
+          actions: [
+            ElevatedButton(
+              child: const Text("Confirm Deletion"),
+              onPressed: () async {
+                await widget.project.deleteLayer(layerId);
+                setState(() => widget.project.layers);
+
+                if (context.mounted) Navigator.of(context).pop();}
+            ),
+            ElevatedButton(
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ]
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) 
   {
@@ -936,9 +975,10 @@ class _LayersState extends State<Layers>
                 ),
               ),
               Padding(
-                padding: EdgeInsetsGeometry.symmetric(
-                  vertical: 16.0, 
-                  horizontal: 20.0
+                padding: EdgeInsetsGeometry.only(
+                  top: 16.0, 
+                  left: 20.0, 
+                  right: 20.0
                 ),
                 child: IconButton(
                   icon: Icon(Icons.add),
@@ -952,6 +992,12 @@ class _LayersState extends State<Layers>
             ]
           )
         ),
+        Center(
+        child: Container(
+          width: MediaQuery.of(context).size.width, // match the window width
+          height: MediaQuery.of(context).size.height - 300,
+          margin: const EdgeInsets.symmetric(horizontal: 15.0),
+          child:
         widget.project.layers.isEmpty
           ?
           Center(child: Text(
@@ -960,7 +1006,7 @@ class _LayersState extends State<Layers>
           :
           ListView.builder(
             shrinkWrap: true,
-            physics: ClampingScrollPhysics(),
+            physics: AlwaysScrollableScrollPhysics(),
             itemCount: widget.project.layers.length, 
             itemBuilder: (BuildContext context, int index) {
               return GestureDetector(
@@ -976,12 +1022,13 @@ class _LayersState extends State<Layers>
                   margin: 
                     EdgeInsetsGeometry.only(
                       top: 20.0, 
-                      left: 20.0, 
-                      right: 20.0
+                      left: 5.0, 
+                      right: 5.0
                     ),
                   color: Color.fromARGB(255, 232, 237, 242),
                   surfaceTintColor: Color.fromARGB(255, 84, 122, 149),
-                  child: LayerItem(
+                  child: Stack(alignment: AlignmentGeometry.bottomRight,
+                  children: [LayerItem(
                     name: widget.project.layers[index].name,
                     description: widget.project.layers[index].description,
                     timeCreated: 
@@ -1017,10 +1064,27 @@ class _LayersState extends State<Layers>
                     }
                   ),
                     ),
-                  )
+                  ),
+                  Padding(
+                padding: EdgeInsetsGeometry.only(
+                  top: 16.0, 
+                  left: 20.0, 
+                  right: 20.0,
+                  bottom: 16.0,
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.delete),
+                  color: Color.fromARGB(255, 232, 237, 242),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Color.fromARGB(255, 84, 122, 149)
+                  ),
+                  onPressed: () => deleteLayer(widget.project.layers[index].id),
+                )
+              ),
+                  ])
               ));
             }
-          ),
+          ),))
         ]));
   }
 }
@@ -1051,7 +1115,7 @@ class LayerFields extends StatelessWidget {
       children: <Widget>[
         Text(
           name,
-          maxLines: 2,
+          maxLines: 1,
           overflow: .ellipsis,
           style: const TextStyle(fontWeight: .bold, fontSize: 22.0),
         ),
@@ -1079,6 +1143,9 @@ class LayerFields extends StatelessWidget {
           overflow: .ellipsis,
           style: const TextStyle(fontSize: 15.0),
         ),
+        Text(""),
+        Text(""),
+        Text("")
       ],
     );
   }
@@ -1113,13 +1180,13 @@ class LayerItem extends StatelessWidget {
     return Padding(
       padding: const .symmetric(vertical: 10.0),
       child: SizedBox(
-        height: 120,
+        height: 180,
         child: Row(
           crossAxisAlignment: .start,
           children: <Widget>[
             AspectRatio(aspectRatio: 1.0, child: thumbnail),
-            Expanded(
-              child: Padding(
+            Expanded(child: 
+              Padding(
                 padding: const .fromLTRB(20.0, 0.0, 2.0, 0.0),
                 child: LayerFields(
                   name: name,

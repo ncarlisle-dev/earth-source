@@ -146,8 +146,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
     )).toList(),
   );
 }
-const _cloudUrl = "https://dutiful-dodo-113.convex.cloud";
-const _httpActionsUrl = "https://dutiful-dodo-113.convex.site";
+const _cloudUrl = "https://original-ptarmigan-119.convex.cloud";
+const _httpActionsUrl = "https://original-ptarmigan-119.convex.site";
 
 class NetworkService {
   static NetworkService? instance;
@@ -961,7 +961,7 @@ class NetworkService {
         'layerId':     layerId,
         'modelId':     modelId,
       }
-    );
+    ).timeout(const Duration(seconds: 120));
 
     final createdJob = parseNetworkResponse(
       response,

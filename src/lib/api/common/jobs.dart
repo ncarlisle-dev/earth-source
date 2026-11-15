@@ -1,5 +1,15 @@
+import 'package:flutter/material.dart';
 import '../services/network_service.dart';
 import 'network.dart' as network;
+
+const List<Color> statusColors = [
+  Colors.lightBlue,
+  Colors.yellow, 
+  Colors.green, 
+  Colors.red
+];
+
+const List<String> statusList = ["Starting", "Running", "Complete", "Failed"];
 
 /// Possible job statuses.
 enum JobStatus {
