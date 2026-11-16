@@ -109,6 +109,7 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       fileName:           spec.fileName,
       numPoints:          spec.numPoints,
       size:               spec.size,
+      description:        spec.description,
       createdAt:          DateTime.fromMillisecondsSinceEpoch(spec.createdAt),
       lastUpdated:        DateTime.fromMillisecondsSinceEpoch(spec.lastUpdated),
     )).toList(),
@@ -119,6 +120,7 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
         fileName:         spec.fileName,
         numPoints:        spec.numPoints,
         size:             spec.size,
+        description:      spec.description,
         createdAt:        DateTime.fromMillisecondsSinceEpoch(spec.createdAt),
         lastUpdated:      DateTime.fromMillisecondsSinceEpoch(spec.lastUpdated),
       )
@@ -146,8 +148,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
     )).toList(),
   );
 }
-const _cloudUrl = "https://dutiful-dodo-113.convex.cloud";
-const _httpActionsUrl = "https://dutiful-dodo-113.convex.site";
+const _cloudUrl = "https://original-ptarmigan-119.convex.cloud";
+const _httpActionsUrl = "https://original-ptarmigan-119.convex.site";
 
 class NetworkService {
   static NetworkService? instance;
@@ -721,6 +723,7 @@ class NetworkService {
       fileName:     apiPxrfDataSpec.fileName,
       numPoints:    apiPxrfDataSpec.numPoints,
       size:         apiPxrfDataSpec.size,
+      description: apiPxrfDataSpec.description,
       createdAt:    DateTime.fromMillisecondsSinceEpoch(
                       apiPxrfDataSpec.createdAt
                     ),
@@ -889,6 +892,7 @@ class NetworkService {
       fileName:     apiTrainingDataSpec.fileName,
       numPoints:    apiTrainingDataSpec.numPoints,
       size:         apiTrainingDataSpec.size,
+      description:  apiTrainingDataSpec.description,
       createdAt:    DateTime.fromMillisecondsSinceEpoch(
                       apiTrainingDataSpec.createdAt
                     ),
@@ -961,7 +965,7 @@ class NetworkService {
         'layerId':     layerId,
         'modelId':     modelId,
       }
-    );
+    ).timeout(Duration(seconds: 1800));
 
     final createdJob = parseNetworkResponse(
       response,

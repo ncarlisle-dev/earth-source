@@ -210,165 +210,171 @@ class _DataPageState extends State<DataPage>
     return (layerName, unitName);
   }
 
+  /// Vertical and horizontal scroll controllers for the units data table.
+  final verticalScrollController = ScrollController();
+  final horizontalScrollController = ScrollController();
+
   @override
   Widget build(BuildContext context) 
   {
     List<api.PxrfDataSpec> data = widget.project.pxrfData;
-    return Material(child:ListView(
+    return Material(child: Column(
       children: [
-        Padding(
-          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
-          child: FloatingActionButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
-              builder:
-                (context) => ProjectDashboard(project: widget.project),
-            )),
-            child: const Icon(Icons.arrow_circle_left)
+        Padding (
+          padding: EdgeInsetsGeometry.symmetric(vertical: 20.0),
+          child: Stack(
+            alignment: AlignmentGeometry.topRight,
+            children: <Widget>[
+              Center(child: Text(
+                "Data Specs", 
+                style: TextTheme.of(context).headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(
+                  vertical: 16.0, 
+                  horizontal: 20.0
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.add),
+                  color: Color.fromARGB(255, 232, 237, 242),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Color.fromARGB(255, 84, 122, 149)
+                  ),
+                  onPressed: () => (),
+                )
+              ),
+            ],
           )
         ),
-        Padding(
-          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
-          child: Center(
-            child: Text(
-              "Data Specs", 
-              style: TextTheme.of(context).headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold, 
-                color: Colors.indigo
+        Center(
+          child: Container(
+            width: MediaQuery.of(context).size.width, 
+            height: MediaQuery.of(context).size.height - 300,
+            margin: const EdgeInsets.all(15.0),
+            child: Scrollbar(
+              thumbVisibility: true,
+              trackVisibility: true, 
+              controller: verticalScrollController,
+              child: Scrollbar(
+                thumbVisibility: true,
+                trackVisibility: true,
+                controller: horizontalScrollController,
+                notificationPredicate: (notif) => notif.depth == 1,
+                child: SingleChildScrollView(
+                  controller: verticalScrollController,
+                  scrollDirection: Axis.vertical,
+                  child: SingleChildScrollView(
+                    controller: horizontalScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child:
+                      DataTable(
+                        columns: const <DataColumn>[
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Name', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Created', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Modified', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Description', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Area (m)', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                '', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                '', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                        ],
+                      rows: List<DataRow>.generate(
+                        widget.project.units.length,
+                        (int index) => DataRow(
+                          cells: <DataCell>[
+                          DataCell(Text(widget.project.units[index].name)),
+                          DataCell(
+                            Text(
+                              widget.project.units[index].createdAt.toString()
+                            )
+                          ),
+                          DataCell(
+                            Text(
+                              widget.project.units[index].lastUpdated.toString()
+                            )
+                          ),
+                          DataCell(
+                            Text(
+                              widget.project.units[index].description, 
+                              maxLines: 1,
+                              overflow: .ellipsis
+                            )
+                          ),
+                          DataCell(Text(
+                            calculateArea(
+                              widget.project.units[index].corners
+                            ).toString()
+                          )),
+                          DataCell(IconButton(
+                            onPressed: () => 
+                              editUnit(widget.project.units[index]),
+                            icon: Icon(Icons.edit),
+                          )),
+                          DataCell(IconButton(
+                            onPressed: () => 
+                              deleteUnit(widget.project.units[index].id),
+                            icon: Icon(Icons.delete),
+                          )),
+                        ],
+                      )
+                    )
+                  ),
+                ), 
               )
             )
-          ), //Icon
-        ), 
-        Padding(
-          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
-          child: FloatingActionButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
-              builder: 
-                (context) => ConnectionsPage(project: widget.project),
-            )),
-            child: Text("Upload data via AirDroid")
           )
-        ),
-        Padding(
-          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
-          child: FloatingActionButton(
-            onPressed: () => loadCsv(),
-            child: Text("Upload data from local files")
-          )
-        ),
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.90,
-          child: ListView.builder(
-            itemCount: data.length, 
-            itemBuilder: (BuildContext context, int index) {
-              return Card(
-                elevation: 50,
-                shadowColor: Colors.black,
-                child: SizedBox(
-                  child: Padding(
-                    padding: EdgeInsets.all(20.0),
-                    child: Column(
-                      children: [
-                        Text(
-                          data[index].fileName,
-                          style: TextStyle(
-                            fontSize: 30,
-                            color: Colors.indigo,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          "Number of points: "
-                            "${data[index].numPoints}",
-                          style: TextStyle(fontSize: 15)
-                        ),
-                        Text(
-                          "Size: "
-                            "${data[index].size}",
-                          style: TextStyle(fontSize: 15)
-                        ),
-                        Text(
-                          "Date Created: "
-                            "${data[index].createdAt}",
-                          style: TextStyle(fontSize: 15)
-                        ),
-                        Text(
-                          "Last Updated: "
-                            "${data[index].lastUpdated}",
-                          style: TextStyle(fontSize: 15)
-                        ),
-                        getAssignments(data[index].id).$1 == ""
-                        ?
-                        Text(
-                          "No layers or units assigned yet!",
-                          style: TextStyle(fontSize: 15)
-                        )
-                        :
-                        Text(
-                          "Assigned Layer: "
-                            "${getAssignments(data[index].id).$1}",
-                          style: TextStyle(fontSize: 15)
-                        ),
-                        getAssignments(data[index].id).$2 == ""
-                        ?
-                        Center()
-                        :
-                        Text(
-                          "Assigned Unit: "
-                            "${getAssignments(data[index].id).$2}",
-                          style: TextStyle(fontSize: 15)
-                        ),
-                        // Button which navigates to the data view page for the
-                        // selected file.
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context, 
-                                MaterialPageRoute<void>(
-                                  builder: (context) 
-                                    => data_file.DataView(
-                                      project: widget.project,
-                                      dataSpec: data[index],
-                                    )
-                                )
-                              );
-                            },
-                            child: Text("View Data File")
-                          ),
-                        ),
-                        widget.project.layers.isEmpty || 
-                        widget.project.units.isEmpty
-                        ?
-                        Center(child: 
-                          Text("Add layers and units to the project to be able "
-                            "to assign data specs!"
-                          )
-                        )
-                        :
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: ElevatedButton(
-                            onPressed: () => modifyData(data[index].id),
-                            child: Text("Assign Layers/Units"),
-                          ),
-                        ), 
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: ElevatedButton(
-                            onPressed: () => deleteData(data[index].id),
-                            child: Text("Delete Data File"),
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }
-          ),
-        ),
-      ]
+        )
+      )]
     ));
   }
 }
