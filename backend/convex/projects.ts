@@ -1197,6 +1197,7 @@ export const assignProjectPxrfData = zodMutation({
 
     // TODO: assert the referenced data spec fits inside the specified unit
 
+    // Remove any pre-existing assignment with the same data spec.
     for (const layerId of project.layerIds) {
       for (const unitId of project.unitIds) {
         if (project.dataAssignments[layerId][unitId] == args.specId) {

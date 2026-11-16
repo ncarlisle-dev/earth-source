@@ -746,6 +746,7 @@ class Project
       );
     }
 
+    // Remove any pre-existing assignment with the same data spec.
     dataAssignments.forEach((layer, layerAssign) {
       layerAssign.forEach((unit, spec) {
         if (spec == specId) {
