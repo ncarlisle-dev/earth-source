@@ -150,6 +150,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
 }
 const _cloudUrl = "https://original-ptarmigan-119.convex.cloud";
 const _httpActionsUrl = "https://original-ptarmigan-119.convex.site";
+const _cloudUrl = "https://original-ptarmigan-119.convex.cloud";
+const _httpActionsUrl = "https://original-ptarmigan-119.convex.site";
 
 class NetworkService {
   static NetworkService? instance;
@@ -965,7 +967,7 @@ class NetworkService {
         'layerId':     layerId,
         'modelId':     modelId,
       }
-    ).timeout(Duration(seconds: 1800));
+    ).timeout(const Duration(seconds: 120));
 
     final createdJob = parseNetworkResponse(
       response,

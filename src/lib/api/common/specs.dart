@@ -1,5 +1,4 @@
 import 'network.dart' as network;
-import 'package:latlong2/latlong.dart' as latlong;
 import 'package:coordinate_converter/coordinate_converter.dart' as coords;
 
 class ConnectionSpec

@@ -394,6 +394,7 @@ class Project
       );
     }
 
+    dataAssignments[createdLayer.id] = {};
     layers.add(createdLayer);
     return createdLayer;
   }
@@ -558,6 +559,10 @@ class Project
 
     units.add(createdUnit);
     lastUpdated = updateTimestamp;
+
+    for (var layer in layers) {
+      dataAssignments[layer.id]![createdUnit.id] = null;
+    }
 
     return createdUnit;
   }
@@ -740,6 +745,15 @@ class Project
         error.statusCode
       );
     }
+
+    // Remove any pre-existing assignment with the same data spec.
+    dataAssignments.forEach((layer, layerAssign) {
+      layerAssign.forEach((unit, spec) {
+        if (spec == specId) {
+          dataAssignments[layer]![unit] = null;
+        }
+      });
+    });
 
     dataAssignments[layerId]![unitId] = specId;
   }

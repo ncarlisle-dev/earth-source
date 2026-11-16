@@ -324,8 +324,7 @@ class _PredictionViewState extends State<PredictionView> {
               Text(
                 changedName, 
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.bold, 
-                  color: Colors.indigo
+                  fontWeight: FontWeight.bold
                 )
               )
             :
@@ -333,7 +332,6 @@ class _PredictionViewState extends State<PredictionView> {
                 widget.predictionJob.name, 
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   fontWeight: FontWeight.bold, 
-                  color: Colors.indigo
                 )
               )
             )
@@ -376,7 +374,7 @@ class _PredictionViewState extends State<PredictionView> {
             child: Text(
               "Job Information", 
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold, color: Colors.indigo
+                fontWeight: FontWeight.bold
               )
             )
           )
