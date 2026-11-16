@@ -741,6 +741,14 @@ class Project
       );
     }
 
+    dataAssignments.forEach((layer, layerAssign) {
+      layerAssign.forEach((unit, spec) {
+        if (spec == specId) {
+          dataAssignments[layer]![unit] = null;
+        }
+      });
+    });
+
     dataAssignments[layerId]![unitId] = specId;
   }
 
