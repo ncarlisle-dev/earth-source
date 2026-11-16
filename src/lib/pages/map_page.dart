@@ -15,13 +15,17 @@ import 'project_dashboard.dart';
 /// project as a required field.
 class MapPage extends StatefulWidget
 {
-  const MapPage({super.key, required this.project, required this.index});
+  const MapPage({
+    super.key, 
+    required this.project, 
+    required this.startTabIndex
+  });
 
   /// The current project being viewed.
   final api.Project project;
 
   /// The starting index for which tab to display within the map page.
-  final int index;
+  final int startTabIndex;
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -34,7 +38,7 @@ class _MapPageState extends State<MapPage>
   Widget build(BuildContext context) 
   {
     return DefaultTabController(
-      initialIndex: widget.index,
+      initialIndex: widget.startTabIndex,
       length: 2,
       child: Scaffold(
         appBar: AppBar(

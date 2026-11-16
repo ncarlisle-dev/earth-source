@@ -302,7 +302,7 @@ class _LayerPageState extends State<LayerPage>
           child: FloatingActionButton(
             onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
               builder:
-                (context) => MapPage(index: 1, project: widget.project),
+                (context) => MapPage(startTabIndex: 1, project: widget.project),
             )),
             child: const Icon(Icons.arrow_circle_left)
           )
