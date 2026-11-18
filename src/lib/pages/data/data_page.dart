@@ -26,9 +26,17 @@ class _DataPageState extends State<DataPage>
   String unitAssignment = "";
   String layerAssignment = "";
 
+  bool loading = false;
+
+  bool uploadFailed = false;
+
   /// Loads an image from the local file system and encodes it as a base 64
   /// string.
-  Future<void> loadCsv() async {
+  Future<void> loadCsv(String dataName, String dataDescription) async {
+
+    setState(() => loading = true);
+    setState(() => uploadFailed = false);
+
     file_picker.PlatformFile? file = await file_picker.FilePicker.pickFile(
       type: file_picker.FileType.custom,
       allowedExtensions: ['csv'],
@@ -38,24 +46,28 @@ class _DataPageState extends State<DataPage>
       final filePath = file.path!;
       io.File imageFile = io.File(filePath);
       String fileString = await imageFile.readAsString();
-      await widget.project.addPxrfData(fileString, filePath, "");
+
+      if (dataName == "") dataName = filePath;
+
+      await widget.project.addPxrfData(fileString, dataName, dataDescription);
       setState(() => widget.project.pxrfData);
+
+      setState(() => loading = false);
+    }
+    else {
+      setState(() => uploadFailed = true);
     }
   }
 
-  /// Displays a form filled in with the fields for the corresponding spec that
-  /// the user can choose to edit, registers which if any of the fields have 
-  /// been changed, and updates information for the data spec accordingly.
-  void uploadFile(api.DataSpec dataSpec)
+  /// Allows the user to set a name and description for a data spec and upload
+  /// a file from their local system.
+  void addFile()
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
-    bool nameChanged = false;
-    bool descriptionChanged = false;
-    
-    String dataName = dataSpec.fileName;
-    String dataDescription = dataSpec.description;
-    
+    String dataName = "";
+    String dataDescription = "";
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -68,23 +80,19 @@ class _DataPageState extends State<DataPage>
               child: Column(
                 children: [
                   TextFormField(
-                    initialValue: dataSpec.fileName,
+                    decoration: InputDecoration(
+                      labelText: 'Enter file name:'
+                    ),
                     onSaved: (value) async {
-                      if (value != dataSpec.fileName)
-                      {
-                        dataName = value!;
-                        nameChanged = true;
-                      }
+                      dataName = value!;
                     },
                   ),
                   TextFormField(
-                    initialValue: dataSpec.description,
+                    decoration: InputDecoration(
+                      labelText: 'Enter file description:'
+                    ),
                     onSaved: (value) async {
-                      if (value != dataSpec.description)
-                      {
-                        dataDescription = value!;
-                        descriptionChanged = true;
-                      }
+                      dataDescription = value!;
                     },
                   ),
                 ],
@@ -93,25 +101,12 @@ class _DataPageState extends State<DataPage>
           ),
           actions: [
             ElevatedButton(
-              child: Text("Submit Edits"),
+              child: Text("Upload File"),
 
               onPressed: () async {
                 formKey.currentState!.save();
 
-                // Check to see which, if any, of the fields has been changed
-                // by the user and make updates accordingly.
-                if (nameChanged) {
-                  await widget.project.updateUnit(dataSpec.id, name: dataName);
-                }
-
-                if (descriptionChanged) {
-                  await widget.project.updatePxrfData(
-                    dataSpec.id,
-                    description: dataDescription,
-                  );
-                }
-
-                setState(() => widget.project.pxrfData);
+                loadCsv(dataName, dataDescription);
 
                 if (context.mounted) Navigator.of(context).pop();
               },
@@ -539,7 +534,7 @@ class _DataPageState extends State<DataPage>
                 child: FloatingActionButton(
                   elevation: 0,
                   backgroundColor: Color.fromARGB(255, 84, 122, 149),
-                  onPressed: () => (),
+                  onPressed: () => addFile(),
                   child: Icon(Icons.file_upload, color: Color.fromARGB(255, 232, 237, 242),),
                 )
               ),
@@ -550,7 +545,10 @@ class _DataPageState extends State<DataPage>
                 child: FloatingActionButton(
                   elevation: 0,
                   backgroundColor: Color.fromARGB(255, 84, 122, 149),
-                  onPressed: () => (),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder:
+                (context) => ConnectionsPage(project: widget.project),
+            )),
                   child: Image.asset("assets/AirDroid_Icon.png", height: 40),
                 )
               ),
@@ -560,6 +558,16 @@ class _DataPageState extends State<DataPage>
             ],
           )
         ),
+        loading
+        ?
+          Center(child: Text("Loading file . . ."))
+        :
+          Center(),
+        uploadFailed
+        ?
+          Center(child: Text("File failed to upload!"))
+        :
+          Center(),
         Center(
           child: Container(
             width: MediaQuery.of(context).size.width, 
