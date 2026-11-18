@@ -150,8 +150,6 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
 }
 const _cloudUrl = "https://original-ptarmigan-119.convex.cloud";
 const _httpActionsUrl = "https://original-ptarmigan-119.convex.site";
-const _cloudUrl = "https://original-ptarmigan-119.convex.cloud";
-const _httpActionsUrl = "https://original-ptarmigan-119.convex.site";
 
 class NetworkService {
   static NetworkService? instance;
@@ -763,6 +761,33 @@ class NetworkService {
 
     final response = await client.mutation(
       name: "projects:assignProjectPxrfData",
+      args: {
+        "projectId": projectId,
+        "layerId":   layerId,
+        "unitId":    unitId,
+        "specId":    specId
+      },
+    );
+
+    final timestamp = parseNetworkResponse(
+      response,
+      api_types.zTimestamp,
+    );
+
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
+  }
+
+  Future<DateTime> unassignProjectPxrfData(
+    String projectId,
+    String layerId,
+    String unitId,
+    String specId
+  ) async
+  {
+    final client = _getClient();
+
+    final response = await client.mutation(
+      name: "projects:unassignProjectPxrfData",
       args: {
         "projectId": projectId,
         "layerId":   layerId,

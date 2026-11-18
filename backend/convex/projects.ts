@@ -1222,6 +1222,50 @@ export const assignProjectPxrfData = zodMutation({
   },
 });
 
+/**
+ * Mutation that unassigns a data spec from the layer and unit it is currently
+ * assigned to.
+ * Returns the update timestamp.
+ */
+export const unassignProjectPxrfData = zodMutation({
+  args: {
+    projectId: zid("projects"),
+    layerId: zid("layers"),
+    unitId: zid("units"),
+    specId: zid("dataSpecs"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await authenticateUser(ctx);
+    const project = await getDbProject(ctx, args.projectId, userId);
+
+    if (!project.layerIds.includes(args.layerId))
+      throw new InvalidRequestError(
+        `Project doesn't have layer with ID '${args.layerId}'.`
+      );
+
+    if (!project.unitIds.includes(args.unitId))
+      throw new InvalidRequestError(
+        `Project doesn't have unit with ID '${args.unitId}'.`
+      );
+
+    await assertProjectHasPxrfDataSpec(ctx, project, args.specId);
+
+    const timestamp = Date.now();
+    project.dataAssignments[args.layerId][args.unitId] = null;
+
+    await ctx.db.patch(
+      "projects",
+      args.projectId,
+      {
+        dataAssignments: project.dataAssignments,
+        lastUpdated: timestamp,
+      },
+    );
+
+    return timestamp;
+  },
+});
+
 /** Query that returns a download URL for a training data spec file. */
 export const getProjectTrainingDataUrl = zodQuery({
   args: {
@@ -1470,7 +1514,7 @@ export const runPredictionJob = zodAction({
       }
     );
 
-    const baseUrl = "https://earth-source-web-server.onrender.com/run";
+    const baseUrl = "https://wines-find-proof-uploaded.trycloudflare.com/run";
     const params = new URLSearchParams({
       jobId:      createdJob._id,
       projectId:  args.projectId,

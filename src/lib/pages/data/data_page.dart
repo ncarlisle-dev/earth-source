@@ -7,7 +7,7 @@ import 'data_file.dart' as data_file;
 import '../connections_page.dart';
 import '../project_dashboard.dart';
 
-/// A stateful widget for the project predictions page, which takes the id for 
+/// A stateful widget for the project data spec page, which takes the id for 
 /// the current project as a required field.
 class DataPage extends StatefulWidget 
 {
@@ -20,7 +20,7 @@ class DataPage extends StatefulWidget
   State<DataPage> createState() => _DataPageState();
 }
 
-/// The mutable state of the project predictions page.
+/// The mutable state of the project data spec page.
 class _DataPageState extends State<DataPage> 
 {
   String unitAssignment = "";
@@ -43,7 +43,91 @@ class _DataPageState extends State<DataPage>
     }
   }
 
-  void modifyData(String dataId) async
+  /// Displays a form filled in with the fields for the corresponding spec that
+  /// the user can choose to edit, registers which if any of the fields have 
+  /// been changed, and updates information for the data spec accordingly.
+  void uploadFile(api.DataSpec dataSpec)
+  {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    bool nameChanged = false;
+    bool descriptionChanged = false;
+    
+    String dataName = dataSpec.fileName;
+    String dataDescription = dataSpec.description;
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          scrollable: true,
+          content: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    initialValue: dataSpec.fileName,
+                    onSaved: (value) async {
+                      if (value != dataSpec.fileName)
+                      {
+                        dataName = value!;
+                        nameChanged = true;
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    initialValue: dataSpec.description,
+                    onSaved: (value) async {
+                      if (value != dataSpec.description)
+                      {
+                        dataDescription = value!;
+                        descriptionChanged = true;
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              child: Text("Submit Edits"),
+
+              onPressed: () async {
+                formKey.currentState!.save();
+
+                // Check to see which, if any, of the fields has been changed
+                // by the user and make updates accordingly.
+                if (nameChanged) {
+                  await widget.project.updateUnit(dataSpec.id, name: dataName);
+                }
+
+                if (descriptionChanged) {
+                  await widget.project.updatePxrfData(
+                    dataSpec.id,
+                    description: dataDescription,
+                  );
+                }
+
+                setState(() => widget.project.pxrfData);
+
+                if (context.mounted) Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ]
+        );
+      }
+    );
+  }
+
+  /// Allows the user to assign a data spec to 
+  void assignData(String dataId) async
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
     final dropdownStateLayer = GlobalKey<FormFieldState>();
@@ -74,6 +158,209 @@ class _DataPageState extends State<DataPage>
       })
     );
 
+    if (layerNames.isEmpty || unitNames.isEmpty)
+    {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            scrollable: true,
+            content: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                "Project must contain at least one layer and one unit before "
+                "data can be assigned to a location."
+              )
+            ),
+            actions: [
+              ElevatedButton(
+                child: const Text("Return to data specs page"),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ]
+          );
+        }
+      );
+    }
+    else {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            scrollable: true,
+            content: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: Text("Set Layer Assignment:")
+                    ),
+                    DropdownButtonFormField(
+                      key: dropdownStateLayer,
+                      initialValue: assignedLayer,
+                      items: layerNames.map((value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          assignedLayer = value!;
+                        });
+                      },
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: Text("Set Unit Assignment:")
+                    ),
+                    DropdownButtonFormField(
+                      key: dropdownStateUnit,
+                      initialValue: assignedUnit,
+                      items: unitNames.map((value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          assignedUnit = value!;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              ElevatedButton(
+                child: Text("Submit Assignment"),
+                // Access project controller and add new project before navigating
+                // to project dashboard.
+                onPressed: () async {
+                  formKey.currentState!.save();
+                  String layerId = (widget.project.layers.firstWhere(
+                    (layer) => layer.name == assignedLayer)).id;
+                  String unitId = (widget.project.units.firstWhere(
+                    (unit) => unit.name == assignedUnit)).id;
+
+                  await widget.project.assignData(layerId, unitId, dataId);
+                  setState(() => widget.project.dataAssignments);
+
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+              ElevatedButton(
+                child: const Text("Cancel"),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ]
+          );
+        }
+      );
+    }
+  }
+
+  /// Unassigns the given data spec if it is already assigned to a layer/unit -
+  /// if not, notifies the user.
+  void unassignData(String dataId) async
+  {
+    String assignedUnitId = "";
+    String assignedLayerId = "";
+
+    widget.project.dataAssignments.forEach((layerId, unitAssignment) 
+    {
+      unitAssignment.forEach((unitId, dataSpecId)
+      {
+        if (dataSpecId == dataId)
+        {
+          assignedUnitId = unitId;
+          assignedLayerId = layerId;
+        }
+      });
+    });
+
+    if (assignedUnitId == "" || assignedLayerId == "")
+    {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            scrollable: true,
+            content: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                "This data spec is currently not assigned to any layers or "
+                "units."
+              )
+            ),
+            actions: [
+              ElevatedButton(
+                child: const Text("Return to data specs page"),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ]
+          );
+        }
+      );
+    }
+
+    else {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            scrollable: true,
+            content: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                "Are you sure you want to unassign this data spec? You "
+                "will not be able to run predictions on this data until it is "
+                "assigned to a layer and a unit."
+              )
+            ),
+            actions: [
+              ElevatedButton(
+                child: const Text("Confirm Unassignment"),
+                onPressed: () async {
+                  await widget.project.unassignData(
+                    assignedLayerId, 
+                    assignedUnitId, 
+                    dataId
+                  );
+
+                  setState(() => widget.project.pxrfData);
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+              ElevatedButton(
+                child: const Text("Cancel"),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ]
+          );
+        }
+      );
+    }
+  }
+
+  /// Displays a form filled in with the fields for the corresponding spec that
+  /// the user can choose to edit, registers which if any of the fields have 
+  /// been changed, and updates information for the data spec accordingly.
+  void editData(api.DataSpec dataSpec)
+  {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    bool nameChanged = false;
+    bool descriptionChanged = false;
+    
+    String dataName = dataSpec.fileName;
+    String dataDescription = dataSpec.description;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -85,42 +372,30 @@ class _DataPageState extends State<DataPage>
               key: formKey,
               child: Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16.0),
-                    child: Text("Set Layer Assignment:")
-                  ),
-                  DropdownButtonFormField(
-                    key: dropdownStateLayer,
-                    initialValue: assignedLayer,
-                    items: layerNames.map((value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        assignedLayer = value!;
-                      });
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Data File Name:",
+                    ),
+                    initialValue: dataSpec.fileName,
+                    onSaved: (value) async {
+                      if (value != dataSpec.fileName)
+                      {
+                        dataName = value!;
+                        nameChanged = true;
+                      }
                     },
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16.0),
-                    child: Text("Set Unit Assignment:")
-                  ),
-                  DropdownButtonFormField(
-                    key: dropdownStateUnit,
-                    initialValue: assignedUnit,
-                    items: unitNames.map((value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        assignedUnit = value!;
-                      });
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Data File Description:",
+                    ),
+                    initialValue: dataSpec.description,
+                    onSaved: (value) async {
+                      if (value != dataSpec.description)
+                      {
+                        dataDescription = value!;
+                        descriptionChanged = true;
+                      }
                     },
                   ),
                 ],
@@ -129,18 +404,22 @@ class _DataPageState extends State<DataPage>
           ),
           actions: [
             ElevatedButton(
-              child: Text("Submit Assignment"),
-              // Access project controller and add new project before navigating
-              // to project dashboard.
+              child: Text("Submit Edits"),
+
               onPressed: () async {
                 formKey.currentState!.save();
-                String layerId = (widget.project.layers.firstWhere(
-                  (layer) => layer.name == assignedLayer)).id;
-                String unitId = (widget.project.units.firstWhere(
-                  (unit) => unit.name == assignedUnit)).id;
+    
+                // Check to see which, if any, of the fields has been changed
+                // by the user and make updates accordingly.
+                if (nameChanged || descriptionChanged) {
+                  await widget.project.updatePxrfData(
+                    dataSpec.id, 
+                    fileName: dataName,
+                    description: dataDescription,
+                  );
+                }
 
-                await widget.project.assignData(layerId, unitId, dataId);
-                setState(() => widget.project.dataAssignments);
+                setState(() => widget.project.pxrfData);
 
                 if (context.mounted) Navigator.of(context).pop();
               },
@@ -154,6 +433,7 @@ class _DataPageState extends State<DataPage>
       }
     );
   }
+
   /// Deletes the given data spec from the project and updates what is 
   /// displayed.
   void deleteData(String dataId) async
@@ -217,9 +497,21 @@ class _DataPageState extends State<DataPage>
   @override
   Widget build(BuildContext context) 
   {
-    List<api.PxrfDataSpec> data = widget.project.pxrfData;
     return Material(child: Column(
       children: [
+        Padding(
+          padding: EdgeInsetsGeometry.symmetric(
+            vertical: 16.0, 
+            horizontal: 20.0
+          ),
+          child: FloatingActionButton(
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder:
+                (context) => ProjectDashboard(project: widget.project),
+            )),
+            child: const Icon(Icons.arrow_circle_left)
+          )
+        ),
         Padding (
           padding: EdgeInsetsGeometry.symmetric(vertical: 20.0),
           child: Stack(
@@ -306,7 +598,55 @@ class _DataPageState extends State<DataPage>
                           DataColumn(
                             label: Expanded(
                               child: Text(
-                                'Area (m)', 
+                                'Size (Bytes)', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Number of Points', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Assigned Layer', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                'Assigned Unit', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                '', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                '', 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Expanded(
+                              child: Text(
+                                '', 
                                 style: TextStyle(fontStyle: .italic)
                               ),
                             ),
@@ -329,40 +669,85 @@ class _DataPageState extends State<DataPage>
                           ),
                         ],
                       rows: List<DataRow>.generate(
-                        widget.project.units.length,
+                        widget.project.pxrfData.length,
                         (int index) => DataRow(
                           cells: <DataCell>[
-                          DataCell(Text(widget.project.units[index].name)),
+                          DataCell(Text(widget.project.pxrfData[index].fileName)),
                           DataCell(
                             Text(
-                              widget.project.units[index].createdAt.toString()
+                              widget.project.pxrfData[index].createdAt.toString()
                             )
                           ),
                           DataCell(
                             Text(
-                              widget.project.units[index].lastUpdated.toString()
+                              widget.project.pxrfData[index].lastUpdated.toString()
                             )
                           ),
                           DataCell(
                             Text(
-                              widget.project.units[index].description, 
+                              widget.project.pxrfData[index].description, 
                               maxLines: 1,
                               overflow: .ellipsis
                             )
                           ),
-                          DataCell(Text(
-                            calculateArea(
-                              widget.project.units[index].corners
-                            ).toString()
-                          )),
+                          DataCell(
+                            Text(
+                              widget.project.pxrfData[index].size.toString(), 
+                            )
+                          ),
+                          DataCell(
+                            Text(
+                              widget.project.pxrfData[index].numPoints.
+                              toString(), 
+                            )
+                          ),
+                          DataCell(
+                            Text(
+                              getAssignments(
+                                widget.project.pxrfData[index].id
+                              ).$1, 
+                            )
+                          ),
+                          DataCell(
+                            Text(
+                              getAssignments(
+                                widget.project.pxrfData[index].id
+                              ).$2, 
+                            )
+                          ),
                           DataCell(IconButton(
                             onPressed: () => 
-                              editUnit(widget.project.units[index]),
+                              Navigator.push(
+                                context, MaterialPageRoute<void>(builder: 
+                                  (context) => data_file.DataView( 
+                                    project: widget.project,
+                                    dataSpec: widget.project.pxrfData[index]
+                                  ),
+                                )
+                              ),
+                            icon: Icon(Icons.file_open),
+                          )),
+                          DataCell(IconButton(
+                            onPressed: () => assignData(
+                              widget.project.pxrfData[index].id
+                            ),
+                            icon: Icon(Icons.add),
+                          )),
+                           DataCell(IconButton(
+                            onPressed: () => unassignData(
+                              widget.project.pxrfData[index].id
+                            ),
+                            icon: Icon(Icons.block),
+                          )),
+                          DataCell(IconButton(
+                            onPressed: () => editData(
+                              widget.project.pxrfData[index]
+                            ),
                             icon: Icon(Icons.edit),
                           )),
                           DataCell(IconButton(
                             onPressed: () => 
-                              deleteUnit(widget.project.units[index].id),
+                              deleteData(widget.project.pxrfData[index].id),
                             icon: Icon(Icons.delete),
                           )),
                         ],
