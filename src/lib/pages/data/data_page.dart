@@ -524,19 +524,39 @@ class _DataPageState extends State<DataPage>
                 ),
               ),
               Padding(
+                padding: EdgeInsetsGeometry.only(top: 30.0),
+                child:
+              SizedBox(
+        height: 75,
+        child: Row(
+          crossAxisAlignment: .center,
+          children: <Widget>[
+            Padding(
                 padding: EdgeInsetsGeometry.symmetric(
                   vertical: 16.0, 
                   horizontal: 20.0
                 ),
-                child: IconButton(
-                  icon: Icon(Icons.add),
-                  color: Color.fromARGB(255, 232, 237, 242),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Color.fromARGB(255, 84, 122, 149)
-                  ),
+                child: FloatingActionButton(
+                  elevation: 0,
+                  backgroundColor: Color.fromARGB(255, 84, 122, 149),
                   onPressed: () => (),
+                  child: Icon(Icons.file_upload, color: Color.fromARGB(255, 232, 237, 242),),
                 )
               ),
+            Padding(
+                padding: EdgeInsetsGeometry.symmetric(
+                  vertical: 16.0, 
+                ),
+                child: FloatingActionButton(
+                  elevation: 0,
+                  backgroundColor: Color.fromARGB(255, 84, 122, 149),
+                  onPressed: () => (),
+                  child: Image.asset("assets/AirDroid_Icon.png", height: 40),
+                )
+              ),
+          ],
+        ),)
+      ),
             ],
           )
         ),
@@ -544,7 +564,7 @@ class _DataPageState extends State<DataPage>
           child: Container(
             width: MediaQuery.of(context).size.width, 
             height: MediaQuery.of(context).size.height - 300,
-            margin: const EdgeInsets.all(15.0),
+            margin: const EdgeInsets.only(left: 15.0, right: 15.0, bottom: 15.0),
             child: Scrollbar(
               thumbVisibility: true,
               trackVisibility: true, 
