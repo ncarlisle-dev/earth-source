@@ -23,17 +23,19 @@ class DataPage extends StatefulWidget
 /// The mutable state of the project data spec page.
 class _DataPageState extends State<DataPage> 
 {
+  /// Id of a unit assigned to a given data spec.
   String unitAssignment = "";
+  /// Id of a layer assigned to a given data spec.
   String layerAssignment = "";
 
+  /// Marks whether a data file is currently loading.
   bool loading = false;
-
+  /// Marks whether a data file failed to upload.
   bool uploadFailed = false;
 
-  /// Loads an image from the local file system and encodes it as a base 64
-  /// string.
+  /// Loads a data file from the local file system and encodes it as a base 64
+  /// string, taking in a given name and description for the file as arguments.
   Future<void> loadCsv(String dataName, String dataDescription) async {
-
     setState(() => loading = true);
     setState(() => uploadFailed = false);
 
@@ -47,13 +49,16 @@ class _DataPageState extends State<DataPage>
       io.File imageFile = io.File(filePath);
       String fileString = await imageFile.readAsString();
 
+      // Set name of file to the filepath if no name was provided.
       if (dataName == "") dataName = filePath;
 
+      // Add encoded file to the database and update project on the frontend.
       await widget.project.addPxrfData(fileString, dataName, dataDescription);
       setState(() => widget.project.pxrfData);
-
       setState(() => loading = false);
     }
+    // If file failed to upload, set uploadFailed to true to display a message
+    // to the user.
     else {
       setState(() => uploadFailed = true);
     }
@@ -102,12 +107,9 @@ class _DataPageState extends State<DataPage>
           actions: [
             ElevatedButton(
               child: Text("Upload File"),
-
               onPressed: () async {
                 formKey.currentState!.save();
-
                 loadCsv(dataName, dataDescription);
-
                 if (context.mounted) Navigator.of(context).pop();
               },
             ),
@@ -121,13 +123,14 @@ class _DataPageState extends State<DataPage>
     );
   }
 
-  /// Allows the user to assign a data spec to 
+  /// Allows the user to assign a data spec to a layer and unit.
   void assignData(String dataId) async
   {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
     final dropdownStateLayer = GlobalKey<FormFieldState>();
     final dropdownStateUnit = GlobalKey<FormFieldState>();
 
+    // Obtain names of all the layers and units the project currently has.
     List<String> layerNames = [];
     List<String> unitNames = [];
 
@@ -139,22 +142,11 @@ class _DataPageState extends State<DataPage>
       unitNames.add(unit.name);
     }
 
-    String assignedLayer = layerNames[0];
-    String assignedUnit = unitNames[0];
-
-    widget.project.dataAssignments.forEach((layerId, assignment) => 
-      assignment.forEach((unitId, dataSpec) {
-        if (dataSpec == dataId) {
-          assignedLayer = (widget.project.layers.firstWhere(
-            (layer) => layer.id == layerId)).name;
-          assignedUnit = (widget.project.units.firstWhere(
-            (unit) => unit.id == unitId)).name;
-        }
-      })
-    );
-
+    // Check if the project lacks either layers or units.
     if (layerNames.isEmpty || unitNames.isEmpty)
     {
+      // If so, let the user know that they cannot currently assign data until
+      // their project has at least one layer and one unit.
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -178,6 +170,23 @@ class _DataPageState extends State<DataPage>
       );
     }
     else {
+      String assignedLayer = layerNames[0];
+      String assignedUnit = unitNames[0];
+
+      // If the data spec has already been assigned to a layer and unit, find
+      // that assignment to set the initial value of the dropdown menu.
+      // (Otherwise, the initial value will be the first layer/unit by default.)
+      widget.project.dataAssignments.forEach((layerId, assignment) => 
+        assignment.forEach((unitId, dataSpec) {
+          if (dataSpec == dataId) {
+            assignedLayer = (widget.project.layers.firstWhere(
+              (layer) => layer.id == layerId)).name;
+            assignedUnit = (widget.project.units.firstWhere(
+              (unit) => unit.id == unitId)).name;
+          }
+        })
+      );
+
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -234,15 +243,18 @@ class _DataPageState extends State<DataPage>
             actions: [
               ElevatedButton(
                 child: Text("Submit Assignment"),
-                // Access project controller and add new project before navigating
-                // to project dashboard.
                 onPressed: () async {
                   formKey.currentState!.save();
+
+                  // Get the id of the layer and unit corresponding to the 
+                  // options the user selected.
                   String layerId = (widget.project.layers.firstWhere(
                     (layer) => layer.name == assignedLayer)).id;
                   String unitId = (widget.project.units.firstWhere(
                     (unit) => unit.name == assignedUnit)).id;
 
+                  // Assign data on the backend and set dataAssignments on the
+                  // frontend.
                   await widget.project.assignData(layerId, unitId, dataId);
                   setState(() => widget.project.dataAssignments);
 
@@ -267,6 +279,8 @@ class _DataPageState extends State<DataPage>
     String assignedUnitId = "";
     String assignedLayerId = "";
 
+    // Attempt to find the id of the layer and unit the data spec is currently
+    // assigned to.
     widget.project.dataAssignments.forEach((layerId, unitAssignment) 
     {
       unitAssignment.forEach((unitId, dataSpecId)
@@ -279,6 +293,7 @@ class _DataPageState extends State<DataPage>
       });
     });
 
+    // If the data spec is not currently assigned to anything, notify the user.
     if (assignedUnitId == "" || assignedLayerId == "")
     {
       showDialog(
@@ -520,41 +535,49 @@ class _DataPageState extends State<DataPage>
               ),
               Padding(
                 padding: EdgeInsetsGeometry.only(top: 30.0),
-                child:
-              SizedBox(
-        height: 75,
-        child: Row(
-          crossAxisAlignment: .center,
-          children: <Widget>[
-            Padding(
-                padding: EdgeInsetsGeometry.symmetric(
-                  vertical: 16.0, 
-                  horizontal: 20.0
-                ),
-                child: FloatingActionButton(
-                  elevation: 0,
-                  backgroundColor: Color.fromARGB(255, 84, 122, 149),
-                  onPressed: () => addFile(),
-                  child: Icon(Icons.file_upload, color: Color.fromARGB(255, 232, 237, 242),),
+                child: SizedBox(
+                  height: 75,
+                  child: Row(
+                    crossAxisAlignment: .center,
+                    children: <Widget>[
+                      Padding(
+                        padding: EdgeInsetsGeometry.symmetric(
+                          vertical: 16.0, 
+                          horizontal: 20.0
+                        ),
+                        child: FloatingActionButton(
+                          elevation: 0,
+                          backgroundColor: Color.fromARGB(255, 84, 122, 149),
+                          onPressed: () => addFile(),
+                          child: Icon(
+                            Icons.file_upload, 
+                            color: Color.fromARGB(255, 232, 237, 242)
+                          ),
+                        )
+                      ),
+                      Padding(
+                        padding: EdgeInsetsGeometry.symmetric(
+                          vertical: 16.0, 
+                        ),
+                        child: FloatingActionButton(
+                          elevation: 0,
+                          backgroundColor: Color.fromARGB(255, 84, 122, 149),
+                          onPressed: () => Navigator.push(
+                            context, 
+                            MaterialPageRoute<void>(builder: (context) => 
+                              ConnectionsPage(project: widget.project),
+                            )
+                          ),
+                          child: Image.asset(
+                            "assets/AirDroid_Icon.png", 
+                            height: 40
+                          ),
+                        )
+                      ),
+                    ],
+                  )
                 )
               ),
-            Padding(
-                padding: EdgeInsetsGeometry.symmetric(
-                  vertical: 16.0, 
-                ),
-                child: FloatingActionButton(
-                  elevation: 0,
-                  backgroundColor: Color.fromARGB(255, 84, 122, 149),
-                  onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
-              builder:
-                (context) => ConnectionsPage(project: widget.project),
-            )),
-                  child: Image.asset("assets/AirDroid_Icon.png", height: 40),
-                )
-              ),
-          ],
-        ),)
-      ),
             ],
           )
         ),
@@ -572,7 +595,11 @@ class _DataPageState extends State<DataPage>
           child: Container(
             width: MediaQuery.of(context).size.width, 
             height: MediaQuery.of(context).size.height - 300,
-            margin: const EdgeInsets.only(left: 15.0, right: 15.0, bottom: 15.0),
+            margin: const EdgeInsets.only(
+              left: 15.0, 
+              right: 15.0, 
+              bottom: 15.0
+            ),
             child: Scrollbar(
               thumbVisibility: true,
               trackVisibility: true, 
@@ -700,15 +727,19 @@ class _DataPageState extends State<DataPage>
                         widget.project.pxrfData.length,
                         (int index) => DataRow(
                           cells: <DataCell>[
-                          DataCell(Text(widget.project.pxrfData[index].fileName)),
+                          DataCell(Text(
+                            widget.project.pxrfData[index].fileName
+                          )),
                           DataCell(
                             Text(
-                              widget.project.pxrfData[index].createdAt.toString()
+                              widget.project.pxrfData[index].createdAt
+                              .toString()
                             )
                           ),
                           DataCell(
                             Text(
-                              widget.project.pxrfData[index].lastUpdated.toString()
+                              widget.project.pxrfData[index].lastUpdated
+                              .toString()
                             )
                           ),
                           DataCell(

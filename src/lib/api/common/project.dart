@@ -240,7 +240,7 @@ class Project
     return fileContents;
   }
 
-  /// Changes the name or description of a pre-existing data spec.
+  /// Changes the name and/or description of a pre-existing data spec.
   /// 
   /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
   /// after modification.
@@ -816,7 +816,6 @@ class Project
   /// Throws a [network.ApiNetworkException] if the project fails to upload.
   Future<void> unassignData(String layerId, String unitId, String specId) async
   {
-    // validate args
     final int layerIndex = layers.indexWhere((layer) => layer.id == layerId);
     final int unitIndex = units.indexWhere((unit) => unit.id == unitId);
     final int specIndex = pxrfData.indexWhere((spec) => spec.id == specId);
@@ -825,7 +824,6 @@ class Project
     assert(unitIndex >= 0, "Unit with ID '$unitId' not found.");
     assert(specIndex >= 0, "pXRF data spec with ID '$specIndex' not found.");
 
-    // make updates
     final networkService = await NetworkService.getInstance();
 
     try {
@@ -843,6 +841,7 @@ class Project
       );
     }
 
+    // Update dataAssignments on the frontend.
     dataAssignments[layerId]![unitId] = null;
   }
 

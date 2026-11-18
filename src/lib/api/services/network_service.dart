@@ -777,6 +777,8 @@ class NetworkService {
     return DateTime.fromMillisecondsSinceEpoch(timestamp);
   }
 
+  /// Unassigns a pXRF data spec from the layer and unit it is currently 
+  /// assigned to.
   Future<DateTime> unassignProjectPxrfData(
     String projectId,
     String layerId,
