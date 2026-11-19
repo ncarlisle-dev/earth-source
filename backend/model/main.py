@@ -137,6 +137,63 @@ async def ebk(file: UploadFile = File(...)):
     ]
 
     #Verify that enough distinct locations exist
+    unique_points = (
+        location_data[[X_COORD, Y_COORD]]
+        .drop_duplicates()
+    )
+    
+    if len(unique_points) < 10:
+        raise HTTPException(
+            status_code=422,
+            detail="EBK requires at more than 10 distinct sample locations"
+        )
+        
+    #Verify that coordinates can span a 2D region
+    if (unique_points[X_COORD].nunique() < 2
+        or unique_points[Y_COORD].nunique() < 2):
+            raise HTTPException(
+                status_code=422,
+                detail="EBK requires variation in both coordinate axes"
+            )
+
+    try:
+        ebk_grid_df, original_points_df = dataframe_to_grid(
+            location_data,
+            x_col=X_COORD,
+            y_col=Y_COORD,
+            prob_col="non_soil_probability"
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"EBK interpolation failed: {exc}"
+        ) from exc
+
+
+    #Exclude invalid coordinates
+    valid_coords = np.isfinite(
+        coords.to_numpy(dtype=float)
+    ).all(axis=1)
+
+    valid_samples = valid_scans & valid_coords
+
+    if not valid_samples.any():
+        raise HTTPException(
+            status_code=422,
+            detail="No valid samples available for EBK"
+        )
+
+    #The EBK process needs the classifier probability first
+    result_df = model.predict(df)
+
+    location_data = result_df.loc[valid_samples].copy()
+
+    location_data[[X_COORD, Y_COORD]] = coords.loc[
+        valid_samples, 
+        [X_COORD, Y_COORD]
+    ]
+
+    #Verify that enough distinct locations exist
     unique_points = location_data[[X_COORD, Y_COORD]]
         .drop_duplicates()
 

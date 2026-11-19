@@ -81,7 +81,7 @@ def load_data(params):
     #ensure the coords are present in the file
     if not all(col in df.columns for col in coords):
       print(f"Mapping sample coords for unit {index}")
-      df = assign_coords(df,unit,params["siteCorners"])
+      df = assign_coords(df,unit)
       
     else:
       #Convert coords to actual numeric values
@@ -266,32 +266,20 @@ def train_model(df):
   }]
 
 #Address file inputs with no coordinates
-def assign_coords(df, unit, site_corners):
-  latitude = sum(
-    p["latitude"] for p in site_corners)/len(site_corners)
-
-  longitude = sum(
-    p["longitude"] for p in site_corners)/len(site_corners)
-
-  zone = min(60, max(1, int((longitude + 180) // 6) + 1))
-
-  epsg = (32600 if latitude >= 0 else 32700) + zone
-
-  transformer = Transformer.from_crs(
-    "EPSG:4326",
-    f"EPSG:{epsg}",
-    always_xy=True
-  )
-
+def assign_coords(df, unit):
+  #Extract the corners in UTM assuming in the listed order
   corners = [
-    transformer.transform(
-      p["longitude"], 
-      p["latitude"]
-    ) for p in unit["corners"]
+    (float(p["easting"]), float(p["northing"]))
+    for p in unit["corners"]
   ]
 
+  #check for four corners
+  if len(corners) != 4:
+    raise ValueError("Expecting exactly four corners")
+  
   top_left, top_right, bot_left, bot_right = corners
-  #Convert to centimeters
+  
+  #Convert centimeters to meters
   interval = float(unit["pointInterval"])/100.0
 
   width = math.dist(top_left, top_right)
