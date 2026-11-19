@@ -9,7 +9,7 @@ git clone -b readme-and-auth https://github.com/ncarlisle-dev/earth-source.git
 
 **2. Navigate to the src directory within the repository**
 ```bash
-cd src
+cd earth-source/src
 ```
 
 **3. Run the app**
