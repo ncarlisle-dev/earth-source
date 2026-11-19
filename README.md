@@ -17,4 +17,4 @@ cd earth-source/src
 flutter run
 ```
 
-**4. Select the device to run the app on (typically option 1, as the following options are for running the app on the web)**
+**4. Select the device to run the app on from the given options**
