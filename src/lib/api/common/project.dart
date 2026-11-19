@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:archaeo_sight_2/api/common/common.dart';
+import 'package:archaeo_sight_2/pages/data/data_file.dart';
 
 import '../services/network_service.dart';
 import 'network.dart' as network;
@@ -237,6 +238,57 @@ class Project
     }
 
     return fileContents;
+  }
+
+  /// Changes the name and/or description of a pre-existing data spec.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the project cannot be uploaded 
+  /// after modification.
+  Future<void> updatePxrfData(
+    String id,
+    {
+      String?           fileName,
+      String?           description,
+    }
+  ) async
+  {
+    // validate arguments
+    assert(
+      fileName != null || description != null,
+      "No updates specified."
+    );
+
+    final dataIndex = pxrfData.indexWhere((data) => data.id == id);
+    assert(dataIndex >= 0, "Data spec with ID '$id' not found.");
+
+    // make network request
+    final networkService = await NetworkService.getInstance();
+    final DateTime updateTimestamp;
+
+    try {
+      final timestamp = 
+        await networkService.setPxrfDataSpecMetadata(
+          this.id,
+          id,
+          fileName: fileName,
+          description: description
+        );
+
+      updateTimestamp = timestamp;
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+
+    // set local fields
+    if (fileName != null) pxrfData[dataIndex].fileName = fileName;
+    if (description != null) pxrfData[dataIndex].description = description;
+
+    pxrfData[dataIndex].lastUpdated = updateTimestamp;
+    lastUpdated = updateTimestamp;
   }
 
   /// Removes a pxrf data spec from the project alongside any corresponding data
@@ -756,6 +808,41 @@ class Project
     });
 
     dataAssignments[layerId]![unitId] = specId;
+  }
+
+  /// Unassigns a given data spec from the layer and unit it is currently 
+  /// assigned to.
+  /// 
+  /// Throws a [network.ApiNetworkException] if the project fails to upload.
+  Future<void> unassignData(String layerId, String unitId, String specId) async
+  {
+    final int layerIndex = layers.indexWhere((layer) => layer.id == layerId);
+    final int unitIndex = units.indexWhere((unit) => unit.id == unitId);
+    final int specIndex = pxrfData.indexWhere((spec) => spec.id == specId);
+
+    assert(layerIndex >= 0, "Layer with ID '$layerId' not found.");
+    assert(unitIndex >= 0, "Unit with ID '$unitId' not found.");
+    assert(specIndex >= 0, "pXRF data spec with ID '$specIndex' not found.");
+
+    final networkService = await NetworkService.getInstance();
+
+    try {
+      lastUpdated = await networkService.unassignProjectPxrfData(
+        id,
+        layerId,
+        unitId,
+        specId
+      );
+    }
+    on network.ApiNetworkException catch (error) {
+      throw network.ApiNetworkException(
+        "Project failed to update with the following error:\n$error", 
+        error.statusCode
+      );
+    }
+
+    // Update dataAssignments on the frontend.
+    dataAssignments[layerId]![unitId] = null;
   }
 
   /// Sends the data files assigned to the layer passed by name as a parameter 

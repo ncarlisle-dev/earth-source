@@ -68,6 +68,7 @@ class _ProjectDashboardState extends State<ProjectDashboard>
               onPressed: () async {
                 formKey.currentState!.save();
                 await widget.project.setName(projectName);
+                setState(() => widget.project);
 
                 if (!context.mounted) return;
                 Navigator.of(context).pop();
