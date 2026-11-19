@@ -109,6 +109,7 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
       fileName:           spec.fileName,
       numPoints:          spec.numPoints,
       size:               spec.size,
+      description:        spec.description,
       createdAt:          DateTime.fromMillisecondsSinceEpoch(spec.createdAt),
       lastUpdated:        DateTime.fromMillisecondsSinceEpoch(spec.lastUpdated),
     )).toList(),
@@ -119,6 +120,7 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
         fileName:         spec.fileName,
         numPoints:        spec.numPoints,
         size:             spec.size,
+        description:      spec.description,
         createdAt:        DateTime.fromMillisecondsSinceEpoch(spec.createdAt),
         lastUpdated:      DateTime.fromMillisecondsSinceEpoch(spec.lastUpdated),
       )
@@ -721,6 +723,7 @@ class NetworkService {
       fileName:     apiPxrfDataSpec.fileName,
       numPoints:    apiPxrfDataSpec.numPoints,
       size:         apiPxrfDataSpec.size,
+      description: apiPxrfDataSpec.description,
       createdAt:    DateTime.fromMillisecondsSinceEpoch(
                       apiPxrfDataSpec.createdAt
                     ),
@@ -758,6 +761,35 @@ class NetworkService {
 
     final response = await client.mutation(
       name: "projects:assignProjectPxrfData",
+      args: {
+        "projectId": projectId,
+        "layerId":   layerId,
+        "unitId":    unitId,
+        "specId":    specId
+      },
+    );
+
+    final timestamp = parseNetworkResponse(
+      response,
+      api_types.zTimestamp,
+    );
+
+    return DateTime.fromMillisecondsSinceEpoch(timestamp);
+  }
+
+  /// Unassigns a pXRF data spec from the layer and unit it is currently 
+  /// assigned to.
+  Future<DateTime> unassignProjectPxrfData(
+    String projectId,
+    String layerId,
+    String unitId,
+    String specId
+  ) async
+  {
+    final client = _getClient();
+
+    final response = await client.mutation(
+      name: "projects:unassignProjectPxrfData",
       args: {
         "projectId": projectId,
         "layerId":   layerId,
@@ -889,6 +921,7 @@ class NetworkService {
       fileName:     apiTrainingDataSpec.fileName,
       numPoints:    apiTrainingDataSpec.numPoints,
       size:         apiTrainingDataSpec.size,
+      description:  apiTrainingDataSpec.description,
       createdAt:    DateTime.fromMillisecondsSinceEpoch(
                       apiTrainingDataSpec.createdAt
                     ),
