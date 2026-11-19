@@ -2,9 +2,9 @@
 
 ## How to run
 
-**1. Clone into the repository from the terminal**
+**1. Open a terminal and run the following command to clone into this branch of the repository**
 ```bash
-git clone https://github.com/ncarlisle-dev/earth-source.git
+git clone -b readme-and-auth https://github.com/ncarlisle-dev/earth-source.git
 ```
 
 **2. Navigate to the src directory within the repository**
@@ -17,4 +17,4 @@ cd src
 flutter run
 ```
 
-**4. Select the device to run the app on (typically option 1, as 2 and 3 are for running the app on the web)**
+**4. Select the device to run the app on (typically option 1, as the following options are for running the app on the web)**
