@@ -85,6 +85,8 @@ abstract class DataSpec
   int numPoints;
   /// Size of the file.
   int size;
+  /// Description of the file.
+  String description;
   /// Time the data file was added to the project.
   final DateTime createdAt;
   /// Time the layer was last updated.
@@ -95,6 +97,7 @@ abstract class DataSpec
     required this.fileName, 
     required this.numPoints, 
     required this.size,
+    required this.description,
     required this.createdAt, 
     required this.lastUpdated, 
   });
@@ -107,6 +110,7 @@ class PxrfDataSpec extends DataSpec {
     required super.fileName, 
     required super.numPoints, 
     required super.size,
+    required super.description,
     required super.createdAt, 
     required super.lastUpdated, 
   });
@@ -119,6 +123,7 @@ class TrainingDataSpec extends DataSpec {
     required super.fileName, 
     required super.numPoints, 
     required super.size,
+    required super.description,
     required super.createdAt, 
     required super.lastUpdated, 
   });
