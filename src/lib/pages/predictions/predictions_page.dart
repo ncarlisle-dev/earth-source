@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
 import 'prediction_generation.dart';
 import 'prediction_view.dart';
+import '../project_dashboard.dart';
 
 const possibleJobStatuses = api.JobStatus.values;
 
@@ -21,11 +22,181 @@ class PredictionsPage extends StatefulWidget
 /// The mutable state of the project predictions page.
 class _PredictionsPageState extends State<PredictionsPage> 
 {
+  Future<void> runJob(
+    String jobName, 
+    String jobDescription, 
+    String layerId
+  ) async
+  {
+    await widget.project.runPredictionJob(
+      jobName,
+      jobDescription,
+      layerId,
+      null
+    );
+
+    setState(() => widget.project.predictions);
+  }
+
+  void addPrediction() async
+  {
+    String jobName = "";
+    String jobDescription = "";
+    String layerId;
+
+    List<api.Layer> layersWithData = [];
+
+    // Attempt to find the id of the layer and unit the data spec is currently
+    // assigned to.
+    widget.project.dataAssignments.forEach((layerId, unitAssignment) 
+    {
+      unitAssignment.forEach((unitId, dataSpecId)
+      {
+        if (dataSpecId != null)
+        {
+          api.Layer currentLayer = widget.project.layers.firstWhere((layer) => layer.id == layerId);
+          if (!layersWithData.contains(currentLayer))
+          {
+            layersWithData.add(currentLayer);
+          }
+        }
+      });
+    });
+
+    // If the data spec is not currently assigned to anything, notify the user.
+    if (widget.project.layers.isEmpty || widget.project.units.isEmpty || layersWithData.isEmpty)
+    {
+      String userDialogue;
+
+      if (widget.project.layers.isEmpty) {
+        userDialogue = "Project must have at least one layer before predictions can be run!";
+      }
+      else if (widget.project.units.isEmpty) {
+        userDialogue = "Project must have at least one unit before predictions can be run!";
+      }
+      else {
+        userDialogue = "Project must have at least one data file assigned to a layer and unit before predictions can be run!";
+      }
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            scrollable: true,
+            content: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(userDialogue)
+            ),
+            actions: [
+              ElevatedButton(
+                child: const Text("Return to predictions page"),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ]
+          );
+        }
+      );
+    }
+
+    else {
+      final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+      layerId = layersWithData[0].id;
+
+      print(layersWithData);
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            scrollable: true,
+            content: Form(
+          key: formKey,
+          child: Column(
+            children: <Widget>[
+              TextFormField(
+                decoration: const InputDecoration(hintText: 'Prediction Name'),
+                validator: (String? value) {
+                 if (value == null || value.isEmpty) {
+                    return 'Please enter the prediction name.';
+                  }
+                  return null;
+                },
+                onSaved: (value) {
+                  setState(() {
+                    jobName = value!;
+                  });
+                },
+              ),
+              TextFormField(
+                decoration: const InputDecoration(
+                  hintText: 'Prediction Description'
+                ),
+                onSaved: (value) {
+                  setState(() {
+                    jobDescription = value!;
+                  });
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Text("Select layer:")
+              ),
+              DropdownButton(
+                value: layerId,
+                icon: const Icon(Icons.keyboard_arrow_down),
+                items: layersWithData
+                  .map<DropdownMenuItem<String>>((layer) {
+                    return DropdownMenuItem<String>(
+                      value: layer.id,
+                      child: Text(layer.name)
+                    );
+                  })
+                  .toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    layerId = newValue!;
+                  });
+                },
+              )
+            ])),
+            actions: [
+              ElevatedButton(
+                child: const Text("Run Prediction Job"),
+                onPressed: () async {
+                  runJob(jobName, jobDescription, layerId);
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+              ElevatedButton(
+                child: const Text("Cancel"),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ]
+          );
+        }
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) 
   {
     return Material(child: Column(
       children: [
+        Padding(
+          padding: EdgeInsetsGeometry.symmetric(
+            vertical: 16.0, 
+            horizontal: 20.0
+          ),
+          child: FloatingActionButton(
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder:
+                (context) => ProjectDashboard(project: widget.project),
+            )),
+            child: const Icon(Icons.arrow_circle_left)
+          )
+        ),
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
           child: Center(
@@ -40,18 +211,14 @@ class _PredictionsPageState extends State<PredictionsPage>
         Padding(
           padding: EdgeInsetsGeometry.all(16.0),
           child: FloatingActionButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute<void>(builder: (context) 
-                => PredictionGeneration(project: widget.project)
-              ));
-            },
+            onPressed: () => addPrediction(),
             child: const Icon(Icons.add)
           )
         ),
         Center(
           child: Container(
             width: MediaQuery.of(context).size.width, // match the window width
-            height: MediaQuery.of(context).size.height - 200,
+            height: MediaQuery.of(context).size.height - 250,
             margin: const EdgeInsets.symmetric(horizontal: 15.0),
             child:
             widget.project.predictions.isEmpty
