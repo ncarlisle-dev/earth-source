@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:archaeo_sight_2/api/common/common.dart';
-import 'package:archaeo_sight_2/pages/data/data_file.dart';
 
 import '../services/network_service.dart';
 import 'network.dart' as network;

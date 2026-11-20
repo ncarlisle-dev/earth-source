@@ -3,7 +3,6 @@ import 'package:file_picker/file_picker.dart' as file_picker;
 import 'dart:io' as io;
 
 import '../../api/api.dart' as api;
-import 'data_file.dart' as data_file;
 import '../connections_page.dart';
 import '../project_dashboard.dart';
 
@@ -476,6 +475,185 @@ class _DataPageState extends State<DataPage>
     );
   }
 
+  void displayData(api.DataSpec dataSpec) async 
+  {
+    final fileVerticalScrollController = ScrollController();
+    final fileHorizontalScrollController = ScrollController();
+
+    List<String> headers;
+    List<List<String>> data;
+    List<String> dataOneDList;
+
+    (headers, data, dataOneDList) = await getCSVData(dataSpec.id);
+
+    if (data.length <= 100)
+    {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Column(
+      children: [
+        Padding(
+          padding: EdgeInsetsGeometry.symmetric(
+            vertical: 16.0, 
+            horizontal: 20.0
+          ),
+          child: FloatingActionButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Icon(Icons.arrow_circle_left)
+          )
+        ),
+        Padding (
+          padding: EdgeInsetsGeometry.symmetric(vertical: 20.0),
+          child: Center(child: Text(
+                dataSpec.fileName, 
+                maxLines: 1,
+                overflow: .ellipsis,
+                style: TextTheme.of(context).headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold),
+                ),
+              ),  
+        ),
+        Center(
+          child: Container(
+            width: MediaQuery.of(context).size.width, 
+            height: MediaQuery.of(context).size.height - 350,
+            margin: const EdgeInsets.all(15.0),
+            child: Scrollbar(
+              thumbVisibility: true,
+              trackVisibility: true, 
+              controller: fileVerticalScrollController,
+              child: Scrollbar(
+                thumbVisibility: true,
+                trackVisibility: true,
+                controller: fileHorizontalScrollController,
+                notificationPredicate: (notif) => notif.depth == 1,
+                child: SingleChildScrollView(
+                  controller: fileVerticalScrollController,
+                  scrollDirection: Axis.vertical,
+                  child: SingleChildScrollView(
+                    controller: fileHorizontalScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child:
+                      DataTable(
+                        columns: List<DataColumn>.generate(
+                        headers.length,
+                        (int index) => DataColumn(
+                          label: Expanded(
+                              child: Text(
+                                headers[index], 
+                                style: TextStyle(fontStyle: .italic)
+                              ),
+                            ),
+                      )
+                    ),
+                      rows: List<DataRow>.generate(
+                        data.length,
+                        (int rowIndex) => DataRow(
+                          cells: List<DataCell>.generate(
+                            headers.length,
+                        (int colIndex) =>
+                            DataCell(Text(data[rowIndex][colIndex])),
+                          )
+                      )
+                    )
+                  ),
+                ), 
+              )
+            )
+          )
+        )
+      )]
+    )
+        );
+      }
+    );
+    }
+    else {
+      showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Column(
+      children: [
+        Padding(
+          padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+          child: FloatingActionButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Icon(Icons.arrow_circle_left)
+          )
+        ),
+        Padding (
+          padding: EdgeInsetsGeometry.symmetric(vertical: 20.0),
+          child: Center(child: Text(
+                dataSpec.fileName, 
+                maxLines: 1,
+                overflow: .ellipsis,
+                style: TextTheme.of(context).headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold),
+                ),
+              ),  
+        ),
+        SizedBox(
+          width: MediaQuery.of(context).size.width - 50,
+          height: MediaQuery.of(context).size.height - 265,
+          child:
+            ListView.builder(
+              itemCount: dataOneDList.length, 
+              itemBuilder: (BuildContext context, int index) {
+                return Center(
+                  child: Text(dataOneDList[index]));
+              }
+            )
+          ),],
+        ),
+    );
+      }  );}
+  }
+
+  Future<(List<String>, List<List<String>>, List<String>)> getCSVData(String dataId) async
+  {
+    List<String> headers = [];
+    List<List<String>> data = [];
+    List<String> dataStringList = [];
+
+    String fileString = await widget.project.getPxrfData(dataId);
+
+    List<String> fileLines = fileString.split('\n');
+
+    headers = fileLines[0].split(',');
+
+    String headerLine = "";
+
+    for (var i = 0; i < headers.length; i++) {
+      headerLine += headers[i];
+      headerLine += '\t';
+      headerLine += '|';
+      headerLine += '\t';
+    }
+    dataStringList.add(headerLine.substring(0, headerLine.length - 2));
+
+    dataStringList.add("");
+
+    for (var i = 1; i < fileLines.length; i++) {
+      List<String> fileLine = fileLines[i].split(",");
+      String formattedLine = "";
+      if (fileLine.length == headers.length) {
+        data.add(fileLine);
+        for (var j = 0; j < fileLine.length; j++) {
+          formattedLine += fileLine[j];
+          formattedLine += '\t';
+          formattedLine += '|';
+          formattedLine += '\t';
+        }
+        dataStringList.add(formattedLine.substring(0, formattedLine.length - 2));
+      }
+    }
+
+    return (headers, data, dataStringList);
+  }
+
   /// Given a data spec id, searches through data assignments to find the name
   /// of the layer and unit assigned to that data spec and returns both strings
   /// if found, empty strings if not.
@@ -776,14 +954,7 @@ class _DataPageState extends State<DataPage>
                           ),
                           DataCell(IconButton(
                             onPressed: () => 
-                              Navigator.push(
-                                context, MaterialPageRoute<void>(builder: 
-                                  (context) => data_file.DataView( 
-                                    project: widget.project,
-                                    dataSpec: widget.project.pxrfData[index]
-                                  ),
-                                )
-                              ),
+                              displayData(widget.project.pxrfData[index]),
                             icon: Icon(Icons.file_open),
                           )),
                           DataCell(IconButton(

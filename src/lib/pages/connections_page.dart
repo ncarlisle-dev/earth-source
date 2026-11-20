@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart' as intl;
 import '../api/api.dart' as api;
-import 'data/data_file.dart';
 
 /* ============================== Utility ============================== */
 
@@ -462,15 +461,6 @@ Future<void> _showFileDownloadModal(
                           if (pageContext.mounted) {
                             material.Navigator.of(pageContext).pop();
 
-                            await material.Navigator.pushReplacement(
-                              pageContext,
-                              material.MaterialPageRoute(
-                                builder: (_) => DataView(
-                                  project: project,
-                                  dataSpec: dataSpec,
-                                )
-                              ),
-                            );
                           }
                         },
                         child: material.Row(
