@@ -22,24 +22,51 @@ class PredictionsPage extends StatefulWidget
 /// The mutable state of the project predictions page.
 class _PredictionsPageState extends State<PredictionsPage> 
 {
+  bool isJobRunning = false;
+  bool hasJobFailed = false;
+
+  String currentPrediction = "";
+  String jobFailedMessage = "";
+
   Future<void> runJob(
     String jobName, 
     String jobDescription, 
     String layerId
   ) async
   {
-    await widget.project.runPredictionJob(
-      jobName,
-      jobDescription,
-      layerId,
-      null
-    );
+    print(jobName);
 
-    setState(() => widget.project.predictions);
+    setState(() => currentPrediction = jobName);
+    setState(() => isJobRunning = true);
+
+    try 
+    {
+      await widget.project.runPredictionJob(
+        jobName,
+        jobDescription,
+        layerId,
+        null
+      );
+    }
+    catch (error) {
+      setState(() {
+        hasJobFailed = true; 
+        isJobRunning = false;
+        currentPrediction = jobName;
+    });
+    }
+
+    setState(() { 
+      widget.project.predictions;
+      isJobRunning = false;
+      currentPrediction = jobName;
+  });
   }
 
   void addPrediction() async
   {
+    setState(() => hasJobFailed = false);
+
     String jobName = "";
     String jobDescription = "";
     String layerId;
@@ -103,8 +130,6 @@ class _PredictionsPageState extends State<PredictionsPage>
 
       layerId = layersWithData[0].id;
 
-      print(layersWithData);
-
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -164,6 +189,7 @@ class _PredictionsPageState extends State<PredictionsPage>
               ElevatedButton(
                 child: const Text("Run Prediction Job"),
                 onPressed: () async {
+                  formKey.currentState!.save();
                   runJob(jobName, jobDescription, layerId);
                   if (context.mounted) Navigator.of(context).pop();
                 },
@@ -215,10 +241,20 @@ class _PredictionsPageState extends State<PredictionsPage>
             child: const Icon(Icons.add)
           )
         ),
+        isJobRunning
+        ?
+          Padding(padding: EdgeInsetsGeometry.symmetric(vertical: 10.0), child: Center(child: Text("Running prediction job $currentPrediction - prediction will appear below when ready!")))
+        :
+          Center(),
+        hasJobFailed
+        ?
+          Padding(padding: EdgeInsetsGeometry.symmetric(vertical: 10.0), child: Center(child: Text("Error: prediction job $currentPrediction failed to run.")))
+        :
+          Center(),
         Center(
           child: Container(
             width: MediaQuery.of(context).size.width, // match the window width
-            height: MediaQuery.of(context).size.height - 250,
+            height: MediaQuery.of(context).size.height - 300,
             margin: const EdgeInsets.symmetric(horizontal: 15.0),
             child:
             widget.project.predictions.isEmpty
