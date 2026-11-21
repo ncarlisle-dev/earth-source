@@ -1514,7 +1514,7 @@ export const runPredictionJob = zodAction({
       }
     );
 
-    const baseUrl = "https://earth-source-web-server.onrender.com/run";
+    const baseUrl = "https://earth-source-crm1219.onrender.com/run";
     const params = new URLSearchParams({
       jobId:      createdJob._id,
       projectId:  args.projectId,
