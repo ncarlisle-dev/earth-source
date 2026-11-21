@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import '../../api/api.dart' as api;
 import 'project_settings.dart';
 import 'predictions/predictions_page.dart';
-import 'data/data_page.dart';
+import 'data_page.dart';
 import 'map_page.dart';
 import 'projects_page.dart';
-import 'home_page.dart';
 
 /// A stateful widget for the project dashboard page, with a given project
 /// as a required field.
