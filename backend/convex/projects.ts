@@ -1518,7 +1518,7 @@ export const runPredictionJob = zodAction({
     const params = new URLSearchParams({
       jobId:      createdJob._id,
       projectId:  args.projectId,
-      outputName: "classification",
+      outputName: "ebk",
     });
 
     await fetch(`${baseUrl}?${params}`);
