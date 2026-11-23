@@ -189,7 +189,7 @@ async def ebk(file: UploadFile = File(...)):
 def run_job(
     jobId: str,
     projectId: str,
-    outputName: str = "classification"
+    outputName: str = "ebk"
 ):
     return process_job(model, jobId, projectId, outputName)
 
