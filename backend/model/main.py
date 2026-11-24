@@ -38,10 +38,7 @@ async def predict(file: UploadFile = File(...)):
 
     #Identify scans containing valid measurements
     valid_scans = (
-        df[available]
-        .apply(pd.to_numeric, errors="coerce")
-        .notna()
-        .any(axis=1)
+        df[available].apply(pd.to_numeric, errors="coerce").notna().any(axis=1)
     )
     
     result_df = model.predict(df)
@@ -102,15 +99,11 @@ async def ebk(file: UploadFile = File(...)):
 
     #Identify scans with actual chemical measurements
     valid_scans = (
-        df[available]
-        .apply(pd.to_numeric, errors="coerce")
-        .notna()
-        .any(axis=1)
+        df[available].apply(pd.to_numeric, errors="coerce").notna().any(axis=1)
     )
 
     coords = (
-        df[[X_COORD, Y_COORD]]
-        .apply(pd.to_numeric, errors="coerce")
+        df[[X_COORD, Y_COORD]].apply(pd.to_numeric, errors="coerce")
     )
 
     #Exclude invalid coordinates
@@ -247,7 +240,7 @@ async def ebk(file: UploadFile = File(...)):
 def run_job(
     jobId: str,
     projectId: str,
-    outputName: str = "classification"
+    outputName: str = "ebk"
 ):
     return process_job(model, jobId, projectId, outputName)
 

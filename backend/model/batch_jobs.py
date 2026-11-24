@@ -159,7 +159,7 @@ def upload_to_convex(job_id, output):
   return storage_id
 
 #Process the Job Using previous functions
-def process_job(model, job_id, project_id, output_name="classification"):
+def process_job(model, job_id, project_id, output_name="ebk"):
   #Validate the requested output name
   if output_name not in ["ebk", "classification"]:
         raise ValueError("Output must be classification or ebk")
