@@ -906,6 +906,12 @@ class Project
         error.statusCode
       );
     }
+    on TimeoutException {
+      throw TimeoutException(
+        "Prediction timed out - please wait a few moments and then click the "
+        "refresh button to update the page!"
+      );
+    }
 
     // update local copy
     predictions.add(predictionJob);

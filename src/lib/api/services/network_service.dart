@@ -994,7 +994,7 @@ class NetworkService {
         'layerId':     layerId,
         'modelId':     modelId,
       }
-    ).timeout(const Duration(minutes: 3));
+    ).timeout(const Duration(seconds: 120), onTimeout:() => "");
 
     final createdJob = parseNetworkResponse(
       response,
