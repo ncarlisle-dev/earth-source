@@ -57,7 +57,10 @@ class _UserProjectsPageState extends State<UserProjectsPage>
     // Loop through all the projects and retrieve the image for each top layer.
     for (var project in projects)
     {
-      final projectData = await projectController.getProjectById(project.id);
+      final projectData = await projectController.getProjectById(
+        project.id, 
+        false
+      );
       String layerImage = "";
       if (projectData.layers.isNotEmpty)
       {
@@ -398,7 +401,8 @@ class _UserProjectsPageState extends State<UserProjectsPage>
                       final projectController = 
                         await ProjectController.getInstance();
                       final project = await projectController.getProjectById(
-                        projects[index].id
+                        projects[index].id,
+                        false
                       );
 
                       if (!context.mounted) return;

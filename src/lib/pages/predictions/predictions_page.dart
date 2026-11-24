@@ -26,6 +26,21 @@ class _PredictionsPageState extends State<PredictionsPage>
 
   /// Stores the name of the current prediction for display.
   String currentPrediction = "";
+  /// Stores the error message to display in the case of an exception being 
+  /// thrown.
+  String errorMessage = "";
+
+  List<api.PredictionJob> predictions = [];
+
+  late api.Project project;
+
+  @override void initState() 
+  {
+    super.initState();
+
+    predictions = widget.project.predictions;
+    project = widget.project;
+  }
 
   /// Attempts to run a prediction job when given a name, description, and ID
   /// for the corresponding job layer.
@@ -53,14 +68,15 @@ class _PredictionsPageState extends State<PredictionsPage>
         hasJobFailed = true; 
         isJobRunning = false;
         currentPrediction = jobName;
-    });
+        errorMessage = error.toString();
+      });
     }
 
     setState(() { 
-      widget.project.predictions;
+      predictions = widget.project.predictions;
       isJobRunning = false;
       currentPrediction = jobName;
-  });
+    });
   }
 
   /// Displays a modal that allows the user to generate a prediction and select
@@ -241,7 +257,7 @@ class _PredictionsPageState extends State<PredictionsPage>
                 await widget.project.deletePredictionJob(predictionJobId);
 
                 if (context.mounted) {
-                  setState(() => widget.project.predictions);
+                  setState(() => predictions = widget.project.predictions);
                   Navigator.of(context).pop();
                 }
               },
@@ -254,6 +270,20 @@ class _PredictionsPageState extends State<PredictionsPage>
         );
       }
     );
+  }
+
+  void refreshPredictions() async
+  {
+    api.ProjectController projectController = 
+      await api.ProjectController.getInstance();
+
+    api.Project updatedProject = 
+      await projectController.getProjectById(widget.project.id, true);
+
+    setState(() { 
+      predictions = updatedProject.predictions;
+      project = updatedProject;
+    });
   }
 
   @override
@@ -292,6 +322,13 @@ class _PredictionsPageState extends State<PredictionsPage>
             child: const Icon(Icons.add)
           )
         ),
+        Padding(
+          padding: EdgeInsetsGeometry.all(16.0),
+          child: FloatingActionButton(
+            onPressed: () => refreshPredictions(),
+            child: const Icon(Icons.refresh)
+          )
+        ),
         !isJobRunning
         ?
           Center()
@@ -312,32 +349,30 @@ class _PredictionsPageState extends State<PredictionsPage>
           Padding(
             padding: EdgeInsetsGeometry.symmetric(vertical: 10.0), 
             child: Center(
-              child: Text(
-                "Error: prediction job $currentPrediction failed to run."
-              )
+              child: Text(errorMessage)
             )
           ),
         Center(
           child: Container(
             width: MediaQuery.of(context).size.width, // match the window width
-            height: MediaQuery.of(context).size.height - 300,
+            height: MediaQuery.of(context).size.height - 390,
             margin: const EdgeInsets.symmetric(horizontal: 15.0),
             child:
-            widget.project.predictions.isEmpty
+            predictions.isEmpty
             ?
               Center(child: Text("No predictions running yet!"))
             :
               ListView.builder(
                 shrinkWrap: true,
                 physics: ClampingScrollPhysics(),
-                itemCount: widget.project.predictions.length, 
+                itemCount: predictions.length, 
                 itemBuilder: (BuildContext context, int index) {
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute<void>(
                         builder: (context) => PredictionView(
-                          project: widget.project, 
-                          predictionJob: widget.project.predictions[index]
+                          project: project, 
+                          predictionJob: predictions[index]
                         )
                       ));
                     },
@@ -360,19 +395,19 @@ class _PredictionsPageState extends State<PredictionsPage>
                         child: SizedBox(
                           height: 176, 
                           child: JobFields(
-                            name: widget.project.predictions[index].name,
+                            name: predictions[index].name,
                             description: 
-                              widget.project.predictions[index].description,
+                              predictions[index].description,
                             timeCreated: 
-                              widget.project.predictions[index].createdAt
+                              predictions[index].createdAt
                               .toString(),
                             timeUpdated: 
-                              widget.project.predictions[index].lastUpdated
+                              predictions[index].lastUpdated
                               .toString(),
-                            status: widget.project.predictions[index].status,
+                            status: predictions[index].status,
                             layerName: widget.project.layers.firstWhere(
                               (layer) => layer.id == 
-                              widget.project.predictions[index].layerId).name
+                              predictions[index].layerId).name
                           ),
                         )
                       ),),
@@ -392,7 +427,7 @@ class _PredictionsPageState extends State<PredictionsPage>
                                 )
                               ),
                               onPressed: () => 
-                                deletePrediction(widget.project.layers[index].id),
+                                deletePrediction(predictions[index].id),
                               )
                           ),
                         ]
