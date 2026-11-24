@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'dart:io' as io;
 
-import '../../api/api.dart' as api;
-import 'data_file.dart' as data_file;
-import '../connections_page.dart';
-import '../project_dashboard.dart';
+import '../api/api.dart' as api;
+import 'connections_page.dart';
+import 'project_dashboard.dart';
 
 /// A stateful widget for the project data spec page, which takes the id for 
 /// the current project as a required field.
@@ -776,14 +775,12 @@ class _DataPageState extends State<DataPage>
                           ),
                           DataCell(IconButton(
                             onPressed: () => 
-                              Navigator.push(
-                                context, MaterialPageRoute<void>(builder: 
-                                  (context) => data_file.DataView( 
-                                    project: widget.project,
-                                    dataSpec: widget.project.pxrfData[index]
-                                  ),
+                              Navigator.push(context, MaterialPageRoute<void>(
+                                builder: (context) => DataDisplay(
+                                  project: widget.project, 
+                                  dataSpec: widget.project.pxrfData[index]
                                 )
-                              ),
+                              )),
                             icon: Icon(Icons.file_open),
                           )),
                           DataCell(IconButton(
@@ -820,5 +817,250 @@ class _DataPageState extends State<DataPage>
         )
       )]
     ));
+  }
+}
+
+/// A modal that displays the selected data file.
+class DataDisplay extends StatefulWidget
+{
+  const DataDisplay({super.key, required this.project, required this.dataSpec});
+
+  /// The id of the current project.
+  final api.Project project;
+  /// The data spec currently being viewed.
+  final api.DataSpec dataSpec;
+
+  @override
+  State<DataDisplay> createState() => _DataDisplayState();
+}
+
+/// The mutable state of the data display modal.
+class _DataDisplayState extends State<DataDisplay>
+{
+  /// Fetches the data file contents and returns a list of headers, a 2D list of
+  /// data, and a list of formatted file lines.
+  Future<(List<String>, List<List<String>>, List<String>)> getCSVData() async
+  {
+    List<String> headers = [];
+    List<List<String>> data = [];
+    List<String> dataStringList = [];
+
+    String fileString = await widget.project.getPxrfData(widget.dataSpec.id);
+
+    List<String> fileLines = fileString.split('\n');
+
+    headers = fileLines[0].split(',');
+
+    String headerLine = "";
+
+    for (var i = 0; i < headers.length; i++) {
+      headerLine += headers[i];
+      headerLine += '\t';
+      headerLine += '|';
+      headerLine += '\t';
+    }
+    dataStringList.add(headerLine.substring(0, headerLine.length - 2));
+
+    dataStringList.add("");
+
+    for (var i = 1; i < fileLines.length; i++) {
+      List<String> fileLine = fileLines[i].split(",");
+      String formattedLine = "";
+      if (fileLine.length == headers.length) {
+        data.add(fileLine);
+        for (var j = 0; j < fileLine.length; j++) {
+          formattedLine += fileLine[j];
+          formattedLine += '\t';
+          formattedLine += '|';
+          formattedLine += '\t';
+        }
+        dataStringList.add(formattedLine.substring(0, formattedLine.length - 2));
+      }
+    }
+
+    return (headers, data, dataStringList);
+  }
+
+  @override
+  Widget build(BuildContext context) 
+  {
+    final fileVerticalScrollController = ScrollController();
+    final fileHorizontalScrollController = ScrollController();
+    
+    return AlertDialog(
+      content: FutureBuilder(
+        future: getCSVData(),
+        builder: (
+          BuildContext ctx,
+          AsyncSnapshot<(
+            List<String>, 
+            List<List<String>>, 
+            List<String>
+          )> snapshot
+        ) {
+        // Display a loading progress indicator while the file loads.
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 16,
+            children: [
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+                child: FloatingActionButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Icon(Icons.arrow_circle_left)
+                )
+              ),
+              const CircularProgressIndicator(), 
+              const Text('Loading ...')
+            ],
+          );
+        }
+        // Display an error message if an error occurred in fetching the data.
+        if (snapshot.hasError) {
+          return Column(
+            children: [
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+                child: FloatingActionButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Icon(Icons.arrow_circle_left)
+                )
+              ),
+              Text("Error fetching file contents.")
+            ]
+          );
+        }
+        // Display a message if the file contains no data.
+        if (snapshot.data!.$1.isEmpty) {
+          return Column(
+            children: [
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+                child: FloatingActionButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Icon(Icons.arrow_circle_left)
+                )
+              ),
+              Text("File is empty.")
+            ]
+          );
+        }
+        /// Display the file formatted as a data table if it contains a
+        /// sufficiently small amount of lines.
+        if (snapshot.data!.$2.length <= 100) {
+          return Column(
+            children: [
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+                child: FloatingActionButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Icon(Icons.arrow_circle_left)
+                )
+              ),
+              Padding (
+                padding: EdgeInsetsGeometry.symmetric(vertical: 20.0),
+                child: Center(child: Text(
+                  widget.dataSpec.fileName, 
+                  maxLines: 1,
+                  overflow: .ellipsis,
+                  style: TextTheme.of(context).headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold),
+                  ),
+                ),  
+              ),
+              Center(
+                child: Container(
+                  width: MediaQuery.of(context).size.width, 
+                  height: MediaQuery.of(context).size.height - 350,
+                  margin: const EdgeInsets.all(15.0),
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    trackVisibility: true, 
+                    controller: fileVerticalScrollController,
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      trackVisibility: true,
+                      controller: fileHorizontalScrollController,
+                      notificationPredicate: (notif) => notif.depth == 1,
+                      child: SingleChildScrollView(
+                        controller: fileVerticalScrollController,
+                        scrollDirection: Axis.vertical,
+                        child: SingleChildScrollView(
+                          controller: fileHorizontalScrollController,
+                          scrollDirection: Axis.horizontal,
+                          child:
+                            DataTable(
+                              columns: List<DataColumn>.generate(
+                                snapshot.data!.$1.length,
+                                (int index) => DataColumn(
+                                  label: Expanded(
+                                    child: Text(
+                                      snapshot.data!.$1[index], 
+                                      style: TextStyle(fontStyle: .italic)
+                                    ),
+                                  ),
+                                )
+                              ),
+                              rows: List<DataRow>.generate(
+                                snapshot.data!.$2.length,
+                                (int rowIndex) => DataRow(
+                                  cells: List<DataCell>.generate(
+                                    snapshot.data!.$1.length,
+                                    (int colIndex) => DataCell(
+                                      Text(
+                                        snapshot.data!.$2[rowIndex][colIndex]
+                                      )
+                                    ),
+                                  )
+                                )
+                              )
+                            ),
+                          ), 
+                        )
+                      )
+                    )
+                  )
+                )
+              ]
+            );
+          }
+          // Otherwise, display the file as a list of formatted strings.
+          return Column(
+            children: [
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(vertical: 16.0),
+                child: FloatingActionButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Icon(Icons.arrow_circle_left)
+                )
+              ),
+              Padding (
+                padding: EdgeInsetsGeometry.symmetric(vertical: 20.0),
+                child: Center(child: Text(
+                  widget.dataSpec.fileName, 
+                  maxLines: 1,
+                  overflow: .ellipsis,
+                  style: TextTheme.of(context).headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold),
+                  ),
+                ),  
+              ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width - 50,
+                height: MediaQuery.of(context).size.height - 265,
+                child: ListView.builder(
+                  itemCount: snapshot.data!.$3.length, 
+                  itemBuilder: (BuildContext context, int index) {
+                    return Center(
+                      child: Text(snapshot.data!.$3[index]));
+                  }
+                )
+              ),
+            ],
+          );
+        }
+      )
+    );
   }
 }
