@@ -30,10 +30,12 @@ class _PredictionsPageState extends State<PredictionsPage>
   /// thrown.
   String errorMessage = "";
 
+  /// Stores the latest version of the predictions being run.
   List<api.PredictionJob> predictions = [];
-
+  /// Stores the latest version of the current project.
   late api.Project project;
 
+  /// Initialize predictions and project variables when state is first created.
   @override void initState() 
   {
     super.initState();
@@ -272,6 +274,8 @@ class _PredictionsPageState extends State<PredictionsPage>
     );
   }
 
+  /// Refreshes the current page data by updating the project in accordance with
+  /// its latest changes.
   void refreshPredictions() async
   {
     api.ProjectController projectController = 
