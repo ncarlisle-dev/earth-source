@@ -65,8 +65,11 @@ class ProjectController {
     return createdProject;
   }
 
-  Future<common.Project> getProjectById(String id) async {
-    if (_cachedProjects.containsKey(id)) return _cachedProjects[id]!;
+  /// Fetches a project by ID, either from cached projects if it already exists
+  /// or from the database if it does not exist or if the project needs to be
+  /// refreshed.
+  Future<common.Project> getProjectById(String id, bool refresh) async {
+    if (_cachedProjects.containsKey(id) && !refresh) return _cachedProjects[id]!;
 
     final networkService = await NetworkService.getInstance();
 
