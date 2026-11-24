@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:archaeo_sight_2/api/common/common.dart';
-import 'package:archaeo_sight_2/pages/data/data_file.dart';
 
 import '../services/network_service.dart';
 import 'network.dart' as network;
@@ -77,6 +76,8 @@ class Project
 
   /// Image strings stored in the cache, keyed by layer ID.
   final Map<String, String> _cachedImages = {};
+  /// Data files stored in the cache, keyed by spec ID.
+  final Map<String, String> _cachedDataFiles = {};
 
   Project({
     required this.id,
@@ -213,6 +214,8 @@ class Project
       );
     }
 
+    _cachedDataFiles[createdSpec.id] = fileContents;
+
     pxrfData.add(createdSpec);
     lastUpdated = createdSpec.createdAt;
     return createdSpec;
@@ -224,11 +227,14 @@ class Project
   /// successfully be fetched.
   Future<String> getPxrfData(String specId) async 
   {
+    if (_cachedDataFiles.containsKey(specId)) return _cachedDataFiles[specId]!;
+
     final networkService = await NetworkService.getInstance();
     final String fileContents;
 
     try {
       fileContents = await networkService.fetchPxrfData(id, specId);
+      _cachedDataFiles[specId] = fileContents;
     }
     on network.ApiNetworkException catch (error) {
       throw network.ApiNetworkException(
@@ -322,6 +328,8 @@ class Project
         }
       });
     });
+
+    _cachedDataFiles.remove(id);
 
     pxrfData.removeAt(specIndex);
   }
