@@ -26,17 +26,17 @@ const List<String> helpText = ["From the projects page, click on the plus "
   "device or from a pXRF device using AirDroid.", "To upload data via AirDroid,"
   " click on the button with the AirDroid icon, which will take you to the AirDroid "
   "Connections page. Click on the plus button in the lower right corner to add "
-  "a connection, which will pull a form in which you'll enter the IP address "
+  "a connection, which will pull up a form in which you'll enter the IP address "
   "and port number corresponding to the AirDroid app on your pXRF device.", 
   "Once you make a connection, you'll be able to view a list of your "
   "connections and an icon indicating the status of each (green means you're "
   "successfully connected and ready to upload data from your device). You can "
   "refresh a connection or click on a file icon to view the file system of your"
-  "connected device, which will allow you to select the file you want to "
+  " connected device, which will allow you to select the file you want to "
   "upload to the app.", "Once you have at least one unit and one layer created"
   " for a project, you can assign your pXRF data files to locations within the "
   "project site. To do so, navigate back to the Sample Data page and click on "
-  "the + button alongside a data file, which will allow you to select the unit and "
+  "the + button next to a data file, which will allow you to select the unit and "
   "layer "
   "associated with that data file. Assigning data to a layer is necessary in "
   "order to run predictions on that layer.", "To view and create predictions, "
@@ -109,6 +109,7 @@ class _HelpPageState extends State<HelpPage> {
           itemCount: 4, 
           itemBuilder: (BuildContext context, int index) {
             return Card(
+              color: Color.fromARGB(255, 232, 237, 242),
               child: SizedBox(
                 child: Padding(
                   padding: EdgeInsets.all(20.0),
@@ -158,6 +159,7 @@ class _HelpPageState extends State<HelpPage> {
           itemCount: 4, 
           itemBuilder: (BuildContext context, int index) {
             return Card(
+              color: Color.fromARGB(255, 232, 237, 242),
               child: SizedBox(
                 child: Padding(
                   padding: EdgeInsets.all(20.0),
@@ -207,6 +209,7 @@ class _HelpPageState extends State<HelpPage> {
           itemCount: 4, 
           itemBuilder: (BuildContext context, int index) {
             return Card(
+              color: Color.fromARGB(255, 232, 237, 242),
               child: SizedBox(
                 child: Padding(
                   padding: EdgeInsets.all(20.0),
