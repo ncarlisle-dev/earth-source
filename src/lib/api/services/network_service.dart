@@ -148,8 +148,8 @@ common.Project convertApiProject(api_types.ApiProject apiProject)
     )).toList(),
   );
 }
-const _cloudUrl = "https://original-ptarmigan-119.convex.cloud";
-const _httpActionsUrl = "https://original-ptarmigan-119.convex.site";
+const _cloudUrl = "https://warmhearted-falcon-747.convex.cloud";
+const _httpActionsUrl = "https://warmhearted-falcon-747.convex.site";
 
 class NetworkService {
   static NetworkService? instance;

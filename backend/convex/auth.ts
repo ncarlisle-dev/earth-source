@@ -62,5 +62,5 @@ export async function authenticateUser(ctx: QueryCtx | MutationCtx | ActionCtx):
 
   // return user._id;
 
-  return "jx708grq7zk0fk18jgrdegb2bx8gyr3r" as Id<"users">; // replace with your own user ID
+  return "jjx7appv2mghqqvp6h259ba7d6h8gr43t" as Id<"users">; // replace with your own user ID
 } 
