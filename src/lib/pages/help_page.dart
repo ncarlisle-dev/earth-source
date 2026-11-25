@@ -5,7 +5,7 @@ const List<String> helpImages = [
   "Project_Creation.png", "Project_Dashboard.png", "Layer_Creation.png",
   "Unit_Creation.png", "Data_Spec_Page.png", "AirDroid_Modal.png", 
   "AirDroid_Connections.png", "Data_Assignment.png", "Predictions.png",
-  "Prediction_Creation.png", "Prediction_Page.png", "Map_View.png"
+  "Prediction_Creation.png", "Prediction_Refresh.png", "Prediction_Page.png"
 ];
 
 /// List of text labels for each step in the user guide.
@@ -24,7 +24,7 @@ const List<String> helpText = ["From the projects page, click on the plus "
   "add project data, navigate to the Sample Data page from the project "
   "dashboard. pXRF data can either be uploaded from a .csv file on your local "
   "device or from a pXRF device using AirDroid.", "To upload data via AirDroid,"
-  " click on the corresponding button, which will take you to the AirDroid "
+  " click on the button with the AirDroid icon, which will take you to the AirDroid "
   "Connections page. Click on the plus button in the lower right corner to add "
   "a connection, which will pull a form in which you'll enter the IP address "
   "and port number corresponding to the AirDroid app on your pXRF device.", 
@@ -36,7 +36,7 @@ const List<String> helpText = ["From the projects page, click on the plus "
   "upload to the app.", "Once you have at least one unit and one layer created"
   " for a project, you can assign your pXRF data files to locations within the "
   "project site. To do so, navigate back to the Sample Data page and click on "
-  "the Assign Layers/Units button, which will allow you to select the unit and "
+  "the + button alongside a data file, which will allow you to select the unit and "
   "layer "
   "associated with that data file. Assigning data to a layer is necessary in "
   "order to run predictions on that layer.", "To view and create predictions, "
@@ -44,14 +44,15 @@ const List<String> helpText = ["From the projects page, click on the plus "
   "display a list of predictions and their current status.", "Click on the plus"
   " button to generate a new prediction. It will direct you to a form in which "
   "you'll input the name and description of the prediction, as well as the "
-  "layer over which you want the prediction to run.", "Once your prediction is "
-  "created, you'll be taken to its individual page, where you can view and edit"
-  " its information and watch the status of the running prediction job.", "At "
+  "layer over which you want the prediction to run.", "Refresh the page as needed if your prediction "
+  "times out until the prediction appears below the buttons with a status of complete (indicated by "
+  "a green marker.)", "Click on the prediction to access a page where you can view prediction "
+  "information, status, and output. At "
   "the bottom of the predictions page, you can view a map displaying the "
   "output of the prediction job once it's finished running in the form of a "
-  "heatmap projected over the image of the corresponding layer. The toggle "
-  "button will switch between the map view and a list of text-formatted "
-  "prediction data."];
+  "heatmap projected over the image of the corresponding layer. Darker spots within the heatmap "
+  "correspond to a higher probability that non-soil elements are present at that spot on the map. You "
+  "can also click on the Text tab to view the prediction results in a text-based format instead."];
 
 /// A page providing a guide to using the app, documentation, troubleshooting
 /// tips, and contact information.

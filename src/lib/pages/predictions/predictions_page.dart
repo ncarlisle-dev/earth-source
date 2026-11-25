@@ -359,7 +359,7 @@ class _PredictionsPageState extends State<PredictionsPage>
         Center(
           child: Container(
             width: MediaQuery.of(context).size.width, // match the window width
-            height: MediaQuery.of(context).size.height - 390,
+            height: MediaQuery.of(context).size.height - 400,
             margin: const EdgeInsets.symmetric(horizontal: 15.0),
             child:
             predictions.isEmpty
