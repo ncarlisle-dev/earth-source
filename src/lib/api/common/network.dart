@@ -33,4 +33,6 @@ enum ConnectionStatus {
   connecting,
   /// Indicates the connection is up and running; server calls may be made.
   connected,
+  /// Indicates the attempt to connect has failed.
+  failed,
 }

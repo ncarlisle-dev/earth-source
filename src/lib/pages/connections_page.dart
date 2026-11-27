@@ -8,7 +8,7 @@ import '../api/api.dart' as api;
 const Map<api.ConnectionStatus, Icon> _connectionStatusSymbols = {
   api.ConnectionStatus.disconnecting: Icon(
     Icons.circle,
-    color: Colors.red,
+    color: Colors.orange,
     size: 16.0
   ),
   api.ConnectionStatus.disconnected: Icon(
@@ -24,6 +24,11 @@ const Map<api.ConnectionStatus, Icon> _connectionStatusSymbols = {
   api.ConnectionStatus.connected: Icon(
     Icons.circle,
     color: Colors.green,
+    size: 16.0
+  ),
+  api.ConnectionStatus.failed: Icon(
+    Icons.circle,
+    color: Colors.red,
     size: 16.0
   ),
 };
@@ -91,11 +96,13 @@ class _ConnectionsPageState extends State<ConnectionsPage>
           mainAxisAlignment: .end,
           spacing: 10.0,
           children: [
-            IconButton(
+            Padding(padding: .only(bottom: 50), child:
+            FloatingActionButton(
               onPressed: pingConnections,
-              icon: const Icon(Icons.refresh),
-            ),
-
+              tooltip: 'Refresh connections',
+              child: const Icon(Icons.refresh),
+            ),),
+            Padding(padding: .only(bottom: 50), child:
             FloatingActionButton(
               onPressed: () async
               {
@@ -118,7 +125,7 @@ class _ConnectionsPageState extends State<ConnectionsPage>
               },
               tooltip: 'Add connection',
               child: const Icon(Icons.add),
-            ),
+            ),),
           ],
         ),
         body: ListView(
@@ -205,7 +212,7 @@ class _ConnectionsPageState extends State<ConnectionsPage>
                                 ),
 
                                 IconButton(
-                                  icon: Icon(Icons.refresh),
+                                  icon: Icon(Icons.repeat_rounded),
                                   onPressed: () async {
                                     final airdroidController = 
                                       await api.AirdroidController.getInstance();
