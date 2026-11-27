@@ -123,7 +123,7 @@ class AirdroidController
       client.connect(ipAddress, port);
     } on common.AirdroidNetworkException {
       client.setStatusListener(null);
-      connectionSpec.status = .disconnected;
+      connectionSpec.status = .failed;
     }
 
     return connectionSpec;

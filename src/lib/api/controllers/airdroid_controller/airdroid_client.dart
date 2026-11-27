@@ -142,6 +142,7 @@ class AirdroidClient
       response = await _client!.get(Uri.parse(requestAddress));
     } on http.ClientException {
       _closeClient();
+      _setStatus(.failed);
       throw const common.AirdroidNetworkException(
         "Failed to send network request.",
         null
@@ -150,6 +151,7 @@ class AirdroidClient
 
     if (response.statusCode != 200) {
       _closeClient();
+      _setStatus(.failed);
       throw common.AirdroidNetworkException(
         "Server returned status code ${response.statusCode}.",
         response.statusCode
@@ -167,6 +169,7 @@ class AirdroidClient
       connectionData = ad_schema.extractConnectionData(response.body);
     } on ad_schema.TypeMismatchException catch (e) {
       _closeClient();
+      _setStatus(.failed);
       throw common.AirdroidNetworkException(
         "Server returned unexpected response body:\n$e",
         200
