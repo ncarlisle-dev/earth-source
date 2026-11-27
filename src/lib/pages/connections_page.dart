@@ -183,29 +183,31 @@ class _ConnectionsPageState extends State<ConnectionsPage>
                               crossAxisAlignment: .end,
                               spacing: 10.0,
                               children: [
-                                Padding(padding: .only(bottom: 15), child:
-                                _connectionStatusSymbols[spec.status]!),
-
-                                Expanded(child: Column(
-                                  crossAxisAlignment: .start,
-                                  children: [
-                                    Text(
-                                      "${spec.ipAddress}:${spec.port}",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold
+                                Padding(
+                                  padding: .only(bottom: 15), 
+                                  child: _connectionStatusSymbols[spec.status]!
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: .start,
+                                    children: [
+                                      Text(
+                                        "${spec.ipAddress}:${spec.port}",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold
+                                        ),
+                                        maxLines: 1,
+                                        overflow: .ellipsis,
                                       ),
-                                      maxLines: 1,
-                                      overflow: .ellipsis,
-                                    ),
-                                    Text(
-                                      "${intl.DateFormat.yMMMEd().format(spec.createdAt)} "
-                                      "at ${intl.DateFormat.jm().format(spec.createdAt)}",
-                                      maxLines: 1,
-                                      overflow: .ellipsis,
-                                    )
-                                  ]
-                                )),
-
+                                      Text(
+                                        "${intl.DateFormat.yMMMEd().format(spec.createdAt)} "
+                                        "at ${intl.DateFormat.jm().format(spec.createdAt)}",
+                                        maxLines: 1,
+                                        overflow: .ellipsis,
+                                      )
+                                    ]
+                                  )
+                                ),
                                 spec.status == .connected
                                 ?
                                   IconButton(
