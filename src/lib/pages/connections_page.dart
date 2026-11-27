@@ -180,11 +180,13 @@ class _ConnectionsPageState extends State<ConnectionsPage>
                               borderRadius: BorderRadius.circular(10.0),
                             ),
                             child: Row(
+                              crossAxisAlignment: .end,
                               spacing: 10.0,
                               children: [
-                                _connectionStatusSymbols[spec.status]!,
+                                Padding(padding: .only(bottom: 15), child:
+                                _connectionStatusSymbols[spec.status]!),
 
-                                Column(
+                                Expanded(child: Column(
                                   crossAxisAlignment: .start,
                                   children: [
                                     Text(
@@ -192,35 +194,46 @@ class _ConnectionsPageState extends State<ConnectionsPage>
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold
                                       ),
+                                      maxLines: 1,
+                                      overflow: .ellipsis,
                                     ),
                                     Text(
                                       "${intl.DateFormat.yMMMEd().format(spec.createdAt)} "
-                                      "at ${intl.DateFormat.jm().format(spec.createdAt)}"
+                                      "at ${intl.DateFormat.jm().format(spec.createdAt)}",
+                                      maxLines: 1,
+                                      overflow: .ellipsis,
                                     )
                                   ]
-                                ),
+                                )),
 
-                                IconButton(
-                                  icon: Icon(Icons.folder_open),
-                                  onPressed: () async {
-                                    await _showFileDownloadModal(
-                                      context,
-                                      widget.project,
-                                      spec,
-                                    );
-                                  },
-                                ),
-
+                                spec.status == .connected
+                                ?
+                                  IconButton(
+                                    icon: Icon(Icons.folder_open),
+                                    tooltip: "Open Filesystem",
+                                    onPressed: () async {
+                                      await _showFileDownloadModal(
+                                        context,
+                                        widget.project,
+                                        spec,
+                                      );
+                                    },
+                                  )
+                                :
+                                  Center(),
                                 IconButton(
                                   icon: Icon(Icons.repeat_rounded),
+                                  tooltip: "Retry Connection",
                                   onPressed: () async {
                                     final airdroidController = 
-                                      await api.AirdroidController.getInstance();
+                                      await 
+                                      api.AirdroidController.getInstance();
                                     
-                                    final createdSpec = await airdroidController.connect(
-                                      spec.ipAddress,
-                                      spec.port
-                                    );
+                                    final createdSpec = 
+                                      await airdroidController.connect(
+                                        spec.ipAddress,
+                                        spec.port
+                                      );
 
                                     airdroidController.watchConnectionStatus(
                                       createdSpec.id,
@@ -288,6 +301,7 @@ Future<String?> _showConnectionModal(
                   ),
 
                   TextFormField(
+                    readOnly: isConnecting? true : false,
                     decoration: const InputDecoration(
                       hintText: 'IP address'
                     ),
@@ -304,6 +318,7 @@ Future<String?> _showConnectionModal(
 
                   // TODO: make this field number-only
                   TextFormField(
+                    readOnly: isConnecting? true : false,
                     decoration: const InputDecoration(
                       hintText: 'Port number'
                     ),
