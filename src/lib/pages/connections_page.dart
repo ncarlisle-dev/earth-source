@@ -431,6 +431,28 @@ Future<void> _showFileDownloadModal(
         content: SingleChildScrollView(
           child: Column(
             children: [
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(
+                  vertical: 16.0, 
+                  horizontal: 20.0
+                ),
+                child: FloatingActionButton(
+                  tooltip: "Back",
+                  onPressed: () => Navigator.of(pageContext).pop(),
+                  child: const Icon(Icons.arrow_circle_left)
+                )
+              ),
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(
+                  vertical: 16.0, 
+                  horizontal: 20.0
+                ),
+                child: FloatingActionButton(
+                  tooltip: "Refresh",
+                  onPressed: () => setModalState(() => ()),
+                  child: const Icon(Icons.refresh)
+                )
+              ),
               Text(currFilePath),
               selectedFile
               ? Center(
@@ -455,7 +477,8 @@ Future<void> _showFileDownloadModal(
                     return Column(
                       spacing: 15.0,
                       crossAxisAlignment: .stretch,
-                      children: snapshot.data!.map((item) => InkWell(
+                      children: 
+                      snapshot.data!.map((item) => InkWell(
                         onTap: () async {
                           setModalState(() {
                             currFilePath += "/${item.name}";
@@ -491,7 +514,9 @@ Future<void> _showFileDownloadModal(
                               ? Icon(Icons.description)
                               : Icon(Icons.folder),
                             Text(item.name),
-                            Text("${item.size} bytes"),
+                            item.isFile
+                              ? Text("${item.size} bytes")
+                              : Center(),
                             Text(
                               "${intl.DateFormat.yMMMEd().format(item.lastModified)}, "
                               "${intl.DateFormat.jm().format(item.lastModified)}"
